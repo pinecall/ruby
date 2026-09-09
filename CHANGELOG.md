@@ -17,4 +17,10 @@ version number is the human's call.
 - `pinecall-protocol`: Ruby's side of the wire, generated from the same JSON Schema as the Python
   and TypeScript packages, with the log reducer proved against the same golden fixture.
 - `sig/`: the public surface as RBS, checked by `rake rbs`.
+- `pinecall ui`: the console on 127.0.0.1 — the same compiled React console the TypeScript
+  package builds, vendored in `console/` and served from Ruby. Loopback only, a random nonce, and
+  the org key never reaching the browser; `v1/*` is forwarded from this process, streaming, so a
+  log arrives over SSE as it happens.
+- `rake console:build` and `rake console:check`: how the bundle gets here, and how a reader finds
+  out that what is here is stale.
 - `examples/clinica_norte`: a whole agent, its view, and its own ring-0 suite.

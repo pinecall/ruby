@@ -25,7 +25,10 @@ Gem::Specification.new do |spec|
     "rubygems_mfa_required" => "true"
   }
 
-  spec.files = Dir["lib/**/*.rb", "sig/**/*.rbs", "exe/*", "LICENSE", "README.md", "CHANGELOG.md"]
+  # `console/` is the compiled React console, vendored the way a Rails engine ships its assets:
+  # a browser reads no TypeScript, and installing this gem must not mean installing Node.
+  spec.files = Dir["lib/**/*.rb", "sig/**/*.rbs", "exe/*", "console/**/*",
+                   "LICENSE", "README.md", "CHANGELOG.md"]
   spec.bindir = "exe"
   spec.executables = ["pinecall"]
   spec.require_paths = ["lib"]

@@ -14,7 +14,6 @@ module Pinecall
       "chat" => "the same agent in this terminal, and a written caller against it",
       "test" => "ring 1: the goldens, through the agent in this process, scored by the gateway",
       "eval" => "ring 3: one real call re-evaluated by the runtime's code checks",
-      "ui" => "the console on 127.0.0.1: talk, calls and logs live",
       "login" => "the key typed once — today `pinecall login` is the Node CLI's, and this one reads what it kept"
     }.freeze
 
@@ -28,6 +27,7 @@ module Pinecall
       when "-v", "--version", "version" then out.puts(VERSION) || 0
       when "prompt" then prompt(rest, out:, err:)
       when "run" then serve(rest, out:, err:)
+      when "ui" then UI.run(rest, out:, err:)
       when "whoami" then whoami(out:, err:)
       when *PLANNED.keys then planned(verb, out)
       else err.puts("pinecall: no verb called #{verb}") || usage(err, status: 2)
@@ -136,6 +136,7 @@ module Pinecall
 
           prompt [file]   the exact prompt this agent would produce   (no gateway)
           run [file]      the agent registered and answering
+          ui [agent]      the console on 127.0.0.1: calls, sessions, evals, and a page to talk
           whoami          which gateway, and where this key came from
           version
 

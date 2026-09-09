@@ -5,6 +5,7 @@ pinecall <verb>
 
   prompt [file]   the exact prompt this agent would produce   (no gateway)
   run [file]      the agent registered and answering
+  ui [agent]      the console on 127.0.0.1: calls, sessions, evals, and a page to talk
   whoami          which gateway, and where this key came from
   version
 ```
@@ -37,6 +38,20 @@ page. Ctrl-C closes the socket, and every agent's slug is free the moment it shu
 pinecall run examples/clinica_norte/agent.rb
 # clinica-norte is answering on http://localhost:8080 (3 routes)
 ```
+
+## ui
+
+The console, served on the loopback for as long as the command runs, and opened in this machine's
+browser. It is [the compiled React console](the-console.md) the TypeScript package builds.
+
+```bash
+pinecall ui                    # every agent this gateway holds
+pinecall ui clinica-norte      # straight to one
+```
+
+Three things it will not do: run where there is no browser (over ssh, or a Linux with no display,
+it says so and exits 2), open a port on anything but `127.0.0.1`, or let the org key reach the
+page. Ctrl-C closes the port with the command.
 
 ## whoami
 
@@ -76,5 +91,4 @@ writes it.
 | `chat` | the same agent in this terminal, and a written caller against it |
 | `test` | ring 1: the goldens, through the agent in this process, scored by the gateway |
 | `eval` | ring 3: one real call re-evaluated by the runtime's code checks |
-| `ui` | the console on 127.0.0.1: talk, calls and logs live |
 | `login` | the key typed once — today it is the Node CLI's, and this one reads what it kept |

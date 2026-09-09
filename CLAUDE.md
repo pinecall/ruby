@@ -19,6 +19,10 @@ rake rbs
 
 bin/pinecall prompt examples/clinica_norte/agent.rb --stage book
 bin/pinecall run examples/clinica_norte/agent.rb
+bin/pinecall ui
+
+rake console:build   # rebuild the vendored console from ../agents. Needs pnpm, once
+rake console:check    # is what is in console/ what that source would produce
 ```
 
 `bin/pinecall` is the bin of a checkout: it adds `lib/` and the sibling `../protocol/ruby/lib`.
@@ -41,6 +45,7 @@ A change lands with the page that describes it, in the same commit.
 | anything a person writing an agent types | the `docs/` page for it |
 | a rule that is refused at load | `docs/writing-an-agent.md`, with the sentence the refusal says |
 | anything a user would notice | `CHANGELOG.md`, under Unreleased |
+| a screen of the console | **`../agents`**, then `rake console:build` here — the bundle is generated |
 
 Before renaming anything public: `grep -rn "<old name>" lib test examples docs *.md sig`.
 
@@ -55,6 +60,10 @@ When a doc and the code disagree, the code is what happened and the doc is the b
 - **Only the region whose text changed is sent again.** The static prefix goes up once per call.
 - **The three regions keep their order.** static · history · dynamic. The cut is where the cache is.
 - **Nothing here imports LiveKit, a model vendor, or the runtime.** Commands out, entries in.
+- **`console/` is generated and nothing else in this gem is.** It is the TypeScript package's
+  vite build, vendored. Never edit a file under it; edit `../agents/src/cli/ui/console` and run
+  `rake console:build`. `rake console:check` fails when what is committed is not what that source
+  would produce, and `rake check` runs it.
 - **The wire is never hand-written.** Every shape comes from `pinecall-protocol`, which is
   generated. A field this package needs is a schema change in `pinecall/protocol` first.
 

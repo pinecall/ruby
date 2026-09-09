@@ -58,10 +58,27 @@ gem install pinecall
 pinecall prompt agent.rb              # the exact prompt this state would produce. No gateway.
 pinecall prompt agent.rb --stage book
 pinecall run agent.rb                 # registered and answering: the process you deploy
+pinecall ui                           # the console on 127.0.0.1: calls, sessions, evals, talk
 ```
 
 `pinecall prompt` needs no gateway, no key and no network, which is why it is the verb to run
 first: the whole point of the design is that the prompt is a function you can call.
+
+## The console
+
+`pinecall ui` opens the console on 127.0.0.1 for as long as the command runs: the agents this
+gateway holds, their calls and logs as they happen, the finished sessions read whole, the eval
+runs, the pipeline of a voice turn, and a page to talk to an agent with this browser's microphone.
+
+It is **the same React console the TypeScript package builds** — the same screens, the same
+bundle — vendored into this gem already compiled, the way a Rails engine ships its assets. A
+browser reads no TypeScript, and a Ruby shop should not have to install Node to look at its own
+calls.
+
+What Ruby owns is everything around it, and all of it is a containment decision: the loopback and
+a port the kernel picks, a random nonce that every path answers under (a process that scans the
+loopback finds a 404), and **the org key, which never reaches the browser** — the page asks this
+process, this process signs the request and forwards it. Ctrl-C closes the port with the command.
 
 ## What it is
 
@@ -114,6 +131,7 @@ assert_equal %w[propose], call.tools
 | the view, and the three regions of a prompt | [docs/the-view.md](docs/the-view.md) |
 | how to test one | [docs/testing-an-agent.md](docs/testing-an-agent.md) |
 | the CLI, verb by verb | [docs/the-cli.md](docs/the-cli.md) |
+| the console, and how it is vendored | [docs/the-console.md](docs/the-console.md) |
 | a whole agent, written the way a customer writes one | [examples/clinica_norte](examples/clinica_norte) |
 | the wire itself | `pinecall-protocol`, generated in the `pinecall/protocol` repository |
 

@@ -269,6 +269,27 @@ module Pinecall
     def self?.languages: () -> Array[String]
   end
 
+  module UI
+    FILES: String
+    def self?.run: (Array[String], ?out: IO, ?err: IO, ?files: String, ?open: (^(String) -> void)?,
+                    ?env: Hash[String, String]) -> Integer
+
+    class Server
+      LOOPBACK: String
+      attr_reader url: String
+      def self.open: (door: untyped, files: String) -> Server
+      def listen: () -> Server
+      def at: (String) -> String
+      def close: () -> nil
+    end
+
+    module Browser
+      def self?.headless: (?env: untyped, ?platform: Symbol) -> String?
+      def self?.open: (String, ?platform: Symbol) -> nil
+      def self?.this_platform: () -> Symbol
+    end
+  end
+
   module CLI
     PLANNED: Hash[String, String]
     def self?.run: (Array[String], ?out: IO, ?err: IO) -> Integer

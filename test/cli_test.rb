@@ -121,6 +121,21 @@ class CLITest < Minitest::Test
     assert_includes out, "ring 1"
   end
 
+  def test_the_console_says_what_it_is_before_it_opens_a_port
+    status, out, = run_cli("ui", "--help")
+
+    assert_equal 2, status
+    assert_includes out, "127.0.0.1"
+    assert_includes out, "The key never reaches the browser"
+  end
+
+  def test_the_console_refuses_to_open_without_a_key_rather_than_serving_nothing
+    status, _out, err = run_cli("ui")
+
+    assert_equal 2, status
+    assert_includes err, "no key for"
+  end
+
   def test_a_verb_nobody_has_is_an_error_and_the_usage
     status, _out, err = run_cli("dance")
 

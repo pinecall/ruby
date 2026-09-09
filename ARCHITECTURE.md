@@ -59,7 +59,11 @@ lib/pinecall/
   client/observe.rb          reading a log: one page, and the stream after it
   client/endpoints.rb        one base URL, three doors
   cli.rb  cli/env.rb         `pinecall <verb>`, and where the key comes from
+  ui.rb                      `pinecall ui`: serve, open, wait, close
+  ui/server.rb               the loopback, the nonce, the console's files, and the forwarded doors
+  ui/browser.rb              whether this machine has a browser, and how a URL is handed to it
   testing.rb                 a gateway that is not there — what ring 0 mounts against
+console/                     the compiled React console, vendored. The one generated thing here
 exe/pinecall                 what a gem install puts on the PATH
 bin/pinecall                 the bin of a checkout: this source and the sibling protocol repo
 sig/                         the public surface as RBS. `rake rbs` is part of the gate
@@ -88,6 +92,8 @@ gives that TypeScript does not, or what it takes away.
 | `Promise`, one event loop | one reader thread, one thread per call, one per tool call | The socket is never blocked by a hook or a tool. Everything belonging to one call is still serialised, which is what makes `call.cause` mean anything. |
 | `WeakMap` internals kept off the instance | plain ivars behind declared readers | Nothing enumerates a Ruby object's fields by accident, so nothing has to be hidden from a snapshot. |
 | `test/index.test.ts` pins the exports by name | `sig/pinecall.rbs` and `rake rbs` | Ruby's answer to a `.d.ts`: adding to the surface means editing the signature on purpose. |
+| the console is built into `dist/cli/ui/console` by the package that owns its source | the same build, **vendored** into `console/`, with `rake console:check` guarding it | One React program, built once. Ruby ships the bytes the way a Rails engine ships assets; installing the gem must not mean installing Node. |
+| `node:http` server, `fetch` proxying, `Readable.fromWeb` | HTTP/1.1 on a `TCPServer`, `Net::HTTP` streaming, one connection per answer | Ruby has no HTTP server in the stdlib, and an SSE proxy has to own the write side. Loopback, one person: `connection: close` makes the framing exact and the file short. |
 
 What did **not** change, because it is the product and not the language: the three prompt regions
 and their order, the markers the gateway fills, `stage` as sugar over `when`, `confirm` being what
@@ -216,6 +222,7 @@ no CLI. It knows `pinecall-protocol` and `websocket-driver`.
 |---|---|---|
 | `prompt` | the exact prompt a state would produce | **no** |
 | `run` | the agent registered and answering: the process you deploy | yes |
+| `ui` | the console on 127.0.0.1 for the life of the command | yes |
 | `whoami` | which gateway, and where this terminal's key came from | no |
 
 `cli/env.rb` decides where the key comes from, in one order, for every verb:
@@ -234,7 +241,27 @@ read is treated as absent.
 `CLI::PLANNED` names the verbs the design has and this package has not written; typing one says
 what it will be and exits 0. A verb leaves that table in the commit that writes it.
 
-## 11. The four rings, and where each of them runs
+## 11. The console
+
+`pinecall ui` is the one verb that opens a port, and everything about it is a containment
+decision: **127.0.0.1 only**, the kernel picks the port, and everything answers under a random
+nonce, so a process that scans the loopback finds a `404` and nothing behind it. **The org key
+never reaches the browser**: the page asks this process, this process signs the request and
+forwards it, passing only `content-type`, `accept`, `last-event-id` and `range`.
+
+The page itself is not written here. It is the React program in `pinecall/agents`, built once by
+vite and **vendored compiled** into `console/` — one program, so a screen is written in one place
+and both packages show the same digits. `rake console:build` rebuilds it from the sibling
+repository; `rake console:check` hashes that source and fails when what is committed is not what
+it would produce; `rake` runs the check. Nothing else in this gem is generated, and no file under
+`console/` is ever edited.
+
+`ui/server.rb` speaks HTTP/1.1 on a `TCPServer` rather than through a web server, because a
+console reads a live log over SSE and a proxy that streams has to own the write side. Every answer
+carries `connection: close`, which lets a body end at EOF with no length and no chunked framing —
+on the loopback, for one person, a connection per request costs nothing.
+
+## 12. The four rings, and where each of them runs
 
 | ring | what it asks | where it runs |
 |---|---|---|
@@ -244,17 +271,18 @@ what it will be and exits 0. A verb leaves that table in the commit that writes 
 | 3 | what does one real call score? | `pinecall eval <call-id>` |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up |
 
-## 12. The wire
+## 13. The wire
 
 `pinecall-protocol` is generated from JSON Schema in `pinecall/protocol` and committed there;
 nothing here runs a generator. This package imports the frames (`Entry`, `Command`, `Event`), the
 registries, the validator and the reducer. `Gemfile` names `../protocol/ruby` as a path — a path
 today because nothing is published, a version range the day it is.
 
-## 13. Packaging
+## 14. Packaging
 
 - **One gem, two bins.** `exe/pinecall` is what a gem install puts on the PATH; `bin/pinecall` is
   the bin of a checkout, and the only place a sibling repository's path is written.
 - **`sig/` ships with the gem.** Ruby's type story is RBS, and `rake rbs` is part of the gate.
-- **`rake check`** is the tests, the example's own suite, then the signatures. There is no build
-  step: Ruby has nothing to compile, and the view is a file the process reads.
+- **`rake check`** is the console's staleness gate, the tests, the example's own suite, then the
+  signatures. Ruby has nothing to compile: the only build step in this repository belongs to the
+  console, and it runs in the repository that owns the console's source.
