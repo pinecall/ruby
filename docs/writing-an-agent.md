@@ -12,8 +12,9 @@ class ClinicaNorte < Pinecall::Agent
 end
 ```
 
-That comment is the **static region** of the prompt — the part that never changes during a call,
-which is the part a provider caches. Write it as instructions to a person, not as documentation.
+That comment is the `identity` block of the prompt — the first of the static blocks, which never
+change during a call and are what a provider caches. Write it as instructions to a person, not as
+documentation.
 
 For a class with no source file to read (one built at runtime, one loaded from a database), say it
 out loud instead: `doc "Eres la recepción…"`.
@@ -34,6 +35,7 @@ says DKV: "de ka uve"     # how a word is said when the voice would read it wron
 hears ["Clínica Norte"]   # what the ears must know before they hear it
 knowledge "./knowledge/clinica.md"
 memory remember: ["cómo prefiere que le llamen"], forget: ["pagos"]
+prompt static: %i[faq], dynamic: %i[availability]   # blocks of your own, one template each
 ```
 
 `voice` is a name and never an id. Sending an id is how a call once spent twenty seconds retrying
@@ -113,6 +115,13 @@ call, and never as a 1008 from a gateway:
 | `stage: :pay` where `stage` has no `:pay` | `pay is not one of this agent's stages (identify, book)` |
 | `stage:` on a class with no `stage` | `…declares none; add \`stage :identify, :book\`` |
 | `state :cart` twice | `declares cart twice` |
+| `prompt static: %i[identity]` | `identity is one of the framework's own blocks (identity, knowledge, tools, view)` |
+| `prompt static: %i[faq]` with no `views/<slug>/faq.erb` | `faq has no template: write …/views/<slug>/faq.erb` |
+| `prompt dynamic: %i[Availability]` | `"Availability" does not match ^[a-z][a-z0-9_]*$` |
+
+And one refused at render, because it is about what a template says and not what a class
+declares: a static block that reads a field — `a static block cannot read the state: faq.erb
+reads slots`.
 
 ## The hooks
 

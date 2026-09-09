@@ -9,9 +9,15 @@ version number is the human's call.
 ### Added
 
 - The package itself: `Pinecall::Agent` (config on the class, state on the instance, `tool` above
-  the method, the comment as the docstring), the ERB view resolved as `views/<slug>.erb`, the
-  three prompt regions, `Pinecall.mount`, `Pinecall::Client`, and `pinecall/testing` — the gateway
-  that is not there, which is what a ring-0 suite mounts against.
+  the method, the comment as the docstring), the ERB view resolved as `views/<slug>.erb`,
+  `Pinecall.mount`, `Pinecall::Client`, and `pinecall/testing` — the gateway that is not there,
+  which is what a ring-0 suite mounts against.
+- The prompt as named blocks in two regions: `identity` · `knowledge` · `tools` (static, cached),
+  the history, `view` (dynamic). `prompt static: %i[faq], dynamic: %i[availability]` adds a
+  class's own, one template each at `views/<slug>/<name>.erb`; the bridge sends each block by
+  name and only when its text changed, and a static block that reads the state is refused at
+  render. `Pinecall.render` returns `Blocks` (`[:name]`, `static`, `dynamic`, `instructions`);
+  `pinecall prompt` prints one section per block. In a test, `call.block("availability")`.
 - `pinecall prompt`, `pinecall run` and `pinecall whoami`. `prompt` needs no gateway, no key and
   no network.
 - `pinecall-protocol`: Ruby's side of the wire, generated from the same JSON Schema as the Python

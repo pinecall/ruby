@@ -38,7 +38,7 @@ one the person typed.
 lib/pinecall.rb              the door: what a stranger who types `require "pinecall"` may reach
 lib/pinecall/
   version.rb errors.rb       0.0.0 until the human names a number; one error root, five words
-  reading.rb                 the state as something you can ask questions of by name
+  reading.rb                 the state as something you can ask questions of by name — and the one that refuses
   agent.rb                   the base class: config, state, tools, the four hooks, this call
   agent/author.rb            who is writing right now — `Fiber[]`, per call, never a global
   agent/doc.rb               the comment above a class or a method, read back out of the source
@@ -48,7 +48,7 @@ lib/pinecall/
   agent/config.rb            the eleven declarations, and what each becomes on the wire
   view.rb                    the ERB template and what it is rendered in
   lang.rb                    the framework's own words: the rules and the protocols, es · en
-  regions.rb                 static · history · dynamic, `render`, `show_prompt`
+  blocks.rb                  the prompt as named blocks in two regions: the layout, `render`, `show`
   call_world.rb              the live call as the class holds it: the room, the turns, six verbs
   bridge.rb                  `mount`: one instance per call, and the sync that sends what changed
   client.rb                  `Pinecall::Client`: one socket, the agents on it, observe · history
@@ -88,17 +88,22 @@ gives that TypeScript does not, or what it takes away.
 | `zod` parses a command before it leaves | the generated shape table plus `Validate` | The schema already generated the table; walking it is thirty lines that cannot drift from zod or pydantic. |
 | `Camel<T>`, `toCamel`, `toSnake` — a whole conversion layer | *nothing* | The wire is snake_case and so is Ruby. The layer does not exist here. |
 | a `.tsx` view compiled by a JSX transform | an **ERB template** beside the class, `views/<slug>.erb` | Same idea in each language's own material: the view Rails means. No build step, and `pinecall prompt` reads the file a person edited. |
-| `Fills` on an `AsyncLocalStorage` | `Fills` on the render's own context | A JSX component is a function anybody may call, so the registry has to travel. An ERB template is rendered *in* an object, and that object is the registry. |
+| `static prompt = { static: ["faq"], dynamic: ["availability"] }` on the class | `prompt static: %i[faq], dynamic: %i[availability]` | The same declaration as a macro. Ruby reads the templates *at the line*, so a block with no file is refused when the class loads, with the path. |
+| a tenant block is `views/<name>.tsx`, a default-export function | `views/<slug>/<name>.erb`, under the slug | One directory per agent keeps two agents in one tree from sharing a `faq`. |
+| a static block's props are a `Proxy` that throws on any read | a static block is rendered against `StaticReading`, which refuses every question by name | Same law — nothing static reads the state — as an exception at render: `a static block cannot read the state: faq.erb reads slots`. |
+| `Blocks = { blocks, fills }`; the layout is `Block[]` in send order | `Blocks = Data.define(:blocks, :history, :fills)`, `Block = Data.define(:name, :region, :text)` | Ruby keeps the history on the same value, because `pinecall prompt` prints it between the regions and a `collapse` is the one thing the app knows about the turns. |
+| `Fills` on an `AsyncLocalStorage` | one `Fills` per render, handed to every block's context | A JSX component is a function anybody may call, so the registry has to travel. An ERB template is rendered *in* an object, and that object holds the prompt's one registry — so a fill id is never used by two blocks. |
 | `Promise`, one event loop | one reader thread, one thread per call, one per tool call | The socket is never blocked by a hook or a tool. Everything belonging to one call is still serialised, which is what makes `call.cause` mean anything. |
 | `WeakMap` internals kept off the instance | plain ivars behind declared readers | Nothing enumerates a Ruby object's fields by accident, so nothing has to be hidden from a snapshot. |
 | `test/index.test.ts` pins the exports by name | `sig/pinecall.rbs` and `rake rbs` | Ruby's answer to a `.d.ts`: adding to the surface means editing the signature on purpose. |
 | the console is built into `dist/cli/ui/console` by the package that owns its source | the same build, **vendored** into `console/`, with `rake console:check` guarding it | One React program, built once. Ruby ships the bytes the way a Rails engine ships assets; installing the gem must not mean installing Node. |
 | `node:http` server, `fetch` proxying, `Readable.fromWeb` | HTTP/1.1 on a `TCPServer`, `Net::HTTP` streaming, one connection per answer | Ruby has no HTTP server in the stdlib, and an SSE proxy has to own the write side. Loopback, one person: `connection: close` makes the framing exact and the file short. |
 
-What did **not** change, because it is the product and not the language: the three prompt regions
-and their order, the markers the gateway fills, `stage` as sugar over `when`, `confirm` being what
-makes a tool irreversible, `preview` cutting what the model sees and not what the state keeps, the
-registration being memory rather than a database, and the four rings.
+What did **not** change, because it is the product and not the language: the blocks of the
+prompt, their two regions and their order, the markers the gateway fills, `stage` as sugar over
+`when`, `confirm` being what makes a tool irreversible, `preview` cutting what the model sees and
+not what the state keeps, the registration being memory rather than a database, and the four
+rings.
 
 ## 4. The class a tenant writes
 
@@ -113,9 +118,10 @@ diffed, and no view renders it.
 | `llm` | `"haiku"`/`"sonnet"`/`"opus"` lowered to real ids; `"provider/model"` names both halves |
 | `says` | a map written as a map, carried as a list of pronunciations |
 | `hears` | the words the ears must know before they hear them |
-| `language` | which of `lang.rb`'s two word-sets the static region carries |
-| `knowledge` | a `<!-- knowledge: … -->` marker in the static region; the gateway opens the file |
+| `language` | which of `lang.rb`'s two word-sets the `identity` block carries |
+| `knowledge` | the `knowledge` block: a `<!-- knowledge: … -->` marker the gateway opens the file into |
 | `docs`, `memory` | read by the view and by the runtime |
+| `prompt` | the class's own blocks; the whole layout travels as `AgentConfig.prompt` in send order |
 
 **State** is declared with `state`, and the rules are enforced in code:
 
@@ -146,22 +152,31 @@ What a declaration is refused for, before a model ever sees it (`DeclarationRefu
 docstring, a name a model cannot call, a positional argument, `pii:` naming a parameter the tool
 does not have, `stage:` on a class that declares no stage, a stage that is not one of its own.
 
-## 6. The prompt: three regions, in one order, always
+## 6. The prompt: named blocks in two regions, in one order, always
 
-| region | what is in it | when it changes |
-|---|---|---|
-| `static` | the class docstring · the knowledge marker · `<rules>` and `<protocols>` · every tool's name and docstring | never during a call — it is the cached prefix |
-| `history` | the `<!-- collapsed: … -->` summaries a `collapse` left. The turns belong to the runtime | when the app collapses |
-| `dynamic` | what the view rendered: the memory marker, the retrieval marker, and what the state says now | on every state change |
+| block | region | what is in it | when it changes |
+|---|---|---|---|
+| `identity` | static | the class docstring · `<rules>` and `<protocols>` | never during a call |
+| `knowledge` | static | the `<!-- knowledge: … -->` marker | never during a call |
+| `tools` | static | every tool's name and docstring, visible or not | never during a call |
+| the class's own static blocks | static | `views/<slug>/<name>.erb`, rendered against nothing | never during a call |
+| *the history* | — | the turns (the runtime's) and the `<!-- collapsed: … -->` summaries a `collapse` left | when the app collapses |
+| the class's own dynamic blocks | dynamic | `views/<slug>/<name>.erb`, rendered against the state | on every state change |
+| `view` | dynamic | the memory marker, the retrieval marker, and what the view says now | on every state change |
+
+The static blocks are what the provider caches, and it caches them block by block: rewriting
+`tools` (a `when:` opened) leaves `identity` and `knowledge` cache hits. That is why the layout is
+a list of names and not two strings, and why a block is sent by name and only when its own text
+changed. The whole layout travels once, in `agent.configure`, as `AgentConfig.prompt`.
 
 A **marker** is a placeholder this package writes and never resolves — `<!-- memory: {…} -->`,
 `<!-- retrieved: {…} -->`, `<!-- knowledge: ./file.md -->`. The gateway reads the line, does the
 work, and replaces it. A template that passed a block to `memory` left a **render prop** behind:
 the block cannot travel inside a marker, so it stays in that render's `Fills` under an id the
-marker carries.
+marker carries — one `Fills` for the whole prompt, so two blocks never mint the same id.
 
-`pinecall prompt` prints exactly these three, each under `── static ──` / `── history ──` /
-`── dynamic ──`. It needs no gateway, no key and no network.
+`pinecall prompt` prints one section per block, `── identity (static) ──` … `── history ──` …
+`── view (dynamic) ──`, in send order. It needs no gateway, no key and no network.
 
 ## 7. The call, and what a class may do to it
 
@@ -190,9 +205,10 @@ command on the wire. There is no LiveKit in this repository at all.
    a hook writing five fields is one prompt and not five.
 4. **On every change** — `state.set` with the field that moved; when the write came from an
    outside fact, one `state.cause` line naming it; then `sync`.
-5. **`sync`** renders and compares against what **this call** was last sent: `prompt.set static`
-   only if the static text differs, `prompt.set view` only if the view's text differs, `tools.set`
-   only if the visible list differs. Re-sending identical text is a cache miss for nothing.
+5. **`sync`** renders every block and compares each against what **this call** was last sent:
+   `prompt.set <name>` only for a block whose text differs (a block never sent counts as empty, so
+   an empty one costs nothing), `tools.set` only if the visible list differs. Re-sending identical
+   text is a cache miss for nothing.
 6. **A tool call** — routed to the instance serving that call, run on a thread of its own; an
    unknown call, an unknown tool and a tool that raised all come back as one `tool.result`
    carrying `error`, because a turn that never gets one waits forever.

@@ -1,0 +1,15 @@
+<%# Las horas sobre la mesa: un bloque propio, después del historial y antes de la vista, que
+    solo se reenvía cuando free_slots cambia la lista. %>
+<% if slots.any? -%>
+## Horas libres, en orden
+
+<% slots.each do |hueco| -%>
+<%= hueco.cuando %> con <%= hueco.doctor %>
+<% end -%>
+
+<% if call[:channel] == "phone" -%>
+Ofrece como máximo dos de estas horas y pregunta cuál prefiere.
+<% else -%>
+Ofrécele la lista y pregunta cuál prefiere.
+<% end -%>
+<% end -%>

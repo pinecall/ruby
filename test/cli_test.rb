@@ -94,7 +94,7 @@ class CLITest < Minitest::Test
     status, out, = run_cli("prompt", "examples/clinica_norte/agent.rb", "--stage", "identify")
 
     assert_equal 0, status
-    assert_includes out, "── static ──"
+    assert_includes out, "── identity (static) ──"
     assert_includes out, "Saluda y pide nombre y teléfono."
   end
 

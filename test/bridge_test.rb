@@ -62,6 +62,7 @@ class BridgeTest < Minitest::Test
     assert_equal({ provider: "anthropic", model: "claude-haiku-4-5-20251001" }, @mounted.options[:llm])
     assert_equal %w[find_patient stop], @mounted.options[:tools].map { |spec| spec[:name] }
     assert_equal [{ name: "agenda.changed", from: %w[app] }], @mounted.options[:events]
+    assert_equal %w[identity knowledge tools view], @mounted.options[:prompt].map { |spec| spec[:name] }
   end
 
   def test_a_call_opens_with_one_whole_prompt_and_not_one_send_per_field
@@ -69,7 +70,7 @@ class BridgeTest < Minitest::Test
     opening = call.commands.map(&:type)
 
     assert_equal 1, opening.count("state.set")
-    assert_includes call.instructions, "Eres la recepción de Clínica Norte."
+    assert_includes call.block("identity"), "Eres la recepción de Clínica Norte."
     assert_includes call.prompt, "Hablas con Marta Ruiz."
   end
 
@@ -103,12 +104,20 @@ class BridgeTest < Minitest::Test
     assert_includes result[:error], "sing"
   end
 
-  def test_the_cached_prefix_is_sent_once_and_never_again
+  def test_a_static_block_is_sent_once_and_never_again
     call = @gateway.call_started(from: "+34999000111")
     call.tool("find_patient", name: "Ana Sanz")
-    static = call.commands.select { |sent| sent.type == "prompt.set" && sent.data[:region] == "static" }
+    sent = call.commands.select { |one| one.type == "prompt.set" }.map { |one| one.data[:name] }
 
-    assert_equal 1, static.size
+    assert_equal 1, sent.count("identity")
+    assert_equal 1, sent.count("tools")
+    assert_operator sent.count("view"), :>, 1
+  end
+
+  def test_a_block_with_nothing_to_say_costs_no_command_until_it_has_something
+    call = @gateway.call_started(from: "+34999000111")
+
+    assert_nil call.block("knowledge")
   end
 
   def test_a_tool_that_moves_nothing_sends_no_prompt_at_all

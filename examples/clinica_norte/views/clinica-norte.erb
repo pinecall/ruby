@@ -34,20 +34,7 @@ Si el paciente nombra un día, consulta SIEMPRE la agenda de ese día, aunque su
 cita ese día. Si todavía no ha nombrado ninguno, pregúntale para qué día la quiere.
 <% end -%>
 
-<% if slots.any? -%>
-## Horas libres, en orden
-
-<% slots.each do |hueco| -%>
-<%= hueco.cuando %> con <%= hueco.doctor %>
-<% end -%>
-
-<% if call[:channel] == "phone" -%>
-Ofrece como máximo dos de estas horas y pregunta cuál prefiere.
-<% else -%>
-Ofrécele la lista y pregunta cuál prefiere.
-<% end -%>
-<% end -%>
-
+<%# Las horas libres van en su propio bloque, views/clinica-norte/availability.erb. %>
 <% if proposed && booking.nil? -%>
 Ha nombrado <%= proposed.cuando %> con <%= proposed.doctor %>. Léesela tal cual y espera un sí
 antes de reservar.

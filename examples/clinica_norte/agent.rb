@@ -37,6 +37,9 @@ class ClinicaNorte < Pinecall::Agent
   state(:identified) { !patient.nil? }
 
   # La vista vive en views/clinica-norte.erb, al lado de este archivo. No hace falta nombrarla.
+  # Las horas libres son un bloque aparte, views/clinica-norte/availability.erb: dinámico, así
+  # que lee el estado, y solo se reenvía cuando free_slots cambia la lista.
+  prompt dynamic: %i[availability]
 
   def on_call(call)
     self.patient = Agenda.por_telefono(call.from.to_s)

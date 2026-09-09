@@ -4,7 +4,7 @@ module Pinecall
   # The framework's own words: the standing rules and the protocols, in the agent's language.
   #
   # These are identical for every agent and every turn of a call, which is exactly why they belong
-  # in the cached region — and why they are a table and not a template.
+  # in the identity block, which is cached — and why they are a table and not a template.
   module Lang
     WORDS = {
       "es" => {

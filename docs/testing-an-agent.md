@@ -41,8 +41,8 @@ every command the agent sent, and lets the test say what happened next.
 
 | you read | what it is |
 |---|---|
-| `call.prompt` | the dynamic region as the agent last sent it: what the model would read now |
-| `call.instructions` | the cached prefix |
+| `call.prompt` | the `view` block as the agent last sent it: the last thing the model reads |
+| `call.block("availability")` | any block as the agent last sent it, by name. `nil` until it had something to say |
 | `call.tools` | the tools the model may call right now, by name |
 | `call.state` | the state as the agent last said it |
 | `call.commands` | everything said on this call, in order |
@@ -87,7 +87,7 @@ The prompt is a pure function of the state, so most assertions need no gateway a
 agent = ClinicaNorte.new.seal
 agent.start_in(stage: :book, slots: [hueco])
 
-assert_includes Pinecall.render(agent).dynamic, "el martes a las diez"
+assert_includes Pinecall.render(agent)[:view], "el martes a las diez"
 ```
 
 `start_in` writes the fields a case names over the ones the class gave itself. `restore` is the

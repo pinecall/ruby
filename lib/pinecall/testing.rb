@@ -53,11 +53,11 @@ module Pinecall
         @gateway.settle
       end
 
-      # The dynamic region as the app last sent it: the prompt the model would read now.
-      def prompt = last("prompt.set", region: "view")&.dig(:text)
+      # The view as the app last sent it: the last thing the model reads before it answers.
+      def prompt = block("view")
 
-      # The cached prefix as the app last sent it.
-      def instructions = last("prompt.set", region: "static")&.dig(:text)
+      # One block of the prompt as the app last sent it, by name.
+      def block(name) = last("prompt.set", name: name.to_s)&.dig(:text)
 
       # The tools the model may call right now, by name.
       def tools = (last("tools.set")&.dig(:tools) || []).map { |spec| spec[:name] }

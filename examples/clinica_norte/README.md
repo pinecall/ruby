@@ -5,7 +5,9 @@ y su propia suite de ring 0.
 
 ```
 agent.rb                      la clase: canales, estado, herramientas, hooks
-views/clinica-norte.erb       el prompt como función del estado
+views/clinica-norte.erb       el prompt como función del estado: el bloque `view`
+views/clinica-norte/
+  availability.erb            las horas sobre la mesa: un bloque dinámico propio
 knowledge/clinica.md          lo que el agente sabe del centro
 lib/agenda.rb                 lo que en producción sería el ERP. No sabe nada de Pinecall
 test/clinica_test.rb          ring 0: sin red, sin clave, sin modelo, sin gateway
@@ -34,3 +36,6 @@ bin/pinecall run examples/clinica_norte/agent.rb
 - **`confirm:` es lo que hace `book` irreversible en el cable.** La plataforma lee la frase, oye el
   sí, y sólo entonces corre el método.
 - **`preview: 2` corta lo que ve el modelo, no lo que guarda el estado.**
+- **Un bloque propio viaja solo cuando cambia.** `prompt dynamic: %i[availability]` saca las horas
+  de la vista a `views/clinica-norte/availability.erb`; el bridge reenvía cada bloque por su
+  nombre y solo el que cambió de texto.

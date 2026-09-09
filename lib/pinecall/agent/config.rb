@@ -17,9 +17,10 @@ module Pinecall
     # | `llm`               | "haiku"/"sonnet"/"opus" lowered to real ids; "provider/model" both |
     # | `says`              | a map written as a map, carried as a list of pronunciations       |
     # | `hears`             | the words the ears must know                                      |
-    # | `language`          | which of the framework's two word-sets the static region carries  |
-    # | `knowledge`         | a marker in the static region; the gateway opens the file         |
+    # | `language`          | which of the framework's two word-sets the identity block carries |
+    # | `knowledge`         | the `knowledge` block: a marker the gateway opens the file into   |
     # | `docs`, `memory`    | read by the view and by the runtime                               |
+    # | `prompt`            | the class's own blocks, in send order (`blocks.rb`)               |
     module Config
       CONFIG_FIELDS = %i[phone whatsapp web voice says hears llm language knowledge docs memory].freeze
 
@@ -92,6 +93,7 @@ module Pinecall
         # Everything the class says about itself, as the AgentConfig the gateway is sent.
         def wire_config(tools: nil)
           {
+            prompt: layout,
             language: config[:language]&.to_s,
             voice: voice_config,
             llm: model_config,

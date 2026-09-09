@@ -31,7 +31,7 @@ rake console:check    # is what is in console/ what that source would produce
 ## Structure
 
 `lib/pinecall/agent*` is the class, `lib/pinecall/client*` is the socket, `bridge.rb` is the only
-place the two know about each other, and `view.rb` + `regions.rb` are the prompt. Nothing in
+place the two know about each other, and `view.rb` + `blocks.rb` are the prompt. Nothing in
 `lib/pinecall/agent/` may know what a websocket is.
 
 ## Docs are part of the change
@@ -57,8 +57,11 @@ When a doc and the code disagree, the code is what happened and the doc is the b
   author rides `Fiber[]`, never a module-level variable: one process serves many calls at once.
 - **A declaration is refused at load, never at the first call.** No docstring, a positional
   argument, a stage the class never declared, `pii:` naming a parameter that is not there.
-- **Only the region whose text changed is sent again.** The static prefix goes up once per call.
-- **The three regions keep their order.** static · history · dynamic. The cut is where the cache is.
+- **Only the block whose text changed is sent again**, by name. A static block goes up once per call.
+- **The prompt is a list of named blocks in two regions, in this order:** static blocks (cached) ·
+  append-only history · dynamic blocks (replaced every turn). Never reorder. The framework's four
+  are `identity` · `knowledge` · `tools` · `view`; a class adds its own with `prompt`.
+- **A static block cannot read the state.** It is rendered against a reading that refuses by name.
 - **Nothing here imports LiveKit, a model vendor, or the runtime.** Commands out, entries in.
 - **`console/` is generated and nothing else in this gem is.** It is the TypeScript package's
   vite build, vendored. Never edit a file under it; edit `../agents/src/cli/ui/console` and run

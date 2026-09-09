@@ -51,6 +51,11 @@ Saluda y pide nombre y teléfono. Nada más hasta identificar al paciente.
 <% end -%>
 ```
 
+The prompt is a list of named blocks in two regions: static ones before the history, cached by
+the provider — `identity`, `knowledge`, `tools` — and dynamic ones after it, replaced every turn —
+the `view`. A class adds its own with `prompt static: %i[faq], dynamic: %i[availability]`, one
+template each under `views/<slug>/`, and each block goes up by name only when its text changed.
+
 ## Five minutes
 
 ```bash
@@ -128,7 +133,7 @@ assert_equal %w[propose], call.tools
 |---|---|
 | the map: every file, every entity, every rule | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | how to write an agent, step by step | [docs/writing-an-agent.md](docs/writing-an-agent.md) |
-| the view, and the three regions of a prompt | [docs/the-view.md](docs/the-view.md) |
+| the view, and the blocks of a prompt | [docs/the-view.md](docs/the-view.md) |
 | how to test one | [docs/testing-an-agent.md](docs/testing-an-agent.md) |
 | the CLI, verb by verb | [docs/the-cli.md](docs/the-cli.md) |
 | the console, and how it is vendored | [docs/the-console.md](docs/the-console.md) |

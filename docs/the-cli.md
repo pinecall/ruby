@@ -15,7 +15,8 @@ pinecall <verb>
 ## prompt
 
 The one verb that needs no gateway, no key and no network. It loads the class, puts it in the
-state the flags describe, and prints the three regions.
+state the flags describe, and prints every block of the prompt under its own header —
+`── identity (static) ──`, `── history ──`, `── view (dynamic) ──` — in the order it is sent.
 
 ```bash
 pinecall prompt

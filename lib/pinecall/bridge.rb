@@ -21,15 +21,17 @@ module Pinecall
       def serving(call_id) = @live[call_id]&.agent
     end
 
-    # One call being served: the instance, its call, what was last sent, and the one thread that
-    # runs this call's hooks in the order they arrived.
+    # One call being served: the instance, its call, what was last sent — every block by name,
+    # and the tools — and the one thread that runs this call's hooks in the order they arrived.
     class Live
       attr_reader :agent, :world, :sent, :stops
+      attr_accessor :tools_shown
 
       def initialize(agent, world)
         @agent = agent
         @world = world
         @sent = {}
+        @tools_shown = nil
         @stops = {}
         @work = Thread::Queue.new
         @thread = Thread.new { work }
@@ -171,22 +173,21 @@ module Pinecall
     end
 
     # The one rule this file exists for: render, compare with what THIS call was last sent, and
-    # send only the region whose text is different. Re-sending identical text is a cache miss for
-    # nothing, and the cache is most of what a voice turn costs.
+    # send only the blocks whose text is different. Re-sending identical text is a cache miss for
+    # nothing, and the cache is most of what a voice turn costs. A block never sent counts as
+    # empty, so an empty one costs no command until it has something to say.
     def sync(serving, call)
-      regions = Prompt.render(serving.agent, line: { channel: call.channel || "web", from: call.from })
-      if regions.static != serving.sent[:static]
-        serving.sent[:static] = regions.static
-        call.set_prompt("static", regions.static)
-      end
-      if regions.dynamic != serving.sent[:view]
-        serving.sent[:view] = regions.dynamic
-        call.set_prompt("view", regions.dynamic)
+      rendered = Prompt.render(serving.agent, line: { channel: call.channel || "web", from: call.from })
+      rendered.blocks.each do |block|
+        next if block.text == serving.sent.fetch(block.name, "")
+
+        serving.sent[block.name] = block.text
+        call.set_prompt(block.name, block.text)
       end
       visible = serving.agent.visible_tools
-      return if visible == serving.sent[:tools]
+      return if visible == serving.tools_shown
 
-      serving.sent[:tools] = visible
+      serving.tools_shown = visible
       call.set_tools(visible)
     end
 

@@ -44,20 +44,44 @@ module Pinecall
     def to_a: () -> Array[String]
   end
 
-  class Regions
-    attr_reader static: String
+  class StaticBlockReadsState < Error
+    def initialize: (String, String | Symbol) -> void
+  end
+
+  class StaticReading
+    A_CONVERSION: Regexp
+    def initialize: (String) -> void
+    def to_h: () -> bot
+    def []: (String | Symbol) -> bot
+    def key?: (String | Symbol) -> bot
+    def fetch: (String | Symbol, *untyped) -> bot
+  end
+
+  type block_spec = { name: String, region: String }
+
+  class Block
+    attr_reader name: String
+    attr_reader region: String
+    attr_reader text: String
+  end
+
+  class Blocks
+    attr_reader blocks: Array[Block]
     attr_reader history: String
-    attr_reader dynamic: String
     attr_reader fills: View::Fills
+    def []: (String | Symbol) -> String?
+    def static: () -> Array[Block]
+    def dynamic: () -> Array[Block]
+    def instructions: () -> String
   end
 
   class View
     def self.marker: (String, String) -> String
-    def self.beside: (String, String) -> String
+    def self.beside: (String, String, ?block: String?) -> String
     def self.file: (String) -> View
     def self.inline: (String, ?String) -> View
     attr_reader path: String
-    def render: (Reading) -> Rendered
+    def render: (Reading | StaticReading, ?fills: Fills) -> Rendered
 
     class Rendered
       attr_reader text: String
@@ -104,6 +128,10 @@ module Pinecall
     def self.declared_tools: () -> Hash[Symbol, untyped]
     def self.tool_named: (String | Symbol) -> untyped
     def self.view: (?String?, ?template: String?) -> View?
+    def self.prompt: (?static: Array[Symbol | String], ?dynamic: Array[Symbol | String]) -> Array[block_spec]
+    def self.layout: () -> Array[block_spec]
+    def self.block_view: (String) -> View
+    def self.declared_blocks: () -> Hash[String, { region: String, view: View }]
 
     def doc: () -> String?
     def tools: () -> Array[spec]
@@ -244,11 +272,14 @@ module Pinecall
   end
 
   module Prompt
-    def self?.render: (Agent, ?resumed: bool, ?memory: Remembered?, ?line: line?) -> Regions
-    def self?.static: (Agent) -> String
+    FRAMEWORK: Array[block_spec]
+    def self?.render: (Agent, ?resumed: bool, ?memory: Remembered?, ?line: line?) -> Blocks
+    def self?.identity: (Agent) -> String
+    def self?.knowledge: (Agent) -> String
+    def self?.tools: (Agent) -> String
     def self?.history: (Agent) -> String
     def self?.show: (Agent, **untyped) -> String
-    def self?.header_for: (Symbol | String) -> String
+    def self?.header_for: (Symbol | String, ?String?) -> String
   end
 
   module Bridge
@@ -302,6 +333,6 @@ module Pinecall
   end
 
   def self.mount: (Class, client: untyped, **untyped) -> Bridge::Mounted
-  def self.render: (Agent, **untyped) -> Regions
+  def self.render: (Agent, **untyped) -> Blocks
   def self.show_prompt: (Agent, **untyped) -> String
 end

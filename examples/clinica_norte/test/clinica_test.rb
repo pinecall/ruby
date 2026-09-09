@@ -33,7 +33,7 @@ class ClinicaTest < Minitest::Test
     call = @gateway.call_started(from: "+34600123456")
     call.tool("free_slots", day: "martes")
 
-    assert_includes call.prompt, "el martes a las diez con la doctora Vidal"
+    assert_includes call.block("availability"), "el martes a las diez con la doctora Vidal"
     assert_includes call.tools, "propose"
   end
 
@@ -64,12 +64,26 @@ class ClinicaTest < Minitest::Test
     por_telefono = @gateway.call_started(id: "CA_tel", from: "+34600123456", channel: "phone")
     por_telefono.tool("free_slots", day: "martes")
 
-    assert_includes por_telefono.prompt, "Ofrece como máximo dos"
+    assert_includes por_telefono.block("availability"), "Ofrece como máximo dos"
 
     por_web = @gateway.call_started(id: "CA_web", from: "+34600123456", channel: "web")
     por_web.tool("free_slots", day: "martes")
 
-    assert_includes por_web.prompt, "Ofrécele la lista"
+    assert_includes por_web.block("availability"), "Ofrécele la lista"
+  end
+
+  def test_las_horas_son_un_bloque_propio_que_solo_viaja_cuando_cambia_la_lista
+    call = @gateway.call_started(from: "+34600123456")
+
+    assert_nil call.block("availability")
+
+    call.tool("free_slots", day: "martes")
+    call.tool("propose", chosen: "el martes a las diez")
+    enviados = call.commands.count { |sent| sent.type == "prompt.set" && sent.data[:name] == "availability" }
+
+    assert_equal 1, enviados
+    assert_includes call.block("availability"), "## Horas libres, en orden"
+    refute_includes call.prompt, "Horas libres"
   end
 
   def test_al_reservar_el_prompt_deja_de_pedir_nada_y_se_despide

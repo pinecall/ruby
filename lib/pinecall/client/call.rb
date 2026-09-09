@@ -41,8 +41,9 @@ module Pinecall
       # Make the model speak now, guided by an instruction the caller never hears.
       def reply(instructions, **options) = command("agent.reply", { instructions: }.merge(options))
 
-      # Rewrite one region of the prompt: the cached static prefix, or the view rendered from state.
-      def set_prompt(region, text) = command("prompt.set", { region: region.to_s, text: })
+      # Rewrite one block of the prompt, whole, by name: one of the agent's declared blocks, or
+      # one of the framework's four.
+      def set_prompt(name, text) = command("prompt.set", { name: name.to_s, text: })
 
       # The tools the model may see now: the subset of the declaration this state allows.
       def set_tools(tools) = command("tools.set", { tools: })

@@ -3,7 +3,7 @@
 require "erb"
 
 module Pinecall
-  # The view: the prompt as a template, rendered against the state.
+  # The view: a block of the prompt as a template, rendered against the state.
   #
   # It is a view in the sense Rails means: a file of its own, beside the class, mostly prose with
   # holes in it, rendered with the state in scope. `views/clinica-norte.erb` is to this package
@@ -34,8 +34,12 @@ module Pinecall
     def self.marker(name, payload) = "<!-- #{name}: #{payload} -->"
 
     # Where a class's view lives when nobody said: `views/<slug>.erb` beside the class's own file,
-    # which is the convention this package has instead of a setting.
-    def self.beside(file, slug) = File.join(File.dirname(file), "views", "#{slug}.erb")
+    # which is the convention this package has instead of a setting. A block of the class's own
+    # lives one directory down, under the slug: `views/<slug>/<block>.erb`.
+    def self.beside(file, slug, block: nil)
+      relative = block ? File.join(slug, "#{block}.erb") : "#{slug}.erb"
+      File.join(File.dirname(file), "views", relative)
+    end
 
     # The template in a file. The path is kept, so a failure in the template names the line.
     def self.file(path)
@@ -56,13 +60,14 @@ module Pinecall
     end
 
     # Render the view against one reading of the state. Returns the text and the render props it
-    # left behind, which is everything one render needs and nothing another one can reach.
-    def render(reading)
-      context = Context.new(reading)
+    # left behind, which is everything one render needs and nothing another one can reach. The
+    # blocks of one prompt share one registry, so an id is unique across the whole prompt.
+    def render(reading, fills: Fills.new)
+      context = Context.new(reading, fills)
       Rendered.new(text: tidy(@erb.result(context.binding_for_the_template)), fills: context.fills)
     end
 
-    # What one render produced: the dynamic region, and the blocks its markers point at.
+    # What one render produced: the text of one block, and the blocks its markers point at.
     Rendered = Data.define(:text, :fills)
 
     # A template is written to be read by a person, so it is indented and spaced for one. What the
@@ -111,9 +116,9 @@ module Pinecall
     class Context
       attr_reader :fills
 
-      def initialize(reading)
+      def initialize(reading, fills)
         @reading = reading
-        @fills = Fills.new
+        @fills = fills
       end
 
       # ERB needs somewhere to run. This is that place, and its scope is this object.
