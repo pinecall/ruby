@@ -13,6 +13,10 @@ class ClinicaNorte < Pinecall::Agent
   voice "carolina"
   llm   "haiku"
 
+  knowledge "./knowledge/clinica.md"   # one file, known by heart
+  docs "clinica-norte"                 # the base it answers from, pushed by name
+  memory remember: ["alergias"], forget: ["pagos"]
+
   stage :identify, :book
   state :patient, visibility: :pii
   state :slots, []
@@ -36,7 +40,11 @@ end
 `views/clinica-norte.erb`, beside it, is the prompt as a function of that state:
 
 ```erb
+## Lo que recordamos de este paciente
 <%= memory kinds: %w[preference] %>
+
+## De la base de conocimiento
+<%= retrieved k: 4 %>
 
 <% if stage == :identify -%>
 Saluda y pide nombre y teléfono. Nada más hasta identificar al paciente.
@@ -63,6 +71,8 @@ gem install pinecall
 pinecall prompt agent.rb              # the exact prompt this state would produce. No gateway.
 pinecall prompt agent.rb --stage book
 pinecall run agent.rb                 # registered and answering: the process you deploy
+pinecall knowledge push               # knowledge/docs, as the base `docs` names
+pinecall memory +34600123456          # what is remembered about a contact; `forget` to forget
 pinecall ui                           # the console on 127.0.0.1: calls, sessions, evals, talk
 ```
 

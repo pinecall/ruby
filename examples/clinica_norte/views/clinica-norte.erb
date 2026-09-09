@@ -1,6 +1,11 @@
 <%# El prompt como función del estado: lo único que cambia entre dos turnos de una llamada. %>
+<%# Dos huecos que el runtime rellena en cada turno, cada uno bajo su título: lo que la memoria
+    guarda de este paciente, y lo que la base de conocimiento dice de lo que acaba de preguntar. %>
+## Lo que recordamos de este paciente
 <%= memory kinds: %w[preference health] %>
-<%= retrieved min_score: 0.4 %>
+
+## De la base de conocimiento
+<%= retrieved k: 4, min_score: 0.02 %>
 
 <% if resumed -%>
 Se cortó su llamada anterior. Retoma desde donde quedó sin volver a preguntar.

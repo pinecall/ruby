@@ -3,10 +3,12 @@
 ```
 pinecall <verb>
 
-  prompt [file]   the exact prompt this agent would produce   (no gateway)
-  run [file]      the agent registered and answering
-  ui [agent]      the console on 127.0.0.1: calls, sessions, evals, and a page to talk
-  whoami          which gateway, and where this key came from
+  prompt [file]                 the exact prompt this agent would produce   (no gateway)
+  run [file]                    the agent registered and answering
+  ui [agent]                    the console on 127.0.0.1: calls, sessions, evals, and a page to talk
+  whoami                        which gateway, and where this key came from
+  knowledge push|list|drop      a folder of Markdown as a base the agent retrieves from
+  memory [forget] CONTACT       what is remembered about a contact, and forgetting it
   version
 ```
 
@@ -53,6 +55,46 @@ pinecall ui clinica-norte      # straight to one
 Three things it will not do: run where there is no browser (over ssh, or a Linux with no display,
 it says so and exits 2), open a port on anything but `127.0.0.1`, or let the org key reach the
 page. Ctrl-C closes the port with the command.
+
+## knowledge
+
+The base an agent's `docs` names is a folder of Markdown, pushed whole under that name. The
+gateway cuts it by heading, embeds it, and from then on the view's `retrieved` marker is filled
+from it on every turn.
+
+```bash
+pinecall knowledge push                                   # knowledge/docs beside agent.rb, as its `docs` base
+pinecall knowledge push ./knowledge/docs --base clinica-norte
+# clinica-norte · 2 files · 14 chunks · 312 ms
+pinecall knowledge list
+# clinica-norte · 14 chunks · pushed 2026-09-10 10:26
+pinecall knowledge drop clinica-norte
+```
+
+| | |
+|---|---|
+| `push [DIR] [--base NAME]` | every `*.md` under DIR, recursively, each as its path relative to DIR and its text. The base is **replaced**: a file not in the folder is gone from it |
+| defaults | DIR is `knowledge/docs` beside the `agent.rb` here; NAME is what that agent's `docs` says, or its slug |
+| `list` | every base this org has pushed: name, chunks, when |
+| `drop BASE` | the base is gone; an agent still naming it retrieves nothing until the next push |
+
+A refusal is printed as the gateway wrote it — `pinecall: 503: this gateway keeps no knowledge:
+it runs on a dev key` — and the verb exits 1.
+
+## memory
+
+```bash
+pinecall memory +34600123456
+# - Prefiere que le llamen Marta  (preference · since 2026-09-01)
+# - Alérgica a la penicilina  (health · since 2026-07-31 · until 2026-09-01)
+pinecall memory forget +34600123456
+# forget everything about +34600123456? [y/N] y
+# +34600123456: 2 facts forgotten
+```
+
+The history is current facts first; a fact a later call superseded keeps its dates and is dimmed
+on a terminal. `forget` is the right to be forgotten: it asks once when stdin is a terminal and
+not at all from a pipe, and it is the one verb that removes rows.
 
 ## whoami
 

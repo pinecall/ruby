@@ -27,8 +27,11 @@ examples/clinica_norte/
 ```
 
 ```erb
+## Lo que recordamos de este paciente
 <%= memory kinds: %w[preference health] %>
-<%= retrieved min_score: 0.4 %>
+
+## De la base de conocimiento
+<%= retrieved k: 4, min_score: 0.02 %>
 
 <% if stage == :identify -%>
 Saluda y pide nombre y teléfono. Nada más hasta identificar al paciente.
@@ -108,12 +111,18 @@ a static block cannot read the state: faq.erb reads slots
 A marker is a placeholder this package writes and never resolves. The gateway reads the line, does
 the work, and replaces it with text.
 
-| written | becomes |
-|---|---|
-| `<%= memory kinds: %w[preference] %>` | `<!-- memory: {"kinds":["preference"]} -->` |
-| `<%= retrieved min_score: 0.4 %>` | `<!-- retrieved: {"min_score":0.4} -->` |
-| `knowledge "./file.md"` on the class | `<!-- knowledge: ./file.md -->`, the whole `knowledge` block |
-| `<%= marker "precio", { sku: 4 } %>` | `<!-- precio: {"sku":4} -->`, for a filler you run |
+| written | becomes | filled with |
+|---|---|---|
+| `<%= memory kinds: %w[preference], limit: 6 %>` | `<!-- memory: {"kinds":["preference"],"limit":6} -->` | the contact's facts, one `- ` line each, after the caller's turn and before the model reads |
+| `<%= retrieved k: 4, min_score: 0.02 %>` | `<!-- retrieved: {"k":4,"min_score":0.02} -->` | the chunks of the base `docs` names, `### path › heading` then the text |
+| `knowledge "./file.md"` on the class | `<!-- knowledge: ./file.md -->`, the whole `knowledge` block | the file's text, once per call, so the cached prefix never moves |
+| `<%= marker "precio", { sku: 4 } %>` | `<!-- precio: {"sku":4} -->` | whatever a filler you run puts there |
+
+The payload is the keywords as you typed them, as JSON, and the runtime reads them by those
+names: `kinds`, `limit` (memory), `k`, `min_score` (retrieved). Write the heading the model reads
+above the marker, in the template — the fill is the facts or the chunks and nothing else. A
+marker never delays a reply: the runtime gives both fills one budget, and past it the turn goes
+on with the marker empty and an `error` entry in the log saying which was skipped.
 
 A class configured with `memory` gets the memory marker even if its view never asks: configuring
 memory is expecting the caller to be remembered.
@@ -125,6 +134,9 @@ two blocks:
 ```erb
 <%= memory(kinds: %w[preference]) { |facts| "Recuerda: #{facts.join(", ")}" } %>
 ```
+
+The id travels as `fill` in the payload. This release the runtime renders the facts in its own
+shape and does not call the block back; it stays behind for the release that does.
 
 ## Reading the prompt
 

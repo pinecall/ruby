@@ -45,7 +45,7 @@ lib/pinecall/
   agent/state.rb             the `state` and `stage` macros, the store, snapshot · restore · collapse
   agent/tools.rb             the `tool` macro, the registry, what this state shows
   agent/spec.rb              one tool as the gateway receives it, and what is refused at load
-  agent/config.rb            the eleven declarations, and what each becomes on the wire
+  agent/config.rb            the eleven declarations, what each becomes on the wire, and the three refused at load
   view.rb                    the ERB template and what it is rendered in
   lang.rb                    the framework's own words: the rules and the protocols, es · en
   blocks.rb                  the prompt as named blocks in two regions: the layout, `render`, `show`
@@ -57,8 +57,13 @@ lib/pinecall/
   client/call.rb             one live call as the app holds it, and the book of them
   client/listeners.rb        who is listening for what
   client/observe.rb          reading a log: one page, and the stream after it
-  client/endpoints.rb        one base URL, three doors
+  client/rest.rb             one JSON request at a REST door, and the refusal as the gateway wrote it
+  client/knowledge.rb        the org's knowledge bases: push one whole, list them, drop one
+  client/contact_memory.rb   what is remembered about one contact, and the right to be forgotten
+  client/endpoints.rb        one base URL, six doors
   cli.rb  cli/env.rb         `pinecall <verb>`, and where the key comes from
+  cli/knowledge.rb           `pinecall knowledge push | list | drop`
+  cli/memory.rb              `pinecall memory CONTACT`, and `forget`
   ui.rb                      `pinecall ui`: serve, open, wait, close
   ui/server.rb               the loopback, the nonce, the console's files, and the forwarded doors
   ui/browser.rb              whether this machine has a browser, and how a URL is handed to it
@@ -88,6 +93,10 @@ gives that TypeScript does not, or what it takes away.
 | `zod` parses a command before it leaves | the generated shape table plus `Validate` | The schema already generated the table; walking it is thirty lines that cannot drift from zod or pydantic. |
 | `Camel<T>`, `toCamel`, `toSnake` — a whole conversion layer | *nothing* | The wire is snake_case and so is Ruby. The layer does not exist here. |
 | a `.tsx` view compiled by a JSX transform | an **ERB template** beside the class, `views/<slug>.erb` | Same idea in each language's own material: the view Rails means. No build step, and `pinecall prompt` reads the file a person edited. |
+| `knowledge = "./knowledge/clinica.md"`, the file read by `load.ts` at connect | `knowledge "./knowledge/clinica.md"`, the file checked at load beside the class | Ruby knows the class's file at the line, so a path with nothing behind it is refused when the class loads, with the path — before any gateway is involved. `wire_config` sends `{path, text}` from the file that was checked. |
+| `docs = "clinica"` or `docs = { base, mode?, k?, minScore? }`, `toSnake` on the way out | `docs "clinica-norte"` or `docs base:, mode:, k:, min_score:` | The keyword IS the wire's field: nothing converts, and `DocsConfig` is checked at declaration. A glob is refused with the command that makes a base. |
+| `<Memory kinds limit>`, `<Retrieved k minScore>` writing snake_case by hand | `<%= memory kinds:, limit: %>`, `<%= retrieved k:, min_score: %>` | The payload is the keywords as typed, as JSON. There is no conversion to get wrong, and `test/view_test.rb` pins the names the runtime reads. |
+| `pinecall knowledge push`, `pinecall memory` in `src/cli`, on the login path | the same verbs on `Client::Rest`, with the key `cli/env.rb` resolves for every verb | One resolution order for the socket and the REST doors; a refusal is printed as the gateway wrote it. |
 | `static prompt = { static: ["faq"], dynamic: ["availability"] }` on the class | `prompt static: %i[faq], dynamic: %i[availability]` | The same declaration as a macro. Ruby reads the templates *at the line*, so a block with no file is refused when the class loads, with the path. |
 | a tenant block is `views/<name>.tsx`, a default-export function | `views/<slug>/<name>.erb`, under the slug | One directory per agent keeps two agents in one tree from sharing a `faq`. |
 | a static block's props are a `Proxy` that throws on any read | a static block is rendered against `StaticReading`, which refuses every question by name | Same law — nothing static reads the state — as an exception at render: `a static block cannot read the state: faq.erb reads slots`. |
@@ -119,8 +128,9 @@ diffed, and no view renders it.
 | `says` | a map written as a map, carried as a list of pronunciations |
 | `hears` | the words the ears must know before they hear them |
 | `language` | which of `lang.rb`'s two word-sets the `identity` block carries |
-| `knowledge` | the `knowledge` block: a `<!-- knowledge: … -->` marker the gateway opens the file into |
-| `docs`, `memory` | read by the view and by the runtime |
+| `knowledge` | the `knowledge` block's marker, and `{path, text}` in `agent.configure`: the runtime puts the text where the marker is, once per call. Refused at load when the file is not beside the class |
+| `docs` | the base by name, `mode`, `k`, `min_score` — what the view's `retrieved` marker searches. A path or a glob is refused: a base is pushed first |
+| `memory` | `remember` and `forget`, the tenant's words: what `remember` writes at hang-up, and what it never may |
 | `prompt` | the class's own blocks; the whole layout travels as `AgentConfig.prompt` in send order |
 
 **State** is declared with `state`, and the rules are enforced in code:
@@ -231,6 +241,9 @@ no CLI. It knows `pinecall-protocol` and `websocket-driver`.
   thread waiting for that entry is a thread not reading it. (That was a real deadlock; the socket
   test is what found it.)
 - **The key travels as `Authorization: Bearer`**, never in a URL, because a URL ends up in a log.
+- **The REST doors share the key and the sentence.** `client.knowledge` (push · bases · drop) and
+  `client.memory_of(contact)` (history · forget) go through `Client::Rest`, one JSON request with
+  the same key, and a refusal comes back as `Refused` carrying the gateway's own `detail`.
 
 ## 10. The CLI
 
@@ -240,6 +253,8 @@ no CLI. It knows `pinecall-protocol` and `websocket-driver`.
 | `run` | the agent registered and answering: the process you deploy | yes |
 | `ui` | the console on 127.0.0.1 for the life of the command | yes |
 | `whoami` | which gateway, and where this terminal's key came from | no |
+| `knowledge` | `push [DIR] --base NAME` · `list` · `drop BASE`: a folder of Markdown as a base, by name | yes |
+| `memory` | `CONTACT`: the history, current first · `forget CONTACT`: asked once on a terminal | yes |
 
 `cli/env.rb` decides where the key comes from, in one order, for every verb:
 

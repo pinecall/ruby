@@ -21,7 +21,12 @@ class ClinicaNorte < Pinecall::Agent
   # Lo que los oídos tienen que conocer antes de oírlo.
   hears ["Clínica Norte", "doctora Vidal", "doctor Sáez", "doctor Ferrán"]
 
+  # Lo que sabe de memoria: un archivo, entero, en el prefijo estático de cada llamada.
   knowledge "./knowledge/clinica.md"
+  # De lo que responde: la base que se subió con `pinecall knowledge push`, por su nombre. La vista
+  # dice cuántos trozos y desde qué puntuación, en el marcador `retrieved`.
+  docs "clinica-norte"
+  # Lo que la memoria guarda de un paciente entre llamadas, con nuestras palabras, y lo que nunca.
   memory remember: ["cómo prefiere que le llamen", "alergias", "su médico habitual"],
          forget: ["pagos"]
 

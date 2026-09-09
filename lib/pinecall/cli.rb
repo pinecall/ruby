@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "cli/env"
+require_relative "cli/knowledge"
+require_relative "cli/memory"
 
 module Pinecall
   # `pinecall <verb>`: what a person types, and nothing a program calls.
@@ -20,7 +22,7 @@ module Pinecall
     module_function
 
     # Run one verb. Returns the exit status, so a bin is one line and a test is one call.
-    def run(argv, out: $stdout, err: $stderr)
+    def run(argv, out: $stdout, err: $stderr, input: $stdin)
       verb, *rest = argv
       case verb
       when nil, "-h", "--help", "help" then usage(out)
@@ -29,6 +31,8 @@ module Pinecall
       when "run" then serve(rest, out:, err:)
       when "ui" then UI.run(rest, out:, err:)
       when "whoami" then whoami(out:, err:)
+      when "knowledge" then Knowledge.run(rest, out:, err:)
+      when "memory" then Memory.run(rest, input:, out:, err:)
       when *PLANNED.keys then planned(verb, out)
       else err.puts("pinecall: no verb called #{verb}") || usage(err, status: 2)
       end
@@ -48,14 +52,10 @@ module Pinecall
     def serve(argv, out:, err:)
       file, = parse(argv)
       agent = load_agent(file, err:) or return 2
-      pointed = Env.pointed
-      return no_key(pointed, err) if pointed.api_key.nil?
-
-      err.puts("pinecall: #{pointed.notice}") if pointed.notice
-      client = Client.new(url: pointed.url, api_key: pointed.api_key)
+      client = door(err) or return 2
       mounted = Pinecall.mount(agent, client:)
       client.connect
-      out.puts("#{mounted.slug} is answering on #{pointed.url} (#{mounted.options[:routes].size} routes)")
+      out.puts("#{mounted.slug} is answering on #{client.url} (#{mounted.options[:routes].size} routes)")
       sleep
       0
     rescue Interrupt
@@ -88,6 +88,18 @@ module Pinecall
       2
     end
 
+    # The gateway this terminal is pointed at, as a client — or nothing, with the reason on stderr.
+    # Every verb that needs a gateway goes through here, so all of them resolve the key one way.
+    def door(err)
+      pointed = Env.pointed
+      if pointed.api_key.nil?
+        no_key(pointed, err)
+        return nil
+      end
+      err.puts("pinecall: #{pointed.notice}") if pointed.notice
+      Client.new(url: pointed.url, api_key: pointed.api_key)
+    end
+
     # `agent.rb` in this directory when nobody said otherwise, as every example has it.
     def load_agent(file, err:)
       path = File.expand_path(file || "agent.rb")
@@ -95,11 +107,13 @@ module Pinecall
 
       before = Agent.written.dup
       begin
-        require path
+        loaded = require path
       rescue ScriptError, LoadError => e
         return err.puts("pinecall: #{path} did not load: #{e.message}") && nil
       end
-      written = (Agent.written - before).select(&:name)
+      # A file this process already loaded declares nothing new: its class is the one written there.
+      written = loaded ? Agent.written - before : Agent.written.select { |klass| klass.source_file == path }
+      written = written.select(&:name)
       return err.puts("pinecall: #{path} declares no Pinecall::Agent") && nil if written.empty?
 
       written.last
@@ -134,13 +148,16 @@ module Pinecall
       out.puts(<<~USAGE)
         pinecall <verb>
 
-          prompt [file]   the exact prompt this agent would produce   (no gateway)
-          run [file]      the agent registered and answering
-          ui [agent]      the console on 127.0.0.1: calls, sessions, evals, and a page to talk
-          whoami          which gateway, and where this key came from
+          prompt [file]                 the exact prompt this agent would produce   (no gateway)
+          run [file]                    the agent registered and answering
+          ui [agent]                    the console on 127.0.0.1: calls, sessions, evals, and a page to talk
+          whoami                        which gateway, and where this key came from
+          knowledge push|list|drop      a folder of Markdown as a base the agent retrieves from
+          memory [forget] CONTACT       what is remembered about a contact, and forgetting it
           version
 
         Flags for prompt: --stage <name>, --state <field>=<json>, --resumed
+        Flags for knowledge push: [DIR] --base <name>
         Planned: #{PLANNED.keys.join(" · ")}
       USAGE
       status

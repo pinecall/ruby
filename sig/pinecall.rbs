@@ -108,9 +108,10 @@ module Pinecall
     def self.language: (?String | Symbol) -> untyped
     def self.says: (?Hash[Symbol | String, String]) -> untyped
     def self.hears: (?Array[String]) -> untyped
-    def self.knowledge: (?String) -> untyped
-    def self.docs: (?String) -> untyped
-    def self.memory: (?untyped) -> untyped
+    def self.knowledge: (?String) -> String?
+    def self.knowledge_file: () -> String?
+    def self.docs: (?String | Symbol, **untyped) -> Hash[Symbol, untyped]?
+    def self.memory: (**untyped) -> Hash[Symbol, untyped]?
     def self.doc: (?String) -> String?
     def self.slug: (?String) -> String
     def self.accepts: (String | Symbol, from: Array[String | Symbol]) -> untyped
@@ -214,6 +215,8 @@ module Pinecall
     def on_errors: () { (StandardError) -> void } -> ^() -> void
     def observe: (Hash[Symbol, String], **untyped) { (untyped) -> void } -> void
     def history: (Hash[Symbol, String], **untyped) -> untyped
+    def knowledge: () -> Client::Knowledge
+    def memory_of: (String) -> Client::ContactMemory
     def send_command: (type: String, agent: String, call: String?, data: Hash[Symbol, untyped], ?id: String?) -> untyped
     def seen: (untyped, Client::Call?) -> void
     def on_error: (StandardError) -> void
@@ -269,6 +272,26 @@ module Pinecall
       def on_any: () { (untyped, untyped) -> void } -> ^() -> void
       def emit: (untyped, untyped) -> void
     end
+
+    class Knowledge
+      def initialize: (url: String, api_key: String) -> void
+      def push: (String, Array[{ path: String, text: String }]) -> Hash[Symbol, untyped]
+      def bases: () -> Array[Hash[Symbol, untyped]]
+      def drop: (String) -> nil
+    end
+
+    class ContactMemory
+      attr_reader contact: String
+      def initialize: (String, url: String, api_key: String) -> void
+      def history: () -> Array[Hash[Symbol, untyped]]
+      def forget: () -> Integer
+    end
+
+    module Rest
+      def self?.get: (String, api_key: String) -> Hash[Symbol, untyped]?
+      def self?.put: (String, untyped, api_key: String) -> Hash[Symbol, untyped]?
+      def self?.delete: (String, api_key: String) -> Hash[Symbol, untyped]?
+    end
   end
 
   module Prompt
@@ -323,7 +346,17 @@ module Pinecall
 
   module CLI
     PLANNED: Hash[String, String]
-    def self?.run: (Array[String], ?out: IO, ?err: IO) -> Integer
+    def self?.run: (Array[String], ?out: IO, ?err: IO, ?input: IO) -> Integer
+    def self?.door: (IO) -> Client?
+
+    module Knowledge
+      DEFAULT_DIR: String
+      def self?.run: (Array[String], out: IO, err: IO) -> Integer
+    end
+
+    module Memory
+      def self?.run: (Array[String], input: IO, out: IO, err: IO) -> Integer
+    end
 
     module Env
       LOCAL: String

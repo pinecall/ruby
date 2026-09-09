@@ -86,6 +86,33 @@ class ClinicaTest < Minitest::Test
     refute_includes call.prompt, "Horas libres"
   end
 
+  def test_la_declaracion_lleva_el_archivo_entero_la_base_y_lo_que_la_memoria_guarda
+    declared = @mounted.options
+
+    assert_equal "./knowledge/clinica.md", declared[:knowledge][:path]
+    assert_includes declared[:knowledge][:text], "calle Mayor 14"
+    assert_equal({ base: "clinica-norte" }, declared[:docs])
+    assert_includes declared[:memory][:remember], "alergias"
+    assert_equal ["pagos"], declared[:memory][:forget]
+  end
+
+  def test_los_dos_marcadores_van_en_la_vista_cada_uno_bajo_su_titulo
+    call = @gateway.call_started(from: "+34600123456")
+
+    assert_includes call.prompt, %(## Lo que recordamos de este paciente\n<!-- memory: {"kinds":["preference","health"]} -->)
+    assert_includes call.prompt, %(## De la base de conocimiento\n<!-- retrieved: {"k":4,"min_score":0.02} -->)
+    refute_includes call.block("identity"), "<!-- memory:"
+  end
+
+  def test_una_ruta_o_un_glob_no_es_una_base_y_se_rechaza_al_cargar
+    refused = assert_raises(Pinecall::DeclarationRefused) do
+      Class.new(ClinicaNorte) { docs "./knowledge/docs/**/*.md" }
+    end
+
+    assert_includes refused.message, "docs name the base they were pushed to"
+    assert_includes refused.message, "pinecall knowledge push ./knowledge/docs --base"
+  end
+
   def test_al_reservar_el_prompt_deja_de_pedir_nada_y_se_despide
     call = @gateway.call_started(from: "+34600123456")
     call.tool("free_slots", day: "martes")

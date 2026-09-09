@@ -2,7 +2,7 @@
 
 module Pinecall
   class Client
-    # One base URL, three doors. The app configures a host; nothing else writes a path.
+    # One base URL, six doors. The app configures a host; nothing else writes a path.
     module Endpoints
       module_function
 
@@ -15,6 +15,15 @@ module Pinecall
 
       # `GET /v1/agents/{slug}/calls`: the agent's own log — registrations, configurations, errors.
       def agent_log(base, agent) = door(base, "/v1/agents/#{CGI.escape(agent)}/calls")
+
+      # `GET /v1/knowledge`: every base this org has pushed.
+      def knowledge_bases(base) = door(base, "/v1/knowledge")
+
+      # `PUT` and `DELETE /v1/knowledge/{base}`: one knowledge base, pushed whole or dropped.
+      def knowledge(base, name) = door(base, "/v1/knowledge/#{CGI.escape(name)}")
+
+      # `GET` and `DELETE /v1/contacts/{contact}/memory`: what is remembered about one contact.
+      def contact_memory(base, contact) = door(base, "/v1/contacts/#{CGI.escape(contact)}/memory")
 
       def door(base, path, websocket: false)
         url = URI.parse(base)

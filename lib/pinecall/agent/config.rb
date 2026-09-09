@@ -18,11 +18,15 @@ module Pinecall
     # | `says`              | a map written as a map, carried as a list of pronunciations       |
     # | `hears`             | the words the ears must know                                      |
     # | `language`          | which of the framework's two word-sets the identity block carries |
-    # | `knowledge`         | the `knowledge` block: a marker the gateway opens the file into   |
-    # | `docs`, `memory`    | read by the view and by the runtime                               |
+    # | `knowledge`         | the `knowledge` block's marker, and the file itself — path and     |
+    # |                     | text — for the runtime to put where the marker is, once per call  |
+    # | `docs`              | the knowledge base by name, and how its chunks reach the model    |
+    # | `memory`            | what memory keeps about a contact across calls, and never keeps   |
     # | `prompt`            | the class's own blocks, in send order (`blocks.rb`)               |
     module Config
-      CONFIG_FIELDS = %i[phone whatsapp web voice says hears llm language knowledge docs memory].freeze
+      # The eight that travel as the class wrote them. The other three name a file, a base or a
+      # policy, and each is checked at declaration below.
+      AS_WRITTEN = %i[phone whatsapp web voice says hears llm language].freeze
 
       # The three short names are the family's tiers as the runtime prices them. Anything else is
       # passed through as written: "haiku" on its own is a 404 from Anthropic, and a call that
@@ -37,14 +41,61 @@ module Pinecall
 
       # The macros a class configures itself with.
       module Declaring
-        # Each of the eleven reads with no argument and declares with one, so a subclass can ask
-        # what its parent said before deciding to change it.
-        CONFIG_FIELDS.each do |field|
+        # Each one reads with no argument and declares with one, so a subclass can ask what its
+        # parent said before deciding to change it.
+        AS_WRITTEN.each do |field|
           define_method(field) do |value = NOTHING|
             return config[field] if value.equal?(NOTHING)
 
             config[field] = value
           end
+        end
+
+        # The one file the agent knows by heart, as the path the class wrote. The file is looked
+        # for beside the class here, at load, by the rule a view's path follows: a path with
+        # nothing behind it is refused with the path, never opened into an empty block at the
+        # first call.
+        #
+        #     knowledge "./knowledge/clinica.md"
+        def knowledge(path = NOTHING)
+          return config[:knowledge] if path.equal?(NOTHING)
+
+          file = beside_this_file(path.to_s)
+          raise DeclarationRefused, "knowledge names a file beside the class, and there is no #{file}" unless File.file?(file)
+
+          @knowledge_file = file
+          config[:knowledge] = path.to_s
+        end
+
+        # Where the knowledge file is on disk: this class's, or its parent's when it named none.
+        def knowledge_file
+          @knowledge_file || (superclass.respond_to?(:knowledge_file) ? superclass.knowledge_file : nil)
+        end
+
+        # The knowledge base the agent answers from, by the name it was pushed under, and how its
+        # chunks reach the model. A path or a glob is refused: a base is pushed first, then named.
+        #
+        #     docs "clinica-norte"
+        #     docs base: "clinica-norte", mode: :retrieved, k: 4, min_score: 0.02
+        def docs(base = NOTHING, **options)
+          return config[:docs] if base.equal?(NOTHING) && options.empty?
+
+          said = base.equal?(NOTHING) ? options.dup : options.merge(base:)
+          said[:base] = said[:base].to_s unless said[:base].nil?
+          said[:mode] = said[:mode].to_s unless said[:mode].nil?
+          refuse_a_docs_path(said[:base])
+          config[:docs] = checked("DocsConfig", said, "docs").freeze
+        end
+
+        # What memory keeps about a contact across calls, in the tenant's own words, and what it
+        # must never keep. Configuring it is expecting the caller to be remembered.
+        #
+        #     memory remember: ["alergias", "su médico habitual"], forget: ["pagos"]
+        def memory(**policy)
+          return config[:memory] if policy.empty?
+
+          said = policy.transform_values { |words| Array(words).map(&:to_s) }
+          config[:memory] = checked("MemoryConfig", said, "memory").freeze
         end
 
         # The class docstring said out loud, for a class with no source file to read it from.
@@ -99,6 +150,9 @@ module Pinecall
             llm: model_config,
             says: pronunciations,
             hears: heard,
+            knowledge: knowledge_config,
+            docs: config[:docs],
+            memory: config[:memory],
             tools:,
             state_fields: state_field_specs,
             events: event_specs
@@ -141,6 +195,16 @@ module Pinecall
           words.empty? ? nil : words
         end
 
+        # The file, path and text, sent whole: the runtime puts the text where the marker is,
+        # once per call, so the cached prefix never moves. Read at mount, so an edit to the file
+        # is what the next process sends.
+        def knowledge_config
+          file = knowledge_file
+          return nil if file.nil?
+
+          { path: config[:knowledge], text: File.read(file) }
+        end
+
         def state_field_specs
           declared = state_visibility
           return nil if declared.empty?
@@ -155,6 +219,23 @@ module Pinecall
         end
 
         private
+
+        # One declaration checked the way the gateway would check it, and refused here instead —
+        # at load, with the protocol's own sentence.
+        def checked(shape, said, where)
+          Protocol::Validate.call!(shape, said, where:)
+        rescue Protocol::ProtocolError => e
+          raise DeclarationRefused, e.message
+        end
+
+        # A base is a name. A path or a glob is where the files were, which is what `pinecall
+        # knowledge push` turns into a name.
+        def refuse_a_docs_path(base)
+          return unless base.to_s.match?(%r{[*/]})
+
+          raise DeclarationRefused, "docs name the base they were pushed to: " \
+                                    "run `pinecall knowledge push ./knowledge/docs --base #{slug}`"
+        end
 
         def default_slug
           (name || "agent").split("::").last

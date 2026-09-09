@@ -30,3 +30,15 @@ version number is the human's call.
 - `rake console:build` and `rake console:check`: how the bundle gets here, and how a reader finds
   out that what is here is stale.
 - `examples/clinica_norte`: a whole agent, its view, and its own ring-0 suite.
+- What the agent knows, reads and remembers, on the wire. `knowledge "./knowledge/clinica.md"`
+  now sends the file whole (`{path, text}`) and is refused at load when the file is not beside
+  the class; `docs "clinica-norte"` (or `docs base:, mode:, k:, min_score:`) names the base the
+  `retrieved` marker searches, and a path or a glob is refused with the command that makes a
+  base; `memory remember:, forget:` travels as the wire's `MemoryConfig`, checked at load.
+- The marker payloads pinned: `memory kinds:, limit:` and `retrieved k:, min_score:`, snake_case
+  as typed. The example's view puts each under its heading.
+- `pinecall knowledge push [DIR] --base NAME` · `list` · `drop BASE`, and `pinecall memory
+  CONTACT` · `memory forget CONTACT`, on the same key every verb resolves; a refusal is printed
+  as the gateway wrote it. On the client: `client.knowledge` and `client.memory_of(contact)`.
+- `pinecall prompt` on a file this process already loaded finds its class instead of saying it
+  declares none.

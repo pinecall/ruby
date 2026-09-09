@@ -13,10 +13,13 @@ require_relative "client/connection"
 require_relative "client/call"
 require_relative "client/agent"
 require_relative "client/observe"
+require_relative "client/rest"
+require_relative "client/knowledge"
+require_relative "client/contact_memory"
 
 module Pinecall
-  # One application's connection to Pinecall: one socket, the agents on it, and a door to any log
-  # the key can read.
+  # One application's connection to Pinecall: one socket, the agents on it, a door to any log the
+  # key can read, and the org's knowledge bases and contact memories over the same key.
   #
   # This is the smaller of the two doors. It knows the protocol and a websocket and nothing else —
   # no agent class, no view, no CLI — and it is what an application with its own way of deciding
@@ -95,6 +98,12 @@ module Pinecall
 
     # A log as it stands, as one page, and what it folds to.
     def history(target, **options) = Observe.history(target, url: @url, api_key: @api_key, **options)
+
+    # The org's knowledge bases: push one from a folder, list them, drop one.
+    def knowledge = Knowledge.new(url: @url, api_key: @api_key)
+
+    # What is remembered about one contact, and the right to be forgotten.
+    def memory_of(contact) = ContactMemory.new(contact, url: @url, api_key: @api_key)
 
     # ── what the agents send through ─────────────────────────────────────────
 

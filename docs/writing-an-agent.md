@@ -33,13 +33,34 @@ llm "haiku"               # or "sonnet", "opus", or "openai/gpt-5.4-mini"
 language :es              # which of the framework's two word-sets the prompt carries
 says DKV: "de ka uve"     # how a word is said when the voice would read it wrong
 hears ["Clínica Norte"]   # what the ears must know before they hear it
-knowledge "./knowledge/clinica.md"
+knowledge "./knowledge/clinica.md"                # the one file it knows by heart
+docs "clinica-norte"                              # the base it answers from, by name
 memory remember: ["cómo prefiere que le llamen"], forget: ["pagos"]
 prompt static: %i[faq], dynamic: %i[availability]   # blocks of your own, one template each
 ```
 
 `voice` is a name and never an id. Sending an id is how a call once spent twenty seconds retrying
 `voice_id_does_not_exist` while the model apologised.
+
+### What it knows, what it reads, what it remembers
+
+Three declarations, three different things, and the runtime does the work for all of them:
+
+| declared | what it is | where it lands |
+|---|---|---|
+| `knowledge "./knowledge/clinica.md"` | **one file, known by heart.** Read beside the class and sent whole, path and text | the `knowledge` block, static: the text goes where the marker is, once per call, so the cached prefix never moves |
+| `docs "clinica-norte"` | **a base it answers from**, by the name it was pushed under with `pinecall knowledge push` | the `retrieved` marker in the view, filled per turn with the chunks that match what the caller just said |
+| `memory remember: […], forget: […]` | **what to keep about a contact across calls**, in your own words — and what never to keep | the `memory` marker, filled per turn with the contact's facts; at hang-up one model call writes what this call taught |
+
+`docs` takes keywords when the name is not enough: `docs base: "clinica-norte", mode: :retrieved,
+k: 4, min_score: 0.02`. The view's `retrieved k:, min_score:` override those per marker. A path
+or a glob in `docs` is refused, because a base is a name: the files are pushed first, and the
+name is what the agent says.
+
+`memory`'s words are yours — `"alergias"`, `"su médico habitual"` — and become the categories the
+runtime extracts; `forget` names the ones it must never write, `"pagos"` say. The history of a
+contact, and the right to be forgotten, are `pinecall memory CONTACT` and `pinecall memory forget
+CONTACT`.
 
 ## State: what it remembers
 
@@ -118,6 +139,10 @@ call, and never as a 1008 from a gateway:
 | `prompt static: %i[identity]` | `identity is one of the framework's own blocks (identity, knowledge, tools, view)` |
 | `prompt static: %i[faq]` with no `views/<slug>/faq.erb` | `faq has no template: write …/views/<slug>/faq.erb` |
 | `prompt dynamic: %i[Availability]` | `"Availability" does not match ^[a-z][a-z0-9_]*$` |
+| `knowledge "./no.md"` with no such file | `knowledge names a file beside the class, and there is no …/no.md` |
+| `docs "./knowledge/docs/**/*.md"` | `docs name the base they were pushed to: run \`pinecall knowledge push ./knowledge/docs --base <slug>\`` |
+| `docs base: "x", top: 3` | `docs: DocsConfig has no field called top` |
+| `memory keep: […]` | `memory: MemoryConfig has no field called keep` |
 
 And one refused at render, because it is about what a template says and not what a class
 declares: a static block that reads a field — `a static block cannot read the state: faq.erb
