@@ -100,7 +100,7 @@ class ClinicaTest < Minitest::Test
     call = @gateway.call_started(from: "+34600123456")
 
     assert_includes call.prompt, %(## Lo que recordamos de este paciente\n<!-- memory: {"kinds":["preference","health"]} -->)
-    assert_includes call.prompt, %(## De la base de conocimiento\n<!-- retrieved: {"k":4,"min_score":0.02} -->)
+    assert_includes call.prompt, %(## De la base de conocimiento\n<!-- retrieved: {"k":4,"min_score":0.5} -->)
     refute_includes call.block("identity"), "<!-- memory:"
   end
 

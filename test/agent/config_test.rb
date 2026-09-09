@@ -34,9 +34,9 @@ class ConfigTest < Minitest::Test
   end
 
   def test_docs_with_keywords_carries_mode_k_and_min_score_as_the_wire_names_them
-    shop = Class.new(Pinecall::Agent) { docs base: "tienda", mode: :retrieved, k: 4, min_score: 0.02 }
+    shop = Class.new(Pinecall::Agent) { docs base: "tienda", mode: :retrieved, k: 4, min_score: 0.5 }
 
-    assert_equal({ base: "tienda", mode: "retrieved", k: 4, min_score: 0.02 }, shop.wire_config[:docs])
+    assert_equal({ base: "tienda", mode: "retrieved", k: 4, min_score: 0.5 }, shop.wire_config[:docs])
   end
 
   def test_a_glob_or_a_path_is_not_a_base_and_the_refusal_says_the_command_that_makes_one

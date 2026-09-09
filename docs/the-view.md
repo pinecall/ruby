@@ -31,7 +31,7 @@ examples/clinica_norte/
 <%= memory kinds: %w[preference health] %>
 
 ## De la base de conocimiento
-<%= retrieved k: 4, min_score: 0.02 %>
+<%= retrieved k: 4, min_score: 0.5 %>
 
 <% if stage == :identify -%>
 Saluda y pide nombre y teléfono. Nada más hasta identificar al paciente.
@@ -114,7 +114,7 @@ the work, and replaces it with text.
 | written | becomes | filled with |
 |---|---|---|
 | `<%= memory kinds: %w[preference], limit: 6 %>` | `<!-- memory: {"kinds":["preference"],"limit":6} -->` | the contact's facts, one `- ` line each, after the caller's turn and before the model reads |
-| `<%= retrieved k: 4, min_score: 0.02 %>` | `<!-- retrieved: {"k":4,"min_score":0.02} -->` | the chunks of the base `docs` names, `### path › heading` then the text |
+| `<%= retrieved k: 4, min_score: 0.5 %>` | `<!-- retrieved: {"k":4,"min_score":0.5} -->` | the chunks of the base `docs` names, `### path › heading` then the text |
 | `knowledge "./file.md"` on the class | `<!-- knowledge: ./file.md -->`, the whole `knowledge` block | the file's text, once per call, so the cached prefix never moves |
 | `<%= marker "precio", { sku: 4 } %>` | `<!-- precio: {"sku":4} -->` | whatever a filler you run puts there |
 

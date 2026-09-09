@@ -53,7 +53,7 @@ Three declarations, three different things, and the runtime does the work for al
 | `memory remember: […], forget: […]` | **what to keep about a contact across calls**, in your own words — and what never to keep | the `memory` marker, filled per turn with the contact's facts; at hang-up one model call writes what this call taught |
 
 `docs` takes keywords when the name is not enough: `docs base: "clinica-norte", mode: :retrieved,
-k: 4, min_score: 0.02`. The view's `retrieved k:, min_score:` override those per marker. A path
+k: 4, min_score: 0.5`. The view's `retrieved k:, min_score:` override those per marker. A path
 or a glob in `docs` is refused, because a base is a name: the files are pushed first, and the
 name is what the agent says.
 

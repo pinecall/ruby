@@ -76,7 +76,7 @@ module Pinecall
         # chunks reach the model. A path or a glob is refused: a base is pushed first, then named.
         #
         #     docs "clinica-norte"
-        #     docs base: "clinica-norte", mode: :retrieved, k: 4, min_score: 0.02
+        #     docs base: "clinica-norte", mode: :retrieved, k: 4, min_score: 0.5
         def docs(base = NOTHING, **options)
           return config[:docs] if base.equal?(NOTHING) && options.empty?
 

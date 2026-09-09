@@ -15,8 +15,8 @@ class ViewTest < Minitest::Test
   end
 
   def test_the_retrieved_tag_writes_k_and_min_score_in_snake_case
-    assert_equal %(<!-- retrieved: {"k":4,"min_score":0.02} -->),
-                 rendered("<%= retrieved k: 4, min_score: 0.02 %>").text
+    assert_equal %(<!-- retrieved: {"k":4,"min_score":0.5} -->),
+                 rendered("<%= retrieved k: 4, min_score: 0.5 %>").text
   end
 
   def test_the_knowledge_tag_writes_the_bare_path
