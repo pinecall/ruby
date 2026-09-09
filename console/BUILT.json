@@ -1,10 +1,10 @@
 {
-  "source_sha256": "e67497e73175de8046ccdcf596d538f0200acf8d39310712c0bae5e3d57fc44f",
+  "source_sha256": "6c8c8921b97a2e10e0a336bcd4d7088a02af3a871e84829ab3d05390ff96d331",
   "built_at": "2026-09-09",
   "files": [
     "console/README.md",
+    "console/assets/index-8xGi9J7O.js",
     "console/assets/index-C1Mf97Ro.css",
-    "console/assets/index-DWRw-ek8.js",
     "console/index.html"
   ]
 }
