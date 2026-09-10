@@ -21,6 +21,7 @@ module Pinecall
     # | `knowledge`         | the `knowledge` block, whole, and the file itself — path and text |
     # | `docs`              | the knowledge base by name, and how its chunks reach the model    |
     # | `memory`            | what memory keeps about a contact across calls, and never keeps   |
+    # | `hangup`            | whether the model may end the call itself, and when                |
     module Config
       # The eight that travel as the class wrote them. The other three name a file, a base or a
       # policy, and each is checked at declaration below.
@@ -106,6 +107,19 @@ module Pinecall
           config[:memory] = checked("MemoryConfig", said, "memory").freeze
         end
 
+        # Whether the model may end the call itself, and when, in your own words. A class that says
+        # nothing here cannot hang up: only the caller and a supervisor end a call. The tool is
+        # livekit's own `end_call`, and it is hidden while the agent is greeting.
+        #
+        #     hangup when: "cuando el paciente ya tiene su cita y se despide"
+        #
+        # `hangup` alone is a declaration too: the model may end the call, in livekit's own words.
+        def hangup(**said)
+          return config[:hangup] if said.empty? && config.key?(:hangup)
+
+          config[:hangup] = checked("HangupConfig", { when: said[:when].to_s }, "hangup").freeze
+        end
+
         # The class docstring said out loud, for a class with no source file to read it from.
         def doc(text = NOTHING)
           return Doc.for_class(self) if text.equal?(NOTHING)
@@ -161,6 +175,7 @@ module Pinecall
             knowledge: knowledge_config,
             docs: config[:docs],
             memory: config[:memory],
+            hangup: config[:hangup],
             tools:,
             state_fields: state_field_specs,
             events: event_specs

@@ -88,3 +88,32 @@ class ConfigTest < Minitest::Test
     assert_equal "clinica-norte", Clinica.docs[:base]
   end
 end
+
+# `hangup`: whether the model may end the call itself. The tool is livekit's own; declaring this is
+# what puts it in front of the model, and a class that says nothing cannot hang up at all.
+class HangupDeclarationTest < Minitest::Test
+  def test_a_class_that_says_nothing_declares_no_hangup
+    klass = Class.new(Pinecall::Agent) { def self.name = "Muda" }
+
+    refute_includes klass.wire_config(tools: []), :hangup
+  end
+
+  def test_the_tenants_own_words_travel_as_they_were_written
+    said = "cuando el paciente se despide"
+    klass = Class.new(Pinecall::Agent) do
+      def self.name = "Cuelga"
+      hangup when: said
+    end
+
+    assert_equal({ when: said }, klass.wire_config(tools: [])[:hangup])
+  end
+
+  def test_hangup_with_no_words_is_still_a_declaration
+    klass = Class.new(Pinecall::Agent) do
+      def self.name = "Escueta"
+      hangup
+    end
+
+    assert_equal({ when: "" }, klass.wire_config(tools: [])[:hangup])
+  end
+end

@@ -7,6 +7,11 @@ version number is the human's call.
 ## [Unreleased]
 
 ### Added
+- **`hangup when: "..."`** on a class: the model may end the call itself, and you say in your own
+  words when. The tool is livekit's own `end_call`, hidden while the agent is greeting, and the
+  call's log gets `call.ended` with `agent_hung_up`. `hangup` alone is a declaration too, with the
+  wording left to livekit. A class that says nothing cannot hang up: only the caller and a
+  supervisor end a call. Clínica Norte declares one.
 - **`pinecall remember [PATHS]`**, and `client.memory.extraction(slug, cases)` — the goldens
   `memory remember:` is held to, which is the write side and the half that persists. A case is one
   call already held (both speakers, in `said`), the facts memory already holds (`holds`), and what

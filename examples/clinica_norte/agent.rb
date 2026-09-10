@@ -27,6 +27,11 @@ class ClinicaNorte < Pinecall::Agent
   # plataforma la busca por su cuenta y lo que encuentra llega como resultado de una herramienta.
   docs base: "clinica-norte", k: 4, min_score: 0.5
   # Lo que la memoria guarda de un paciente entre llamadas, con nuestras palabras, y lo que nunca.
+  # El modelo puede terminar la llamada él mismo: la herramienta es la de livekit (`end_call`), va
+  # oculta mientras saluda, y el log recibe `call.ended` con `agent_hung_up`. Sin esta línea nadie
+  # cuelga salvo el paciente o un supervisor.
+  hangup when: "cuando el paciente ya tiene su cita, o dice que no quiere nada más y se despide"
+
   memory remember: ["cómo prefiere que le llamen", "alergias", "su médico habitual"],
          forget: ["pagos"]
 
