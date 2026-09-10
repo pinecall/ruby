@@ -60,10 +60,12 @@ lib/pinecall/
   client/rest.rb             one JSON request at a REST door, and the refusal as the gateway wrote it
   client/knowledge.rb        the org's knowledge bases: push one whole, list them, drop one
   client/contact_memory.rb   what is remembered about one contact, and the right to be forgotten
-  client/endpoints.rb        one base URL, six doors
+  client/provider_keys.rb    the provider keys this org brought of its own: add, remove, name them
+  client/endpoints.rb        one base URL, eight doors
   cli.rb  cli/env.rb         `pinecall <verb>`, and where the key comes from
   cli/knowledge.rb           `pinecall knowledge push | list | drop`
   cli/memory.rb              `pinecall memory CONTACT`, and `forget`
+  cli/keys.rb                `pinecall keys add | rm | list`, the key read off stdin
   ui.rb                      `pinecall ui`: serve, open, wait, close
   ui/server.rb               the loopback, the nonce, the console's files, and the forwarded doors
   ui/browser.rb              whether this machine has a browser, and how a URL is handed to it
@@ -241,9 +243,12 @@ no CLI. It knows `pinecall-protocol` and `websocket-driver`.
   thread waiting for that entry is a thread not reading it. (That was a real deadlock; the socket
   test is what found it.)
 - **The key travels as `Authorization: Bearer`**, never in a URL, because a URL ends up in a log.
-- **The REST doors share the key and the sentence.** `client.knowledge` (push · bases · drop) and
-  `client.memory_of(contact)` (history · forget) go through `Client::Rest`, one JSON request with
-  the same key, and a refusal comes back as `Refused` carrying the gateway's own `detail`.
+- **The REST doors share the key and the sentence.** `client.knowledge` (push · bases · drop),
+  `client.memory_of(contact)` (history · forget) and `client.provider_keys` (add · remove ·
+  vendors) go through `Client::Rest`, one JSON request with the same key, and a refusal comes
+  back as `Refused` carrying the gateway's own `detail`. A provider key goes up through that
+  door and comes back through none: `vendors` answers names, because the runtime answers
+  with a key at exactly one door and it is the worker's.
 
 ## 10. The CLI
 
@@ -255,6 +260,7 @@ no CLI. It knows `pinecall-protocol` and `websocket-driver`.
 | `whoami` | which gateway, and where this terminal's key came from | no |
 | `knowledge` | `push [DIR] --base NAME` · `list` · `drop BASE`: a folder of Markdown as a base, by name | yes |
 | `memory` | `CONTACT`: the history, current first · `forget CONTACT`: asked once on a terminal | yes |
+| `keys` | `add VENDOR` (the key off stdin, never a flag) · `rm VENDOR` · `list`: the provider keys this org brought of its own. `list` prints names, never a key | yes |
 
 `cli/env.rb` decides where the key comes from, in one order, for every verb:
 

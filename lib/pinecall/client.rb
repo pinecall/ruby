@@ -16,6 +16,7 @@ require_relative "client/observe"
 require_relative "client/rest"
 require_relative "client/knowledge"
 require_relative "client/contact_memory"
+require_relative "client/provider_keys"
 
 module Pinecall
   # One application's connection to Pinecall: one socket, the agents on it, a door to any log the
@@ -104,6 +105,9 @@ module Pinecall
 
     # What is remembered about one contact, and the right to be forgotten.
     def memory_of(contact) = ContactMemory.new(contact, url: @url, api_key: @api_key)
+
+    # The provider keys this org brought of its own: added, taken back, and read back by name.
+    def provider_keys = ProviderKeys.new(url: @url, api_key: @api_key)
 
     # ── what the agents send through ─────────────────────────────────────────
 

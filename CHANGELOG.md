@@ -41,6 +41,11 @@ version number is the human's call.
   any other word is refused as the marker is written — `memory kinds: "preference" is not one of
   the words this class remembers (cómo prefiere que le llamen, alergias, su médico habitual)` —
   where before it matched nothing for ever while the recall looked like it worked.
+- `pinecall keys add VENDOR` · `rm VENDOR` · `list`: the org brings its own provider key for a
+  vendor on its own API key, with no operator in it. The key is read from stdin — typed with
+  nothing echoed on a terminal, one piped line off one — and never from a flag, because argv
+  is visible in `ps`. `list` answers vendor names alone: no door of the runtime gives a
+  provider key back. On the client: `client.provider_keys`.
 - `pinecall knowledge push [DIR] --base NAME` · `list` · `drop BASE`, and `pinecall memory
   CONTACT` · `memory forget CONTACT`, on the same key every verb resolves; a refusal is printed
   as the gateway wrote it. On the client: `client.knowledge` and `client.memory_of(contact)`.

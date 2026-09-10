@@ -217,6 +217,7 @@ module Pinecall
     def history: (Hash[Symbol, String], **untyped) -> untyped
     def knowledge: () -> Client::Knowledge
     def memory_of: (String) -> Client::ContactMemory
+    def provider_keys: () -> Client::ProviderKeys
     def send_command: (type: String, agent: String, call: String?, data: Hash[Symbol, untyped], ?id: String?) -> untyped
     def seen: (untyped, Client::Call?) -> void
     def on_error: (StandardError) -> void
@@ -287,6 +288,13 @@ module Pinecall
       def forget: () -> Integer
     end
 
+    class ProviderKeys
+      def initialize: (url: String, api_key: String) -> void
+      def add: (String, String) -> nil
+      def remove: (String) -> nil
+      def vendors: () -> Array[String]
+    end
+
     module Rest
       def self?.get: (String, api_key: String) -> Hash[Symbol, untyped]?
       def self?.put: (String, untyped, api_key: String) -> Hash[Symbol, untyped]?
@@ -355,6 +363,10 @@ module Pinecall
     end
 
     module Memory
+      def self?.run: (Array[String], input: IO, out: IO, err: IO) -> Integer
+    end
+
+    module Keys
       def self?.run: (Array[String], input: IO, out: IO, err: IO) -> Integer
     end
 

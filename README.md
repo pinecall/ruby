@@ -73,6 +73,7 @@ pinecall prompt agent.rb --stage book
 pinecall run agent.rb                 # registered and answering: the process you deploy
 pinecall knowledge push               # knowledge/docs, as the base `docs` names
 pinecall memory +34600123456          # what is remembered about a contact; `forget` to forget
+pinecall keys add elevenlabs          # this org's own key for a vendor, read off stdin
 pinecall ui                           # the console on 127.0.0.1: calls, sessions, evals, talk
 ```
 

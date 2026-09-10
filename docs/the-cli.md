@@ -9,6 +9,7 @@ pinecall <verb>
   whoami                        which gateway, and where this key came from
   knowledge push|list|drop      a folder of Markdown as a base the agent retrieves from
   memory [forget] CONTACT       what is remembered about a contact, and forgetting it
+  keys add|rm|list VENDOR       the provider keys this org brought of its own
   version
 ```
 
@@ -95,6 +96,35 @@ pinecall memory forget +34600123456
 The history is current facts first; a fact a later call superseded keeps its dates and is dimmed
 on a terminal. `forget` is the right to be forgotten: it asks once when stdin is a terminal and
 not at all from a pipe, and it is the one verb that removes rows.
+
+## keys
+
+The provider keys this org brought of its own. A key added here is the org's own account with
+that vendor, and every call of this org runs on it from the next one; every vendor nobody
+brought runs on the box's own key. No operator is involved: the org's own API key is what opens
+these doors, and there is no way to name another org at them.
+
+```bash
+pinecall keys add elevenlabs
+# elevenlabs key:            (typed, and echoed nowhere)
+# elevenlabs
+echo "$ELEVEN_API_KEY" | pinecall keys add elevenlabs
+pinecall keys list
+# anthropic
+# elevenlabs
+pinecall keys rm elevenlabs
+# elevenlabs
+```
+
+| | |
+|---|---|
+| `add VENDOR` | the key is read from **stdin** and never from a flag: `ps` shows every argument to every user on the box, and a key pasted as an argument is a key in the shell history. On a terminal it is typed with nothing echoed; off one it is one piped line. On success it prints the vendor and nothing else |
+| `rm VENDOR` | that vendor goes back to the box's own key. A vendor this org never brought is the gateway's `404`, as it wrote it |
+| `list` | the vendors this org brought, by name — **never a key**, not a value, not a prefix, not a fingerprint. No door of the runtime answers with a provider key, so a key that was lost was lost at the vendor and the fix is to add it again |
+
+A vendor this build does not run is refused with the list of the ones it does:
+`pinecall: 400: no vendor named 11labs; this build runs: anthropic, deepgram, elevenlabs,
+openai, soniox, whatsapp`.
 
 ## whoami
 

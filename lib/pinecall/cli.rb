@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "cli/env"
+require_relative "cli/keys"
 require_relative "cli/knowledge"
 require_relative "cli/memory"
 
@@ -33,6 +34,7 @@ module Pinecall
       when "whoami" then whoami(out:, err:)
       when "knowledge" then Knowledge.run(rest, out:, err:)
       when "memory" then Memory.run(rest, input:, out:, err:)
+      when "keys" then Keys.run(rest, input:, out:, err:)
       when *PLANNED.keys then planned(verb, out)
       else err.puts("pinecall: no verb called #{verb}") || usage(err, status: 2)
       end
@@ -154,6 +156,7 @@ module Pinecall
           whoami                        which gateway, and where this key came from
           knowledge push|list|drop      a folder of Markdown as a base the agent retrieves from
           memory [forget] CONTACT       what is remembered about a contact, and forgetting it
+          keys add|rm|list VENDOR       the provider keys this org brought of its own
           version
 
         Flags for prompt: --stage <name>, --state <field>=<json>, --resumed
