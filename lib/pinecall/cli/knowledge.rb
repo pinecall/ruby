@@ -2,11 +2,14 @@
 
 module Pinecall
   module CLI
-    # `pinecall knowledge push | list | drop`: a folder of Markdown becomes a base the gateway
-    # retrieves from, under the name an agent's `docs` declaration says.
+    # `pinecall knowledge push | list | drop | eval`: a folder of Markdown becomes a base the
+    # gateway retrieves from, under the name an agent's `docs` says — and a golden says how well.
     module Knowledge
       # Where an agent keeps the files it answers from, beside `agent.rb`, when nobody said.
       DEFAULT_DIR = "knowledge/docs"
+
+      # The golden beside the documents it asks about: the questions the base is held to.
+      DEFAULT_GOLDEN = "knowledge/golden.json"
 
       module_function
 
@@ -16,6 +19,7 @@ module Pinecall
         when "push" then push(rest, out:, err:)
         when "list" then list(out:, err:)
         when "drop" then drop(rest.first, out:, err:)
+        when "eval" then evaluate(rest, out:, err:)
         when nil, "-h", "--help" then usage(out)
         else err.puts("pinecall: knowledge has no verb called #{verb}") || usage(err, status: 2)
         end
@@ -59,13 +63,65 @@ module Pinecall
         end
       end
 
-      # `[DIR] [--base NAME]`, in either order.
-      def parse(argv)
+      # A golden is run when somebody changed the documents, the embedder or a knob — never on a
+      # caller's clock. Exit 1 when anything missed, so a base can be held to its golden in CI.
+      def evaluate(argv, out:, err:)
+        file, base, k = parse(argv, with_k: true)
+        if file.nil? || base.nil?
+          agent = CLI.load_agent(nil, err:)
+          return said_what_eval_needs(err) if agent.nil?
+
+          base ||= agent.docs&.dig(:base) || agent.slug
+          file ||= File.join(File.dirname(agent.source_file || File.expand_path("agent.rb")), DEFAULT_GOLDEN)
+        end
+        questions = golden_at(file, err:) or return 2
+        at_the_gateway(err) do |client|
+          score = client.knowledge.eval(base, questions, k: k)
+          out.puts(score_line(score))
+          score[:misses].each { |missed| out.puts(miss_line(missed)) }
+          return score[:misses].empty? ? 0 : 1
+        end
+      end
+
+      # The two figures on one line, with the embedder that wrote the vectors: two scores are
+      # comparable only under one model.
+      def score_line(score)
+        "#{score[:base]} · #{score[:model]} · #{score[:questions]} questions · " \
+          "recall@#{score[:k]} #{format("%.2f", score[:recall_at_k])} · " \
+          "nDCG@10 #{format("%.2f", score[:ndcg_at_10])} · #{score[:took_ms].round} ms"
+      end
+
+      def miss_line(missed)
+        "  missed: #{missed[:asks]} → wanted #{missed[:expects]}, got #{missed[:found].first || "nothing"}"
+      end
+
+      # A JSON list of `{ asks, expects }`, as a person writes it beside their own documents.
+      def golden_at(file, err:)
+        return err.puts("pinecall: there is no #{file}") && nil unless File.file?(file)
+
+        questions = JSON.parse(File.read(file), symbolize_names: true)
+        return err.puts("pinecall: #{file} holds no questions") && nil unless questions.is_a?(Array) && questions.any?
+
+        questions
+      rescue JSON::ParserError => e
+        err.puts("pinecall: #{file} is not JSON: #{e.message}") && nil
+      end
+
+      def said_what_eval_needs(err)
+        err.puts("  knowledge eval takes GOLDEN and --base NAME, or reads both from the agent.rb here")
+        2
+      end
+
+      # `[DIR] [--base NAME] [--k N]`, in any order.
+      def parse(argv, with_k: false)
         words = argv.dup
         at = words.index("--base")
         base = at && words.slice!(at, 2)[1]
+        at = words.index("--k")
+        k = at && words.slice!(at, 2)[1].to_i
         dir = words.find { |word| !word.start_with?("-") }
-        [dir && File.expand_path(dir), base]
+        found = [dir && File.expand_path(dir), base]
+        with_k ? found + [k] : found
       end
 
       # Each file as the wire carries it: its path relative to DIR, and its text.
@@ -105,6 +161,10 @@ module Pinecall
                                        its `docs` says (or its slug) when nobody says otherwise
             list                       every base this org has pushed
             drop BASE                  drop one base
+            eval [GOLDEN] [--base NAME] [--k N]
+                                       every question of GOLDEN asked of the base, and recall@k
+                                       and nDCG@10 by code with no model. GOLDEN is
+                                       knowledge/golden.json beside agent.rb; exit 1 on a miss
         USAGE
         status
       end

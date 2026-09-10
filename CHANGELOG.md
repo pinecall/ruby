@@ -7,6 +7,11 @@ version number is the human's call.
 ## [Unreleased]
 
 ### Added
+- `pinecall knowledge eval [GOLDEN] [--base NAME] [--k N]`, and `client.knowledge.eval`: every
+  question of a golden asked of the base, and `recall@k` and `nDCG@10` printed — computed by code
+  with no model, so two runs answer the same numbers. Names every question it missed with what came
+  back instead and exits 1 when anything did, so a base can be held to its golden in CI. Clínica
+  Norte ships one. A base listing now names the embedder that wrote its vectors.
 
 - The package itself: `Pinecall::Agent` (config on the class, state on the instance, `tool` above
   the method, the comment as the docstring), the ERB view resolved as `views/<slug>.erb`,

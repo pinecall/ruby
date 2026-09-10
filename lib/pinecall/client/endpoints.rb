@@ -22,6 +22,8 @@ module Pinecall
       # `PUT` and `DELETE /v1/knowledge/{base}`: one knowledge base, pushed whole or dropped.
       def knowledge(base, name) = door(base, "/v1/knowledge/#{CGI.escape(name)}")
 
+      def knowledge_eval(base, name) = "#{knowledge(base, name)}/eval"
+
       # `GET` and `DELETE /v1/contacts/{contact}/memory`: what is remembered about one contact.
       def contact_memory(base, contact) = door(base, "/v1/contacts/#{CGI.escape(contact)}/memory")
 

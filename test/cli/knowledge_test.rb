@@ -79,7 +79,7 @@ class CLIKnowledgeTest < Minitest::Test
   end
 
   def test_list_prints_one_line_per_base
-    gateway("GET /v1/knowledge" => [200, { bases: [{ base: "clinica-norte", chunks: 7, pushed_at: 1_757_500_000.0 }] }])
+    gateway("GET /v1/knowledge" => [200, { bases: [{ base: "clinica-norte", chunks: 7, model: "BAAI/bge-m3", pushed_at: 1_757_500_000.0 }] }])
     status, out, = run_cli("knowledge", "list")
 
     assert_equal 0, status
@@ -102,4 +102,44 @@ class CLIKnowledgeTest < Minitest::Test
     assert_equal 2, status
     assert_includes err, "no key for"
   end
+  # A golden is the only thing that says the index missed a BETTER passage: the judge that runs on
+  # every call can only weigh what the model was given. runtime/docs/retrieval/spec.md.
+  def test_eval_prints_the_two_figures_and_the_embedder_that_wrote_the_vectors
+    gateway("POST /v1/knowledge/clinica/eval" => [200, {
+              base: "clinica", model: "BAAI/bge-m3", questions: 1, k: 4,
+              recall_at_k: 1.0, ndcg_at_10: 1.0, took_ms: 90.4, misses: []
+            }])
+    status, out, = run_cli("knowledge", "eval", a_golden, "--base", "clinica")
+
+    assert_equal 0, status
+    assert_equal "clinica · BAAI/bge-m3 · 1 questions · recall@4 1.00 · nDCG@10 1.00 · 90 ms\n", out
+  end
+
+  def test_eval_names_every_question_it_missed_and_exits_one
+    gateway("POST /v1/knowledge/clinica/eval" => [200, {
+              base: "clinica", model: "m", questions: 1, k: 4,
+              recall_at_k: 0.0, ndcg_at_10: 0.0, took_ms: 12.0,
+              misses: [{ asks: "¿cuánto cuesta?", expects: "tarifas.md",
+                         found: ["horarios.md › Horario"] }]
+            }])
+    status, out, = run_cli("knowledge", "eval", a_golden, "--base", "clinica")
+
+    assert_equal 1, status
+    assert_includes out, "missed: ¿cuánto cuesta? → wanted tarifas.md, got horarios.md › Horario"
+  end
+
+  def test_eval_says_where_it_looked_when_there_is_no_golden_there
+    status, _, err = run_cli("knowledge", "eval", "/nope/golden.json", "--base", "clinica")
+
+    assert_equal 2, status
+    assert_includes err, "there is no /nope/golden.json"
+  end
+
+  # One question, on disk, as a person writes it beside their own documents.
+  def a_golden
+    path = File.join(Dir.mktmpdir("pinecall-golden"), "golden.json")
+    File.write(path, JSON.generate([{ asks: "¿cuánto cuesta?", expects: "tarifas.md" }]))
+    path
+  end
+
 end

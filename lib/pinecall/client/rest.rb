@@ -21,6 +21,13 @@ module Pinecall
         ask(request, api_key:)
       end
 
+      def post(url, body, api_key:)
+        request = Net::HTTP::Post.new(URI.parse(url))
+        request["content-type"] = "application/json"
+        request.body = JSON.generate(body)
+        ask(request, api_key:)
+      end
+
       def delete(url, api_key:) = ask(Net::HTTP::Delete.new(URI.parse(url)), api_key:)
 
       # The answer's body as a Hash with symbol keys — nil when it has none — or `Refused`.

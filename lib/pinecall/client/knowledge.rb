@@ -27,6 +27,17 @@ module Pinecall
         Protocol::Validate.call!("KnowledgeList", answer, where: "knowledge list")[:bases]
       end
 
+      # Every question of a golden asked of the base. Answers the two figures the index is judged
+      # by — `recall_at_k` and `ndcg_at_10`, computed by code with no model — and every question
+      # it missed with what came back instead. A golden is fixed and the index is the variable.
+      def eval(base, questions, k: nil)
+        asked = { questions: }
+        asked[:k] = k unless k.nil?
+        body = Protocol::Validate.call!("KnowledgeGolden", asked, where: "knowledge golden")
+        answer = Rest.post(Endpoints.knowledge_eval(@url, base), body, api_key: @api_key)
+        Protocol::Validate.call!("KnowledgeScore", answer, where: "knowledge score")
+      end
+
       # Drop one base. An agent still naming it retrieves nothing until the next push.
       def drop(base)
         Rest.delete(Endpoints.knowledge(@url, base), api_key: @api_key)

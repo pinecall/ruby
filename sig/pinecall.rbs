@@ -246,6 +246,7 @@ module Pinecall
       def initialize: (url: String, api_key: String) -> void
       def push: (String, Array[{ path: String, text: String }]) -> Hash[Symbol, untyped]
       def bases: () -> Array[Hash[Symbol, untyped]]
+      def eval: (String, Array[Hash[Symbol, untyped]], ?k: Integer?) -> Hash[Symbol, untyped]
       def drop: (String) -> nil
     end
 
@@ -266,6 +267,7 @@ module Pinecall
     module Rest
       def self?.get: (String, api_key: String) -> Hash[Symbol, untyped]?
       def self?.put: (String, untyped, api_key: String) -> Hash[Symbol, untyped]?
+      def self?.post: (String, untyped, api_key: String) -> Hash[Symbol, untyped]?
       def self?.delete: (String, api_key: String) -> Hash[Symbol, untyped]?
     end
   end

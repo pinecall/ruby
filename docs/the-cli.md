@@ -7,7 +7,8 @@ pinecall <verb>
   run [file]                    the agent registered and answering
   ui [agent]                    the console on 127.0.0.1: calls, sessions, evals, and a page to talk
   whoami                        which gateway, and where this key came from
-  knowledge push|list|drop      a folder of Markdown as a base the agent retrieves from
+  knowledge push|list|drop|eval a folder of Markdown as a base the agent retrieves from,
+                                and a golden that says how well it answers
   memory [forget] CONTACT       what is remembered about a contact, and forgetting it
   keys add|rm|list VENDOR       the provider keys this org brought of its own
   version
@@ -70,6 +71,9 @@ pinecall knowledge push ./knowledge/docs --base clinica-norte
 pinecall knowledge list
 # clinica-norte · 14 chunks · pushed 2026-09-10 10:26
 pinecall knowledge drop clinica-norte
+
+pinecall knowledge eval                                   # knowledge/golden.json beside agent.rb
+# clinica-norte · pplx-embed-context-v1-0.6b · 7 questions · recall@4 1.00 · nDCG@10 0.89 · 918 ms
 ```
 
 | | |
@@ -78,6 +82,7 @@ pinecall knowledge drop clinica-norte
 | defaults | DIR is `knowledge/docs` beside the `agent.rb` here; NAME is what that agent's `docs` says, or its slug |
 | `list` | every base this org has pushed: name, chunks, when |
 | `drop BASE` | the base is gone; an agent still naming it retrieves nothing until the next push |
+| `eval [GOLDEN] [--base NAME] [--k N]` | every question of a golden asked of the base, and `recall@k` and `nDCG@10` — computed by code with no model, so two runs answer the same numbers. Prints every question it missed with what came back instead, and **exits 1** when anything did, so a base can be held to its golden in CI. GOLDEN is `knowledge/golden.json` beside the `agent.rb` here: a JSON list of `{ "asks", "expects" }`, where `expects` is the heading path the answer should carry. A golden is fixed and the index is the variable |
 
 A refusal is printed as the gateway wrote it — `pinecall: 503: this gateway keeps no knowledge:
 it runs on a dev key` — and the verb exits 1.
