@@ -60,12 +60,13 @@ lib/pinecall/
   client/rest.rb             one JSON request at a REST door, and the refusal as the gateway wrote it
   client/knowledge.rb        the org's knowledge bases: push one whole, list them, drop one
   client/contact_memory.rb   what is remembered about one contact, and the right to be forgotten
-  client/memory.rb           the golden recall is held to; it names no contact, by design
+  client/memory.rb           the two goldens memory is held to, read and write; neither names a contact
   client/provider_keys.rb    the provider keys this org brought of its own: add, remove, name them
   client/endpoints.rb        one base URL, ten doors
   cli.rb  cli/env.rb         `pinecall <verb>`, and where the key comes from
   cli/knowledge.rb           `pinecall knowledge push | list | drop`
   cli/memory.rb              `pinecall memory CONTACT`, `forget`, and `eval`
+  cli/remember.rb            `pinecall remember`: the goldens memory.remember is held to
   cli/keys.rb                `pinecall keys add | rm | list`, the key read off stdin
   ui.rb                      `pinecall ui`: serve, open, wait, close
   ui/server.rb               the loopback, the nonce, the console's files, and the forwarded doors

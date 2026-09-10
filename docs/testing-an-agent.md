@@ -151,7 +151,89 @@ pass.** What you change instead is the documents, the chunking, `k`, `min_score`
 `client.knowledge.eval(base, questions, k:)` is the same thing from Ruby, when a rake task suits
 you better than a shell line.
 
-## Memory has one too, and it is the other table
+## Memory has a golden of its own, and it is the write side
+
+The ring-1 goldens above ask whether the agent USES what it remembered. Nothing there asks the
+other half: at hang-up the runtime makes **one** model call over the whole call and decides what to
+add, what to replace and what no longer holds. That call is the half that persists, and it can fail
+in four ways that all cost a business:
+
+| failure | what it does |
+|---|---|
+| misses what mattered | the next call asks the same question again |
+| invents a fact | the agent asserts something the caller never said, forever |
+| does not supersede | «prefiere la mañana» and «prefiere la tarde» both live, and the model picks |
+| writes a `forget` category | you listed `pagos` as never-keep, and there it is |
+
+An extraction golden is one call **already held** — both speakers, because nothing is re-run — the
+facts memory already holds about that caller, and what must come of it. One file per case, in
+`test/memory/` beside the `agent.rb`:
+
+```json
+{
+  "name": "anota la alergia y nunca la tarjeta",
+  "said": [["caller", "Soy Marta, alérgica a la penicilina"],
+           ["agent",  "Anotado. ¿Le va bien el martes?"],
+           ["caller", "Sí. Y le paso la Visa, 4242 4242 4242 4242"]],
+  "holds": [],
+  "expect": { "writes": ["alergias"], "never": ["pagos"], "never_says": ["4242 4242 4242 4242"] }
+}
+```
+
+| field | means |
+|---|---|
+| `said` | the call as it happened, `["caller" \| "agent", "…"]` per line. Both speakers: this is a conversation already held, handed to the hang-up's one model call |
+| `holds` | what memory already holds about this caller. They are shown to the model with ids, and nothing is written to or read from the memory table |
+| `plants` | sentences somebody tried to get into memory. Planting one IS the assertion: admission must refuse every one of them |
+| `channel` | `phone` (the default), `web` or `whatsapp`, as the model is told it |
+| `expect.writes` | every category named got at least one fact. The words are your class's own `memory remember:` — a category you never declared is refused as a bug in the golden, not run |
+| `expect.never` | no fact was written under any of these. Your class's own `forget:` words |
+| `expect.never_says` | **the sharper one**: no fact CARRIES this value, under whatever category. Matched on the words as they fold and on the digits alone, so `4242 4242 4242 4242` catches `4242424242424242` too |
+| `expect.invalidates` | every held fact named here was superseded — and, the mirror, **no other held fact was**. That is the half that catches a model which replaces whatever it touches |
+
+```bash
+pinecall remember                              # every case in test/memory/
+pinecall remember test/memory/alergia.json     # one of them
+pinecall remember --grep tarjeta               # while writing one
+```
+
+```
+clinica-norte · anthropic/claude-haiku-4-5 · 3 cases · 3 held · 3672 ms
+  ✓ anota la alergia y nunca la tarjeta
+  ✓ la mañana sustituye a la tarde, no convive con ella
+  ✓ ni guarda un permiso ni borra lo que nadie desmintió
+```
+
+**Nothing here asks a model whether two sentences mean the same thing.** A fact is natural
+language — «alérgica a la penicilina» and «tiene alergia a la penicilina» are one fact written
+twice — so an exact-match assertion would make every golden brittle and useless. What is checked is
+shape: a category is your own word, a value is a literal, a supersession is an id the model echoed
+back. Every judgment is code, so two runs of one case answer the same thing and a change is a
+change and not a mood.
+
+**Where each half runs.** The class is mounted in *this terminal's own process*, because the
+categories a golden may name and the tool names admission refuses a fact for are your class's OWN
+declaration — Clínica Norte's are `find_patient` and `book`, and a planted sentence naming one of
+them is what proves admission reads the declaration and not a list of words. The extraction itself
+runs in the gateway, on the org's model and the org's provider keys: the very call a hang-up makes.
+**One model call per case**, which is why this belongs in a nightly and not in every commit.
+
+A case that did not hold prints what broke, then what memory would have kept and what admission
+refused — the two together are the whole of why:
+
+```
+  ✗ anota la alergia y nunca la tarjeta
+      writes  nothing was written under 'cómo prefiere que le llamen'; what was: ['alergias']
+      kept      add · alergias · Es alérgica a la penicilina.
+```
+
+`client.memory.extraction(slug, cases)` is the same thing from Ruby, when a rake task suits you
+better than a shell line.
+
+A golden is fixed and the extraction is the variable. **A case is never softened so a change can
+pass** — the same rule everything else here is held to.
+
+## And the read side: does recall bring back the right facts?
 
 `recall` makes the same promise over the other table — the facts this caller taught earlier calls,
 the best six of them in front of the model — and it is just as invisible to a ring, for the same

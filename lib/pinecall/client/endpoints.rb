@@ -31,6 +31,10 @@ module Pinecall
       # purpose — every question brings the facts of its own.
       def memory_eval(base) = door(base, "/v1/contacts/memory/eval")
 
+      # `POST /v1/agents/{slug}/memory/extraction`: the goldens the write side is held to. It names
+      # an agent because the class's own declaration is the vocabulary a case may use.
+      def extraction(base, agent) = door(base, "/v1/agents/#{CGI.escape(agent)}/memory/extraction")
+
       # `GET /v1/provider-keys`: which vendors this org brought its own key for, by name.
       def provider_keys(base) = door(base, "/v1/provider-keys")
 

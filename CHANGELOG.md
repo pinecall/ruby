@@ -7,6 +7,19 @@ version number is the human's call.
 ## [Unreleased]
 
 ### Added
+- **`pinecall remember [PATHS]`**, and `client.memory.extraction(slug, cases)` — the goldens
+  `memory remember:` is held to, which is the write side and the half that persists. A case is one
+  call already held (both speakers, in `said`), the facts memory already holds (`holds`), and what
+  must come of the hang-up's one model call: which categories got a fact (`writes`), which never
+  did (`never`), which values must not survive in any fact's text (`never_says`), and which held
+  facts the call contradicted (`invalidates`) — its mirror included, so a model that supersedes
+  whatever it touches is caught too. A case may `plants` sentences somebody tried to get into
+  memory, and planting one IS the assertion that admission refuses it. Nothing asks a model whether
+  two sentences mean the same thing: a category is your own word, a value is a literal, a
+  supersession is an id. The class is mounted in this terminal, because the categories a case may
+  name and the tool names admission refuses a fact for are the class's own declaration; the one
+  model call per case runs in the gateway on the org's keys. Exits 1 when a case did not hold.
+  `test/memory` beside the `agent.rb` by default; Clínica Norte ships three.
 - `pinecall memory eval [GOLDEN] [--k N]`, and `client.memory.eval`: the other table's golden.
   A list of `{ "holds", "asks", "expects" }` — what memory holds about a question's contact, what
   the caller said, and the fact or facts that should come back — asked of `recall`, and `recall@k`

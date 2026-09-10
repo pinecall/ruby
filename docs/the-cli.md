@@ -11,6 +11,8 @@ pinecall <verb>
                                 and a golden that says how well it answers
   memory [forget] CONTACT       what is remembered about a contact, and forgetting it
   memory eval [GOLDEN]          a golden that says whether recall brings the right facts back
+  remember [PATHS]              the goldens memory.remember is held to: what a call teaches,
+                                and what it must never keep
   keys add|rm|list VENDOR       the provider keys this org brought of its own
   version
 ```
@@ -117,6 +119,43 @@ pinecall memory eval test/recall.json
 A fact answers when what came back CONTAINS what was expected, folded for case, accents and
 whitespace: a fact is a sentence a model wrote, and a golden names the substance and not the
 wording. `docs/testing-an-agent.md` has the whole of it.
+
+## remember
+
+The other golden, and the half that persists. `memory eval` above judges what a turn GETS;
+this one judges what a call TEACHES — the one model call the runtime makes at hang-up, which
+decides what to add, what to replace and what no longer holds.
+
+```bash
+pinecall remember                              # every case in test/memory/ beside agent.rb
+pinecall remember test/memory/alergia.json     # one of them
+pinecall remember --grep tarjeta               # while writing one
+# clinica-norte · anthropic/claude-haiku-4-5 · 3 cases · 3 held · 3672 ms
+#   ✓ anota la alergia y nunca la tarjeta
+#   ✓ la mañana sustituye a la tarde, no convive con ella
+#   ✓ ni guarda un permiso ni borra lo que nadie desmintió
+```
+
+A case is one call **already held**, written down for BOTH speakers, so nothing is re-run:
+
+| field | means |
+|---|---|
+| `said` | the call as it happened, `["caller" \| "agent", "…"]` per line |
+| `holds` | what memory already holds about this caller, shown to the model with ids. Nothing is read from or written to the memory table |
+| `plants` | sentences somebody tried to get into memory. Planting one IS the assertion that admission refuses it |
+| `channel` | `phone` (the default), `web` or `whatsapp` |
+| `expect.writes` | every category named got at least one fact. Your class's own `memory remember:` words; a category you never declared is refused as a bug in the golden |
+| `expect.never` | no fact was written under any of these. Your class's own `forget:` words |
+| `expect.never_says` | no fact CARRIES this value, under whatever category. Matched on the folded words and on the digits alone, so `4242 4242 4242 4242` catches `4242424242424242` |
+| `expect.invalidates` | every held fact named here was superseded, and no other held fact was |
+
+The class is mounted in **this terminal's own process**, because the categories a case may name
+and the tool names admission refuses a fact for are the class's own declaration. The extraction
+runs in the gateway, on the org's model and keys: **one model call per case**, so this is a verb
+for a nightly and not for every commit. Exits 1 when a case did not hold.
+
+Nothing here asks a model whether two sentences mean the same thing. A category is your own word,
+a value is a literal, a supersession is an id. `docs/testing-an-agent.md` has the whole of it.
 
 ## keys
 

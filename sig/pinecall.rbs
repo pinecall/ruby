@@ -261,6 +261,7 @@ module Pinecall
     class Memory
       def initialize: (url: String, api_key: String) -> void
       def eval: (Array[Hash[Symbol, untyped]], ?k: Integer?) -> Hash[Symbol, untyped]
+      def extraction: (String, Array[Hash[Symbol, untyped]]) -> Hash[Symbol, untyped]
     end
 
     class ProviderKeys
@@ -342,6 +343,23 @@ module Pinecall
     module Memory
       DEFAULT_GOLDEN: String
       def self?.run: (Array[String], input: IO, out: IO, err: IO) -> Integer
+    end
+
+    module Remember
+      HELD: String
+      BROKEN: String
+      DEFAULT_CASES: String
+      def self?.run: (Array[String], out: IO, err: IO) -> Integer
+      def self?.held_to_the_goldens: (untyped, Array[Hash[Symbol, untyped]], out: IO, err: IO) -> Integer
+      def self?.lines_of: (Hash[Symbol, untyped]) -> Array[String]
+      def self?.case_lines: (Hash[Symbol, untyped]) -> Array[String]
+      def self?.cases_in: (Array[String], untyped, String?, err: IO) -> Array[Hash[Symbol, untyped]]?
+      def self?.beside: (untyped) -> String
+      def self?.files_under: (String) -> Array[String]
+      def self?.cases_of: (String) -> Array[Hash[Symbol, untyped]]
+      def self?.no_cases: (Array[String]) -> String
+      def self?.parse: (Array[String]) -> [Array[String], String?, String?]
+      def self?.usage: (IO) -> Integer
     end
 
     module Keys
