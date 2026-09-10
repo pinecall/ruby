@@ -31,6 +31,7 @@ web true                  # a route with no number: that is what the widget is
 voice "carolina"          # a NAME. The platform resolves it to a vendor and an id
 llm "haiku"               # or "sonnet", "opus", or "openai/gpt-5.4-mini"
 language :es              # which of the framework's two word-sets the prompt carries
+greeting "Clínica Norte, buenos días."            # how the call opens: the words, as written
 says DKV: "de ka uve"     # how a word is said when the voice would read it wrong
 hears ["Clínica Norte"]   # what the ears must know before they hear it
 knowledge "./knowledge/clinica.md"                # the one file it knows by heart
@@ -40,6 +41,28 @@ memory remember: ["cómo prefiere que le llamen"], forget: ["pagos"]
 
 `voice` is a name and never an id. Sending an id is how a call once spent twenty seconds retrying
 `voice_id_does_not_exist` while the model apologised.
+
+### Opening the call
+
+An agent that answers a phone speaks first, and there are exactly two ways to do it:
+
+```ruby
+# the words, read out as written — no model runs, so it is the same sentence every time
+greeting "Clínica Norte, buenos días. ¿En qué puedo ayudarle?"
+
+# or: what the model reads before it finds its own words. The caller never hears this line
+greeting reply: "saluda, di que eres la recepción y pregunta en qué puedes ayudar"
+
+# a notice nobody may talk over
+greeting say: "Esta llamada será grabada.", allow_interruptions: false
+```
+
+Both at once, or neither, is refused when the class loads. Saying nothing at all is the third
+option: nobody speaks until the caller does.
+
+The opening is a `turn.agent` like any other — on the log, on the console, judged by ring 4. A
+golden never hears it, because a golden is one turn under the state it declares and that call is
+already underway. Mid-call the same two verbs are methods: `say "..."` and `reply "..."`.
 
 ### What it knows, what it reads, what it remembers
 

@@ -89,6 +89,67 @@ class ConfigTest < Minitest::Test
   end
 end
 
+# `greeting`: how the agent opens a call. Exactly one of the two verbs the wire already has —
+# the words themselves, or what the model reads before it finds its own.
+class GreetingDeclarationTest < Minitest::Test
+  def test_a_class_that_says_nothing_opens_with_nothing
+    klass = Class.new(Pinecall::Agent) { def self.name = "Muda" }
+
+    refute_includes klass.wire_config(tools: []), :greeting
+  end
+
+  def test_the_bare_string_form_is_the_words_said_as_written
+    klass = Class.new(Pinecall::Agent) do
+      def self.name = "Saluda"
+      greeting "Clínica Norte, buenos días."
+    end
+
+    assert_equal({ say: "Clínica Norte, buenos días." }, klass.wire_config(tools: [])[:greeting])
+  end
+
+  def test_an_improvised_opening_travels_as_the_instruction_the_caller_never_hears
+    said = "saluda, di que eres la recepción y pregunta en qué puedes ayudar"
+    klass = Class.new(Pinecall::Agent) do
+      def self.name = "Improvisa"
+      greeting reply: said
+    end
+
+    assert_equal({ reply: said }, klass.wire_config(tools: [])[:greeting])
+  end
+
+  def test_a_notice_nobody_may_talk_over_carries_the_flag
+    klass = Class.new(Pinecall::Agent) do
+      def self.name = "Aviso"
+      greeting say: "Esta llamada será grabada.", allow_interruptions: false
+    end
+
+    said = klass.wire_config(tools: [])[:greeting]
+    assert_equal({ say: "Esta llamada será grabada.", allow_interruptions: false }, said)
+  end
+
+  def test_both_verbs_at_once_is_a_class_that_has_not_decided
+    refused = assert_raises(Pinecall::DeclarationRefused) do
+      Class.new(Pinecall::Agent) do
+        def self.name = "LasDos"
+        greeting say: "Buenos días.", reply: "saluda"
+      end
+    end
+
+    assert_includes refused.message, "Both were declared — pick one."
+  end
+
+  def test_neither_verb_is_refused_with_the_same_sentence
+    refused = assert_raises(Pinecall::DeclarationRefused) do
+      Class.new(Pinecall::Agent) do
+        def self.name = "Ninguna"
+        greeting allow_interruptions: false
+      end
+    end
+
+    assert_includes refused.message, "Neither was — pick one."
+  end
+end
+
 # `hangup`: whether the model may end the call itself. The tool is livekit's own; declaring this is
 # what puts it in front of the model, and a class that says nothing cannot hang up at all.
 class HangupDeclarationTest < Minitest::Test

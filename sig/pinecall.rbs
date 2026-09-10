@@ -82,6 +82,7 @@ module Pinecall
     def self.knowledge_text: () -> String?
     def self.docs: (?String | Symbol, **untyped) -> Hash[Symbol, untyped]?
     def self.memory: (**untyped) -> Hash[Symbol, untyped]?
+    def self.greeting: (?String, **untyped) -> Hash[Symbol, untyped]?
     def self.hangup: (**untyped) -> Hash[Symbol, untyped]?
     def self.doc: (?String) -> String?
     def self.slug: (?String) -> String

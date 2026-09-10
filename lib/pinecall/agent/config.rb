@@ -107,6 +107,21 @@ module Pinecall
           config[:memory] = checked("MemoryConfig", said, "memory").freeze
         end
 
+        # How the agent opens a call, before the caller has said anything. Exactly one of the two,
+        # because there are only two ways to open one: the words themselves, or what the model
+        # reads before it finds its own. A class that says nothing here waits for the caller.
+        #
+        #     greeting "Clínica Norte, buenos días."
+        #     greeting reply: "saluda, di que eres la recepción y pregunta en qué puedes ayudar"
+        #     greeting say: "Esta llamada será grabada.", allow_interruptions: false
+        def greeting(words = NOTHING, **said)
+          return config[:greeting] if words.equal?(NOTHING) && said.empty?
+
+          said = said.merge(say: words.to_s) unless words.equal?(NOTHING)
+          refuse_unless_one_verb(said)
+          config[:greeting] = checked("GreetingConfig", said, "greeting").freeze
+        end
+
         # Whether the model may end the call itself, and when, in your own words. A class that says
         # nothing here cannot hang up: only the caller and a supervisor end a call. The tool is
         # livekit's own `end_call`, and it is hidden while the agent is greeting.
@@ -168,6 +183,7 @@ module Pinecall
           {
             prompt: Prompt::FRAMEWORK,
             language: config[:language]&.to_s,
+            greeting: config[:greeting],
             voice: voice_config,
             llm: model_config,
             says: pronunciations,
@@ -246,6 +262,17 @@ module Pinecall
           Protocol::Validate.call!(shape, said, where:)
         rescue Protocol::ProtocolError => e
           raise DeclarationRefused, e.message
+        end
+
+        # The same rule the runtime holds and the same sentence it refuses with: a greeting names
+        # one of the two verbs the wire already has, and a class that named both has not decided.
+        def refuse_unless_one_verb(said)
+          return if said.key?(:say) ^ said.key?(:reply)
+
+          raise DeclarationRefused,
+                "a greeting is one of two things: `say` the words, or `reply` what the model " \
+                "reads before it finds its own. " \
+                "#{said.key?(:say) ? 'Both were declared' : 'Neither was'} — pick one."
         end
 
         # A base is a name. A path or a glob is where the files were, which is what `pinecall

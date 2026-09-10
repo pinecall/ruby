@@ -7,6 +7,11 @@ version number is the human's call.
 ## [Unreleased]
 
 ### Added
+- **`greeting`**: how the class opens a call, without a hook to do it.
+  `greeting "Clínica Norte, buenos días."` is the words, read out as written;
+  `greeting reply: "saluda y preséntate"` is what the model is told before it finds its own, and
+  the caller never hears it. Exactly one of the two, refused at declaration when it is neither or
+  both. `greeting say: "...", allow_interruptions: false` is the notice nobody talks over.
 - **`hangup when: "..."`** on a class: the model may end the call itself, and you say in your own
   words when. The tool is livekit's own `end_call`, hidden while the agent is greeting, and the
   call's log gets `call.ended` with `agent_hung_up`. `hangup` alone is a declaration too, with the

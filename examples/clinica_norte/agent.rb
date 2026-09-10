@@ -16,6 +16,10 @@ class ClinicaNorte < Pinecall::Agent
   llm "haiku"
   language :es
 
+  # Quién abre la llamada y cómo: las palabras tal cual, porque una recepción dice siempre lo
+  # mismo al descolgar. La otra forma, `greeting reply: "..."`, deja que el modelo la encuentre.
+  greeting "Clínica Norte, buenos días. ¿En qué puedo ayudarle?"
+
   # Cómo se dice una palabra que la voz leería mal. DKV deletreado suena a error.
   says DKV: "de ka uve", TAC: "tac"
   # Lo que los oídos tienen que conocer antes de oírlo.
