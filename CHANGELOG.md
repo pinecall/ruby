@@ -12,12 +12,11 @@ version number is the human's call.
   the method, the comment as the docstring), the ERB view resolved as `views/<slug>.erb`,
   `Pinecall.mount`, `Pinecall::Client`, and `pinecall/testing` — the gateway that is not there,
   which is what a ring-0 suite mounts against.
-- The prompt as named blocks in two regions: `identity` · `knowledge` · `tools` (static, cached),
-  the history, `view` (dynamic). `prompt static: %i[faq], dynamic: %i[availability]` adds a
-  class's own, one template each at `views/<slug>/<name>.erb`; the bridge sends each block by
-  name and only when its text changed, and a static block that reads the state is refused at
-  render. `Pinecall.render` returns `Blocks` (`[:name]`, `static`, `dynamic`, `instructions`);
-  `pinecall prompt` prints one section per block. In a test, `call.block("availability")`.
+- The prompt as four named blocks in two regions: `identity` · `knowledge` · `tools` (static,
+  cached), the history, `view` (dynamic). The bridge sends each block by name and only when its
+  text changed. `Pinecall.render` returns `Blocks` (`[:name]`, `static`, `dynamic`,
+  `instructions`); `pinecall prompt` prints one section per block. In a test,
+  `call.block("knowledge")`.
 - `pinecall prompt`, `pinecall run` and `pinecall whoami`. `prompt` needs no gateway, no key and
   no network.
 - `pinecall-protocol`: Ruby's side of the wire, generated from the same JSON Schema as the Python
@@ -31,16 +30,21 @@ version number is the human's call.
   out that what is here is stale.
 - `examples/clinica_norte`: a whole agent, its view, and its own ring-0 suite.
 - What the agent knows, reads and remembers, on the wire. `knowledge "./knowledge/clinica.md"`
-  now sends the file whole (`{path, text}`) and is refused at load when the file is not beside
-  the class; `docs "clinica-norte"` (or `docs base:, mode:, k:, min_score:`) names the base the
-  `retrieved` marker searches, and a path or a glob is refused with the command that makes a
-  base; `memory remember:, forget:` travels as the wire's `MemoryConfig`, checked at load.
-- The marker payloads pinned: `memory kinds:, limit:` and `retrieved k:, min_score:`, snake_case
-  as typed. The example's view puts each under its heading, and asks for memory with a bare
-  `<%= memory %>`: a fact is filed under the word the class remembers it by, so a `kinds` naming
-  any other word is refused as the marker is written — `memory kinds: "preference" is not one of
-  the words this class remembers (cómo prefiere que le llamen, alergias, su médico habitual)` —
-  where before it matched nothing for ever while the recall looked like it worked.
+  is read beside the class, refused at load when the file is not there, and is the `knowledge`
+  block whole as well as the `{path, text}` of `agent.configure`; `docs "clinica-norte"` (or
+  `docs base:, mode:, k:, min_score:`) names the base and how to search it, and a path or a glob
+  is refused with the command that makes a base; `memory remember:, forget:` travels as the
+  wire's `MemoryConfig`, checked at load.
+- **A lookup is a tool result, never a piece of the prompt.** What memory kept from an earlier
+  call and what the knowledge base returned no longer travel through the view: the platform runs
+  its own `recall` and `search` tools and their answers reach the model as `tool_result` blocks,
+  JSON, in the history — which is where both vendors say content from outside the conversation
+  belongs (`runtime/docs/security/prompt-injection.md`). So a view is now the tenant's own prose
+  and conditions and nothing else: the `memory`, `retrieved` and `knowledge` template tags are
+  gone, and so are the tenant-declared blocks (`prompt static:`/`dynamic:`) and the render props
+  that came with them. What a view may still do with memory is ask it a question —
+  `remembers?("médico habitual")`, answered by the runtime — and say a sentence of its own about
+  the answer. `k` and `min_score` are declared once, on `docs`.
 - `pinecall keys add VENDOR` · `rm VENDOR` · `list`: the org brings its own provider key for a
   vendor on its own API key, with no operator in it. The key is read from stdin — typed with
   nothing echoed on a terminal, one piped line off one — and never from a flag, because argv

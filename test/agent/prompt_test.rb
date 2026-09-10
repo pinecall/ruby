@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-# The prompt: named blocks in two regions, in one order, and only the dynamic ones may move.
+# The prompt: four named blocks in two regions, in one order, and only the view may move.
 class PromptTest < Minitest::Test
   # Eres la recepción de Clínica Norte.
   # Todo lo que dices se lee en voz alta.
@@ -16,13 +16,15 @@ class PromptTest < Minitest::Test
     state :slots, []
 
     view template: <<~ERB
-      <%= retrieved min_score: 0.4 %>
-
       <% if stage == :identify -%>
       Saluda y pide nombre y teléfono.
       <% end -%>
       <% if patient -%>
       Hablas con <%= patient %>.
+      <% end -%>
+
+      <% if remembers?("por la mañana") -%>
+      Ofrécele primero las horas de la mañana.
       <% end -%>
 
       <% if slots.any? -%>
@@ -46,25 +48,16 @@ class PromptTest < Minitest::Test
     end
   end
 
-  # Una tienda con un bloque cacheado y otro que sigue al estado.
-  class WithBlocks < Pinecall::Agent
-    state :slots, []
-    prompt static: %i[faq], dynamic: %i[availability]
-
-    view template: <<~ERB
-      <%= memory(kinds: %w[preference]) { |facts| facts.join(", ") } %>
-    ERB
-  end
-
   def setup
     @agent = Clinica.new.seal
   end
 
   def rendered = Pinecall.render(@agent)
 
-  def test_the_default_layout_is_the_framework_s_four_blocks_in_send_order
+  def test_the_layout_is_the_framework_s_four_blocks_in_send_order
     assert_equal %w[identity knowledge tools view], rendered.blocks.map(&:name)
     assert_equal %w[static static static dynamic], rendered.blocks.map(&:region)
+    assert_equal Pinecall::Prompt::FRAMEWORK, Clinica.wire_config[:prompt]
   end
 
   def test_the_static_blocks_joined_are_one_text_the_docstring_the_words_the_knowledge_the_tools
@@ -73,7 +66,7 @@ class PromptTest < Minitest::Test
       @agent.doc,
       "<rules>\n#{words[:rules]}\n</rules>",
       "<protocols>\n#{words[:protocols]}\n</protocols>",
-      "<!-- knowledge: ./knowledge/clinica.md -->",
+      rendered[:knowledge],
       "<tools>\n- find_patient: Busca al paciente.\n</tools>"
     ].join("\n\n")
 
@@ -89,8 +82,14 @@ class PromptTest < Minitest::Test
     refute_includes text, "find_patient"
   end
 
-  def test_the_knowledge_and_tools_blocks_are_each_one_thing
-    assert_equal "<!-- knowledge: ./knowledge/clinica.md -->", rendered[:knowledge]
+  # The file the class knows by heart is the tenant's own words, so it goes in the cached prefix
+  # whole — never a line for somebody else to fill in, and never a tool result.
+  def test_the_knowledge_block_is_the_file_beside_the_class_read_whole
+    assert_equal File.read(File.expand_path("knowledge/clinica.md", __dir__)).strip, rendered[:knowledge]
+    assert_includes rendered[:knowledge], "Lo que el agente de la suite sabe del centro"
+  end
+
+  def test_the_tools_block_is_every_tool_the_class_declares
     assert_includes rendered[:tools], "- find_patient: Busca al paciente."
   end
 
@@ -110,9 +109,21 @@ class PromptTest < Minitest::Test
     refute_includes rendered[:view], "Saluda"
   end
 
-  def test_a_class_configured_with_memory_gets_the_marker_even_if_its_view_never_asks
-    assert_includes rendered[:view], "<!-- memory: {} -->"
-    assert_includes rendered[:view], %(<!-- retrieved: {"min_score":0.4} -->)
+  # Nothing that arrived from outside the conversation is ever spliced into a block: a fact and a
+  # chunk reach the model as a tool result, in the history, and the prompt stays the operator's.
+  def test_no_block_of_the_prompt_carries_anything_a_lookup_returned
+    Pinecall::Agent::Author.with("the test") { @agent.slots = ["martes 10:00"] }
+    page = Pinecall.render(@agent, remembered: ["le gusta por la mañana"])
+
+    assert_empty page.blocks.map(&:text).select { |text| text.include?("<!--") }
+    refute_includes page.instructions, "le gusta por la mañana"
+    refute_includes page[:view], "le gusta por la mañana"
+  end
+
+  def test_what_the_agent_remembers_reaches_the_view_as_a_question_it_may_ask
+    assert_includes Pinecall.render(@agent, remembered: ["le gusta por la mañana"])[:view],
+                    "Ofrécele primero las horas de la mañana."
+    refute_includes rendered[:view], "Ofrécele primero"
   end
 
   def test_the_view_reads_what_surrounds_the_call_and_not_only_the_state
@@ -135,27 +146,6 @@ class PromptTest < Minitest::Test
     assert_includes rendered.history, "<!-- collapsed:"
   end
 
-  def test_a_render_prop_stays_behind_under_the_id_its_marker_carries
-    shaped = Class.new(Pinecall::Agent) do
-      doc "Un agente con memoria."
-      view template: <<~'ERB'
-        <%= memory(kinds: %w[preference]) { |facts| "Recuerda: #{facts.join(", ")}" } %>
-      ERB
-    end
-    prompt = Pinecall.render(shaped.new.seal)
-    id = JSON.parse(prompt[:view][/<!-- memory: (.*) -->/, 1])["fill"]
-
-    assert_equal "fill-1", id
-    assert_equal "Recuerda: le gusta por la mañana", prompt.fills.fill(id, ["le gusta por la mañana"])
-  end
-
-  def test_two_renders_never_share_the_registry_one_of_them_wrote
-    first = Pinecall.render(@agent)
-    second = Pinecall.render(@agent)
-
-    refute_same first.fills, second.fills
-  end
-
   def test_the_page_a_person_reads_names_every_block_and_the_history_between_the_regions
     page = Pinecall.show_prompt(@agent)
 
@@ -173,121 +163,9 @@ class PromptTest < Minitest::Test
     assert_includes Pinecall.render(english.new.seal)[:identity], "One question per turn"
   end
 
-  # ── the blocks a class declares ───────────────────────────────────────────
+  def test_a_class_with_no_view_beside_it_has_an_empty_dynamic_block
+    silent = Class.new(Pinecall::Agent) { doc "Una tienda sin vista." }
 
-  def test_a_class_s_own_blocks_go_after_the_framework_s_and_the_view_goes_last
-    assert_equal %w[identity knowledge tools faq availability view],
-                 Pinecall.render(WithBlocks.new.seal).blocks.map(&:name)
-    assert_equal WithBlocks.layout, WithBlocks.wire_config[:prompt]
-  end
-
-  def test_a_declared_block_is_its_template_beside_the_class_under_the_slug
-    agent = WithBlocks.new.seal
-    Pinecall::Agent::Author.with("the test") { agent.slots = ["martes 10:00"] }
-    prompt = Pinecall.render(agent)
-
-    assert_includes prompt[:faq], "¿Aparcamiento?"
-    assert_equal "## Horas libres\n\nmartes 10:00", prompt[:availability]
-  end
-
-  def test_the_blocks_of_one_prompt_share_one_registry_so_a_fill_id_is_never_used_twice
-    prompt = Pinecall.render(WithBlocks.new.seal)
-
-    assert prompt.fills.has?("fill-1")
-    refute prompt.fills.has?("fill-2")
-  end
-
-  def test_a_static_block_that_reads_the_state_is_refused_by_template_and_field
-    refused = assert_raises(Pinecall::StaticBlockReadsState) { Pinecall.render(ReadsState.new.seal) }
-
-    assert_equal "a static block cannot read the state: faq.erb reads slots", refused.message
-  end
-
-  def test_a_block_named_like_one_of_the_framework_s_is_refused_at_declaration
-    refused = assert_raises(Pinecall::DeclarationRefused) do
-      Class.new(Pinecall::Agent) { prompt static: %i[identity] }
-    end
-
-    assert_includes refused.message, "identity is one of the framework's own blocks"
-  end
-
-  def test_a_block_name_the_wire_would_not_take_is_refused_at_declaration
-    refused = assert_raises(Pinecall::DeclarationRefused) do
-      Class.new(Pinecall::Agent) { prompt dynamic: %i[Availability] }
-    end
-
-    assert_includes refused.message, "Availability"
-  end
-
-  def test_a_block_with_no_template_beside_the_class_is_refused_by_path
-    PromptTest.const_set(:NoTemplate, Class.new(Pinecall::Agent))
-    refused = assert_raises(Pinecall::DeclarationRefused) do
-      NoTemplate.class_eval { prompt static: %i[faq] }
-    end
-
-    assert_includes refused.message, "faq has no template: write"
-    assert_includes refused.message, "views/no-template/faq.erb"
-  ensure
-    PromptTest.send(:remove_const, :NoTemplate)
-  end
-
-  def test_a_block_declared_twice_is_refused_and_a_parent_s_declaration_counts
-    refused = assert_raises(Pinecall::DeclarationRefused) do
-      Class.new(WithBlocks) { prompt dynamic: %i[faq] }
-    end
-
-    assert_includes refused.message, "declares the block faq twice"
-  end
-
-  def test_a_class_with_no_file_has_nowhere_to_keep_a_block_and_is_told_so
-    refused = assert_raises(Pinecall::DeclarationRefused) do
-      Class.new(Pinecall::Agent) { prompt static: %i[faq] }
-    end
-
-    assert_includes refused.message, "no class file"
-  end
-
-  # Un hecho se archiva con la palabra con la que la clase dijo que lo recuerda, así que esas son
-  # las únicas que una vista puede pedirle a la memoria por su nombre. Una llamada real archivó
-  # `cómo prefiere que le llamen` mientras la vista pedía `preference`: el recuerdo volvió vacío
-  # para siempre, con toda la pinta de funcionar (2026-09-10). El marcador se escribe al renderizar,
-  # y ahí es donde se rechaza.
-  def test_a_memory_kind_the_class_never_said_it_remembers_is_refused_by_name
-    refused = assert_raises(Pinecall::DeclarationRefused) do
-      Pinecall.render(remembering(%(<%= memory kinds: %w[preference] %>)))
-    end
-
-    assert_equal 'memory kinds: "preference" is not one of the words this class remembers ' \
-                 "(cómo prefiere que le llamen, alergias)", refused.message
-  end
-
-  def test_a_memory_kind_the_class_does_remember_is_written_into_the_marker
-    prompt = Pinecall.render(remembering(%(<%= memory kinds: %w[alergias], limit: 3 %>)))
-
-    assert_equal %(<!-- memory: {"kinds":["alergias"],"limit":3} -->), prompt[:view]
-  end
-
-  def test_a_class_that_says_nothing_about_what_it_remembers_takes_any_kind
-    agent = Class.new(Pinecall::Agent) do
-      doc "Agenda que recuerda lo que al modelo le parezca."
-      view template: %(<%= memory kinds: %w[preference] %>)
-    end.new.seal
-
-    assert_equal %(<!-- memory: {"kinds":["preference"]} -->), Pinecall.render(agent)[:view]
-  end
-
-  # Una agenda que dice con qué palabras recuerda, y una vista que le pide algo a la memoria.
-  def remembering(template)
-    Class.new(Pinecall::Agent) do
-      doc "Agenda que dice con qué palabras recuerda."
-      memory remember: ["cómo prefiere que le llamen", "alergias"], forget: ["pagos"]
-      view template: template
-    end.new.seal
-  end
-
-  # Un bloque estático que pregunta por el estado: lo que la ley refusa.
-  class ReadsState < Pinecall::Agent
-    state :slots, []
-    prompt static: %i[faq]
+    assert_equal "", Pinecall.render(silent.new.seal)[:view]
   end
 end

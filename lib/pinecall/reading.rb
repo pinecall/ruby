@@ -8,8 +8,11 @@ module Pinecall
   # as sentences. So both are handed this: `s.slots.any?` and `s[:slots].any?` are the same
   # question, and a field nobody declared raises instead of quietly being nil.
   class Reading
-    def initialize(state)
+    # @param remembered [Array<String>] what the agent already knows about this caller, as the
+    #   runtime supplies it. A render nobody gave any answers no rather than guessing.
+    def initialize(state, remembered = [])
       @state = state
+      @remembered = remembered
     end
 
     # The state as the Hash it is: what the wire carries and what a golden compares against.
@@ -20,6 +23,14 @@ module Pinecall
     def key?(name) = @state.key?(name.to_sym)
 
     def fetch(name, *rest) = @state.fetch(name.to_sym, *rest)
+
+    # Whether the agent already knows something about this caller matching these words.
+    #
+    # A fact itself never travels through the prompt — it reaches the model as a tool result, in
+    # the history, where a model reads it as information and not as an instruction. What the view
+    # may do with one is BRANCH on it: knowing that this caller has a usual doctor is what decides
+    # which of the tenant's own sentences to say.
+    def remembers?(text) = @remembered.any? { |fact| fact.to_s.include?(text.to_s) }
 
     def respond_to_missing?(name, include_private = false)
       @state.key?(name) || super
@@ -32,42 +43,5 @@ module Pinecall
     end
 
     def inspect = "#<Pinecall::Reading #{@state.inspect}>"
-  end
-end
-
-module Pinecall
-  # What a static block is rendered against: a state that refuses every question, by name.
-  #
-  # A static block is sent once per call and cached by the provider, so a block that reads a
-  # field is a block whose text would move — the one thing the region promises it never does.
-  # The refusal names the template and the field, at render, which is where a person can see it.
-  class StaticReading
-    # Ruby probes an object for `to_ary`, `to_str` and their kind before treating it as one; those
-    # are not questions about the state and are answered the ordinary way.
-    A_CONVERSION = /\Ato_/
-
-    def initialize(template)
-      @template = template
-    end
-
-    def to_h = refuse("the state")
-
-    def [](name) = refuse(name)
-
-    def key?(name) = refuse(name)
-
-    def fetch(name, *) = refuse(name)
-
-    def respond_to_missing?(name, _include_private = false) = !name.to_s.match?(A_CONVERSION)
-
-    def method_missing(name, *)
-      respond_to_missing?(name) ? refuse(name) : super
-    end
-
-    def inspect = "#<Pinecall::StaticReading #{@template}>"
-
-    private
-
-    def refuse(field) = raise(StaticBlockReadsState.new(@template, field))
   end
 end

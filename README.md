@@ -14,7 +14,7 @@ class ClinicaNorte < Pinecall::Agent
   llm   "haiku"
 
   knowledge "./knowledge/clinica.md"   # one file, known by heart
-  docs "clinica-norte"                 # the base it answers from, pushed by name
+  docs base: "clinica-norte", k: 4     # the base it answers from, pushed by name
   memory remember: ["alergias"], forget: ["pagos"]
 
   stage :identify, :book
@@ -40,14 +40,12 @@ end
 `views/clinica-norte.erb`, beside it, is the prompt as a function of that state:
 
 ```erb
-## Lo que recordamos de este paciente
-<%= memory %>
-
-## De la base de conocimiento
-<%= retrieved k: 4 %>
-
 <% if stage == :identify -%>
 Saluda y pide nombre y teléfono. Nada más hasta identificar al paciente.
+<% end -%>
+
+<% if remembers?("médico habitual") -%>
+Ofrece primero las horas de su médico habitual.
 <% end -%>
 
 <% if slots.any? -%>
@@ -59,10 +57,15 @@ Saluda y pide nombre y teléfono. Nada más hasta identificar al paciente.
 <% end -%>
 ```
 
-The prompt is a list of named blocks in two regions: static ones before the history, cached by
-the provider — `identity`, `knowledge`, `tools` — and dynamic ones after it, replaced every turn —
-the `view`. A class adds its own with `prompt static: %i[faq], dynamic: %i[availability]`, one
-template each under `views/<slug>/`, and each block goes up by name only when its text changed.
+The prompt is four named blocks in two regions: static ones before the history, cached by the
+provider — `identity`, `knowledge`, `tools` — and one after it, replaced every turn: the `view`.
+Each goes up by name and only when its text changed.
+
+**Every word of it is yours.** What memory kept from an earlier call and what the knowledge base
+returned never travel through the prompt: the platform runs `recall` and `search` itself and their
+answers reach the model as **tool results**, JSON, in the history — where a model reads them as
+information and not as an instruction. A view asks memory a question, `remembers?("médico
+habitual")`, and says a sentence of its own about the answer.
 
 ## Five minutes
 

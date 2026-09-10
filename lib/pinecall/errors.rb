@@ -42,11 +42,4 @@ module Pinecall
   # The socket is not up, or it never came up. Not the same as the gateway refusing something.
   class NotConnected < Error
   end
-
-  # A static block asked the state a question. It is cached for the whole call, so it may not.
-  class StaticBlockReadsState < Error
-    def initialize(template, field)
-      super("a static block cannot read the state: #{template} reads #{field}")
-    end
-  end
 end

@@ -33,7 +33,7 @@ class ClinicaTest < Minitest::Test
     call = @gateway.call_started(from: "+34600123456")
     call.tool("free_slots", day: "martes")
 
-    assert_includes call.block("availability"), "el martes a las diez con la doctora Vidal"
+    assert_includes call.prompt, "el martes a las diez con la doctora Vidal"
     assert_includes call.tools, "propose"
   end
 
@@ -64,26 +64,22 @@ class ClinicaTest < Minitest::Test
     por_telefono = @gateway.call_started(id: "CA_tel", from: "+34600123456", channel: "phone")
     por_telefono.tool("free_slots", day: "martes")
 
-    assert_includes por_telefono.block("availability"), "Ofrece como máximo dos"
+    assert_includes por_telefono.prompt, "Ofrece como máximo dos"
 
     por_web = @gateway.call_started(id: "CA_web", from: "+34600123456", channel: "web")
     por_web.tool("free_slots", day: "martes")
 
-    assert_includes por_web.block("availability"), "Ofrécele la lista"
+    assert_includes por_web.prompt, "Ofrécele la lista"
   end
 
-  def test_las_horas_son_un_bloque_propio_que_solo_viaja_cuando_cambia_la_lista
+  def test_solo_la_vista_se_reenvia_cuando_se_mueve_el_estado
     call = @gateway.call_started(from: "+34600123456")
-
-    assert_nil call.block("availability")
-
     call.tool("free_slots", day: "martes")
-    call.tool("propose", chosen: "el martes a las diez")
-    enviados = call.commands.count { |sent| sent.type == "prompt.set" && sent.data[:name] == "availability" }
+    enviados = call.commands.select { |sent| sent.type == "prompt.set" }.map { |sent| sent.data[:name] }
 
-    assert_equal 1, enviados
-    assert_includes call.block("availability"), "## Horas libres, en orden"
-    refute_includes call.prompt, "Horas libres"
+    assert_equal 1, enviados.count("identity")
+    assert_equal 1, enviados.count("knowledge")
+    assert_operator enviados.count("view"), :>, 1
   end
 
   def test_la_declaracion_lleva_el_archivo_entero_la_base_y_lo_que_la_memoria_guarda
@@ -91,17 +87,28 @@ class ClinicaTest < Minitest::Test
 
     assert_equal "./knowledge/clinica.md", declared[:knowledge][:path]
     assert_includes declared[:knowledge][:text], "calle Mayor 14"
-    assert_equal({ base: "clinica-norte" }, declared[:docs])
+    assert_equal({ base: "clinica-norte", k: 4, min_score: 0.5 }, declared[:docs])
     assert_includes declared[:memory][:remember], "alergias"
     assert_equal ["pagos"], declared[:memory][:forget]
   end
 
-  def test_los_dos_marcadores_van_en_la_vista_cada_uno_bajo_su_titulo
+  # Lo que la memoria y la base devuelven llega como resultado de una herramienta, en el
+  # historial. Por el prompt no pasa: ni un hecho, ni un trozo, ni una línea del framework.
+  def test_la_vista_es_solo_lo_que_escribe_la_clinica
     call = @gateway.call_started(from: "+34600123456")
 
-    assert_includes call.prompt, %(## Lo que recordamos de este paciente\n<!-- memory: {} -->)
-    assert_includes call.prompt, %(## De la base de conocimiento\n<!-- retrieved: {"k":4,"min_score":0.5} -->)
-    refute_includes call.block("identity"), "<!-- memory:"
+    refute_includes call.prompt, "<!--"
+    assert_includes call.block("knowledge"), "calle Mayor 14"
+  end
+
+  # Lo que ya sabemos del paciente decide una frase nuestra; el hecho en sí no se imprime.
+  def test_lo_que_ya_sabemos_del_paciente_decide_una_frase_pero_no_se_lee_en_la_vista
+    call = @gateway.call_started(from: "+34600123456")
+    vista = Pinecall.render(@mounted.serving(call.id),
+                            remembered: ["su médico habitual: la doctora Vidal"])[:view]
+
+    assert_includes vista, "Ofrece primero las horas de su médico habitual."
+    refute_includes vista, "su médico habitual: la doctora Vidal"
   end
 
   def test_una_ruta_o_un_glob_no_es_una_base_y_se_rechaza_al_cargar

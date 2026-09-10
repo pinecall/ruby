@@ -23,9 +23,9 @@ class ClinicaNorte < Pinecall::Agent
 
   # Lo que sabe de memoria: un archivo, entero, en el prefijo estático de cada llamada.
   knowledge "./knowledge/clinica.md"
-  # De lo que responde: la base que se subió con `pinecall knowledge push`, por su nombre. La vista
-  # dice cuántos trozos y desde qué puntuación, en el marcador `retrieved`.
-  docs "clinica-norte"
+  # De lo que responde: la base que se subió con `pinecall knowledge push`, por su nombre. La
+  # plataforma la busca por su cuenta y lo que encuentra llega como resultado de una herramienta.
+  docs base: "clinica-norte", k: 4, min_score: 0.5
   # Lo que la memoria guarda de un paciente entre llamadas, con nuestras palabras, y lo que nunca.
   memory remember: ["cómo prefiere que le llamen", "alergias", "su médico habitual"],
          forget: ["pagos"]
@@ -41,10 +41,8 @@ class ClinicaNorte < Pinecall::Agent
   state :booking
   state(:identified) { !patient.nil? }
 
-  # La vista vive en views/clinica-norte.erb, al lado de este archivo. No hace falta nombrarla.
-  # Las horas libres son un bloque aparte, views/clinica-norte/availability.erb: dinámico, así
-  # que lee el estado, y solo se reenvía cuando free_slots cambia la lista.
-  prompt dynamic: %i[availability]
+  # La vista es views/clinica-norte.erb, al lado de este archivo: la convención, así que no hace
+  # falta nombrarla. Todo lo que dice lo escribe la clínica y nada más entra ahí.
 
   def on_call(call)
     self.patient = Agenda.por_telefono(call.from.to_s)

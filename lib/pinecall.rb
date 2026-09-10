@@ -3,7 +3,7 @@
 # pinecall: the application's side of Pinecall, in Ruby.
 #
 # A class whose declared fields are the state, whose `tool` methods are the model's verbs, whose
-# comments are the prompt, and whose ERB views are the blocks of that prompt which change. It
+# comments are the prompt, and whose ERB view is the part of that prompt which changes. It
 # never imports the runtime, never speaks to a vendor, never sees audio: it sends commands and it
 # reads entries, both of them shapes `pinecall-protocol` generated from the one schema.
 #

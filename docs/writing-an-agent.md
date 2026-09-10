@@ -36,7 +36,6 @@ hears ["Clínica Norte"]   # what the ears must know before they hear it
 knowledge "./knowledge/clinica.md"                # the one file it knows by heart
 docs "clinica-norte"                              # the base it answers from, by name
 memory remember: ["cómo prefiere que le llamen"], forget: ["pagos"]
-prompt static: %i[faq], dynamic: %i[availability]   # blocks of your own, one template each
 ```
 
 `voice` is a name and never an id. Sending an id is how a call once spent twenty seconds retrying
@@ -48,21 +47,25 @@ Three declarations, three different things, and the runtime does the work for al
 
 | declared | what it is | where it lands |
 |---|---|---|
-| `knowledge "./knowledge/clinica.md"` | **one file, known by heart.** Read beside the class and sent whole, path and text | the `knowledge` block, static: the text goes where the marker is, once per call, so the cached prefix never moves |
-| `docs "clinica-norte"` | **a base it answers from**, by the name it was pushed under with `pinecall knowledge push` | the `retrieved` marker in the view, filled per turn with the chunks that match what the caller just said |
-| `memory remember: […], forget: […]` | **what to keep about a contact across calls**, in your own words — and what never to keep | the `memory` marker, filled per turn with the contact's facts; at hang-up one model call writes what this call taught |
+| `knowledge "./knowledge/clinica.md"` | **one file, known by heart.** Read beside the class and sent whole, path and text | the `knowledge` block, static: your own words in the cached prefix, once per call |
+| `docs "clinica-norte"` | **a base it answers from**, by the name it was pushed under with `pinecall knowledge push` | the platform's `search` tool: it runs at the end of the caller's turn and the chunks reach the model as a **tool result** |
+| `memory remember: […], forget: […]` | **what to keep about a contact across calls**, in your own words — and what never to keep | the platform's `recall` tool, the same way; at hang-up one model call writes what this call taught |
 
 `docs` takes keywords when the name is not enough: `docs base: "clinica-norte", mode: :retrieved,
-k: 4, min_score: 0.5`. The view's `retrieved k:, min_score:` override those per marker. A path
-or a glob in `docs` is refused, because a base is a name: the files are pushed first, and the
-name is what the agent says.
+k: 4, min_score: 0.5`. That declaration is where `k` and `min_score` live, because the view no
+longer asks for anything. A path or a glob in `docs` is refused, because a base is a name: the
+files are pushed first, and the name is what the agent says.
+
+**Neither a fact nor a chunk ever reaches the prompt.** Both arrive as a `tool_result`, JSON, in
+the history, where a model reads them as information rather than as an instruction — the rule, and
+the vendor guidance behind it, is `runtime/docs/security/prompt-injection.md`. What the view may do
+with memory is ask it a question: `remembers?("médico habitual")`, and then say a sentence of your
+own.
 
 `memory`'s words are yours — `"alergias"`, `"su médico habitual"` — and become the categories the
-runtime extracts and files each fact under, so they are the only words the view may ask for:
-`<%= memory kinds: %w[alergias] %>`, and a bare `<%= memory %>` for everything the class keeps.
-`forget` names the ones it must never write, `"pagos"` say. The history of a
-contact, and the right to be forgotten, are `pinecall memory CONTACT` and `pinecall memory forget
-CONTACT`.
+runtime extracts and files each fact under. `forget` names the ones it must never write, `"pagos"`
+say. The history of a contact, and the right to be forgotten, are `pinecall memory CONTACT` and
+`pinecall memory forget CONTACT`.
 
 ## State: what it remembers
 
@@ -138,19 +141,13 @@ call, and never as a 1008 from a gateway:
 | `stage: :pay` where `stage` has no `:pay` | `pay is not one of this agent's stages (identify, book)` |
 | `stage:` on a class with no `stage` | `…declares none; add \`stage :identify, :book\`` |
 | `state :cart` twice | `declares cart twice` |
-| `prompt static: %i[identity]` | `identity is one of the framework's own blocks (identity, knowledge, tools, view)` |
-| `prompt static: %i[faq]` with no `views/<slug>/faq.erb` | `faq has no template: write …/views/<slug>/faq.erb` |
-| `prompt dynamic: %i[Availability]` | `"Availability" does not match ^[a-z][a-z0-9_]*$` |
 | `knowledge "./no.md"` with no such file | `knowledge names a file beside the class, and there is no …/no.md` |
 | `docs "./knowledge/docs/**/*.md"` | `docs name the base they were pushed to: run \`pinecall knowledge push ./knowledge/docs --base <slug>\`` |
 | `docs base: "x", top: 3` | `docs: DocsConfig has no field called top` |
 | `memory keep: […]` | `memory: MemoryConfig has no field called keep` |
 
-And two refused at render, because they are about what a template says and not what a class
-declares: a static block that reads a field — `a static block cannot read the state: faq.erb
-reads slots` — and a memory kind the class never said it remembers, which would have matched
-nothing for ever while the recall looked like it worked — `memory kinds: "preference" is not one
-of the words this class remembers (cómo prefiere que le llamen, alergias, su médico habitual)`.
+A view is the one thing read later, at render: a field the class never declared raises there, by
+name, the same way an undefined instance variable does in a Rails view.
 
 ## The hooks
 

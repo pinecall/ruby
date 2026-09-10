@@ -31,30 +31,12 @@ module Pinecall
   end
 
   class Reading
-    def initialize: (state) -> void
+    def initialize: (state, ?Array[String]) -> void
     def to_h: () -> state
     def []: (String | Symbol) -> untyped
     def key?: (String | Symbol) -> bool
     def fetch: (String | Symbol, *untyped) -> untyped
-  end
-
-  class Remembered
-    def initialize: (?Array[String]) -> void
-    def has?: (String) -> bool
-    def to_a: () -> Array[String]
-  end
-
-  class StaticBlockReadsState < Error
-    def initialize: (String, String | Symbol) -> void
-  end
-
-  class StaticReading
-    A_CONVERSION: Regexp
-    def initialize: (String) -> void
-    def to_h: () -> bot
-    def []: (String | Symbol) -> bot
-    def key?: (String | Symbol) -> bot
-    def fetch: (String | Symbol, *untyped) -> bot
+    def remembers?: (String) -> bool
   end
 
   type block_spec = { name: String, region: String }
@@ -68,7 +50,6 @@ module Pinecall
   class Blocks
     attr_reader blocks: Array[Block]
     attr_reader history: String
-    attr_reader fills: View::Fills
     def []: (String | Symbol) -> String?
     def static: () -> Array[Block]
     def dynamic: () -> Array[Block]
@@ -76,24 +57,12 @@ module Pinecall
   end
 
   class View
-    def self.marker: (String, String) -> String
-    def self.beside: (String, String, ?block: String?) -> String
+    def self.beside: (String, String) -> String
     def self.file: (String) -> View
     def self.inline: (String, ?String) -> View
     attr_reader path: String
-    def render: (Reading | StaticReading, ?fills: Fills, ?remembers: Array[String]) -> Rendered
-
-    class Rendered
-      attr_reader text: String
-      attr_reader fills: Fills
-    end
-
-    class Fills
-      def keep: () { (untyped) -> untyped } -> String
-      def fill: (String, untyped) -> String
-      def has?: (String) -> bool
-      def empty?: () -> bool
-    end
+    def render: (Reading) -> String
+    def tidy: (String) -> String
   end
 
   class Agent
@@ -110,6 +79,7 @@ module Pinecall
     def self.hears: (?Array[String]) -> untyped
     def self.knowledge: (?String) -> String?
     def self.knowledge_file: () -> String?
+    def self.knowledge_text: () -> String?
     def self.docs: (?String | Symbol, **untyped) -> Hash[Symbol, untyped]?
     def self.memory: (**untyped) -> Hash[Symbol, untyped]?
     def self.doc: (?String) -> String?
@@ -129,10 +99,8 @@ module Pinecall
     def self.declared_tools: () -> Hash[Symbol, untyped]
     def self.tool_named: (String | Symbol) -> untyped
     def self.view: (?String?, ?template: String?) -> View?
-    def self.prompt: (?static: Array[Symbol | String], ?dynamic: Array[Symbol | String]) -> Array[block_spec]
-    def self.layout: () -> Array[block_spec]
-    def self.block_view: (String) -> View
-    def self.declared_blocks: () -> Hash[String, { region: String, view: View }]
+    def self.beside_this_file: (String) -> String
+    def self.source_file: () -> String?
 
     def doc: () -> String?
     def tools: () -> Array[spec]
@@ -304,11 +272,12 @@ module Pinecall
 
   module Prompt
     FRAMEWORK: Array[block_spec]
-    def self?.render: (Agent, ?resumed: bool, ?memory: Remembered?, ?line: line?) -> Blocks
+    def self?.render: (Agent, ?resumed: bool, ?remembered: Array[String], ?line: line?) -> Blocks
     def self?.identity: (Agent) -> String
     def self?.knowledge: (Agent) -> String
     def self?.tools: (Agent) -> String
     def self?.history: (Agent) -> String
+    def self?.collapsed: (Integer) -> String
     def self?.show: (Agent, **untyped) -> String
     def self?.header_for: (Symbol | String, ?String?) -> String
   end

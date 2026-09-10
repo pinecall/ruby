@@ -58,9 +58,12 @@ When a doc and the code disagree, the code is what happened and the doc is the b
 - **A declaration is refused at load, never at the first call.** No docstring, a positional
   argument, a stage the class never declared, `pii:` naming a parameter that is not there.
 - **Only the block whose text changed is sent again**, by name. A static block goes up once per call.
-- **The prompt is a list of named blocks in two regions, in this order:** static blocks (cached) ·
-  append-only history · dynamic blocks (replaced every turn). Never reorder. The framework's four
-  are `identity` · `knowledge` · `tools` · `view`; a class adds its own with `prompt`.
+- **The prompt is four named blocks in two regions, in this order:** `identity` · `knowledge` ·
+  `tools` (static, cached) · the append-only history · `view` (dynamic, replaced every turn).
+  Never reorder, and the dynamic region is the view and nothing else.
+- **Every block is the tenant's own words.** What memory kept and what the knowledge base returned
+  never enter the prompt: the platform runs `recall` and `search` and their answers reach the model
+  as tool results, in the history. A view may ask `remembers?("…")`; it may never print a fact.
 - **A static block cannot read the state.** It is rendered against a reading that refuses by name.
 - **Nothing here imports LiveKit, a model vendor, or the runtime.** Commands out, entries in.
 - **`console/` is generated and nothing else in this gem is.** It is the TypeScript package's
@@ -86,8 +89,9 @@ When a doc and the code disagree, the code is what happened and the doc is the b
 - **A thread that waits for an entry must not be the thread that reads them.** `agent.register` is
   answered by an entry, so the declaration goes up on its own thread. That was a real deadlock and
   `test/client/socket_test.rb` is what found it.
-- **`memory` means two things** in a template if you let it. The tag writes the marker; what the
-  agent already knows about the caller reads as `remembered`.
+- **A view asks, it never prints.** `remembers?("médico habitual")` is the one thing a template
+  does with memory, and the runtime answers it. A fact reaches the model as a `recall` tool
+  result; splicing one into a block gives an earlier caller's words operator authority.
 - **A state default that is a literal `[]`** is duplicated per instance on purpose. If you change
   `opening`, check that two calls never share one list.
 - **zsh `noclobber`**: `cat > file` refuses to overwrite and leaves the old file in place. `>|`.

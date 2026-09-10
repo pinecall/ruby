@@ -42,7 +42,7 @@ every command the agent sent, and lets the test say what happened next.
 | you read | what it is |
 |---|---|
 | `call.prompt` | the `view` block as the agent last sent it: the last thing the model reads |
-| `call.block("availability")` | any block as the agent last sent it, by name. `nil` until it had something to say |
+| `call.block("knowledge")` | any of the four blocks as the agent last sent it, by name. `nil` until it had something to say |
 | `call.tools` | the tools the model may call right now, by name |
 | `call.state` | the state as the agent last said it |
 | `call.commands` | everything said on this call, in order |

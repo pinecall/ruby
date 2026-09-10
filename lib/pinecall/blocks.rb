@@ -4,9 +4,9 @@ module Pinecall
   # One named block of the prompt: which region it lives in, and its text right now.
   Block = Data.define(:name, :region, :text)
 
-  # The whole prompt of one render: every block in send order, the history between the two
-  # regions, and the render props the markers left behind.
-  Blocks = Data.define(:blocks, :history, :fills) do
+  # The whole prompt of one render: every block in send order, and the history between the two
+  # regions.
+  Blocks = Data.define(:blocks, :history) do
     # The text of one block, by name.
     def [](name) = blocks.find { |block| block.name == name.to_s }&.text
 
@@ -20,28 +20,15 @@ module Pinecall
     def instructions = static.map(&:text).reject(&:empty?).join("\n\n")
   end
 
-  # What the agent knows about this caller. The real one arrives with the memory card; a render
-  # that nobody gave one to answers no to everything rather than guessing.
-  class Remembered
-    def initialize(facts = [])
-      @facts = facts
-    end
-
-    # Whether the agent remembers something about this caller matching these words.
-    def has?(text) = @facts.any? { |fact| fact.to_s.include?(text.to_s) }
-
-    def to_a = @facts.dup
-  end
-
   # The prompt as named blocks in two regions, in the one order they are ever sent.
   #
-  # Static blocks go before the history and are what the provider caches; dynamic blocks go
-  # after it and are replaced every turn. Nothing may reorder them: the cut between the two is
-  # where the cache is cut, and a static block that reads the state is a block nobody is paying
-  # less for. The framework's own four — `identity`, `knowledge`, `tools` and `view` — are the
-  # layout when a class declares none; a class adds blocks of its own with `prompt`.
+  # Static blocks go before the history and are what the provider caches; the view goes after it
+  # and is replaced every turn. Nothing may reorder them: the cut between the two is where the
+  # cache is cut. Every one of them is the tenant's own words — the class docstring, the file it
+  # knows by heart, its tools' comments, its view — and nothing else is ever put in them: what a
+  # lookup returned reaches the model as a tool result, in the history.
   module Prompt
-    # The blocks every agent has, in send order: the layout of a class that adds none of its own.
+    # The blocks every agent has, in send order. There are four, the same four for everybody.
     FRAMEWORK = [
       { name: "identity", region: "static" }.freeze,
       { name: "knowledge", region: "static" }.freeze,
@@ -49,7 +36,7 @@ module Pinecall
       { name: "view", region: "dynamic" }.freeze
     ].freeze
 
-    # The macros a class declares its prompt with: the view, and the blocks of its own.
+    # The macro a class declares its view with.
     module Declaring
       # The view this class renders its `view` block with.
       #
@@ -67,38 +54,6 @@ module Pinecall
         return @view if defined?(@view)
 
         @view = view_of_this_class || (superclass.respond_to?(:view) ? superclass.view : nil)
-      end
-
-      # The blocks of this class's own, by region. Each one is `views/<slug>/<name>.erb` beside
-      # this file, read here, so a block with no template is refused at load.
-      #
-      #     prompt static: %i[faq], dynamic: %i[availability]
-      #
-      # A static block is rendered once per call and cached, so it may not read the state; a
-      # dynamic block is rendered on every change, after the history and before the view. The
-      # line reads `slug`, so a class that names its own slug does so above this line.
-      def prompt(static: [], dynamic: [])
-        { "static" => static, "dynamic" => dynamic }.each do |region, names|
-          names.each { |called| declare_block(called.to_s, region) }
-        end
-        layout
-      end
-
-      # Every block of this class in the order it is sent: the framework's static three, this
-      # class's static blocks, its dynamic ones, and the view last. What `agent.configure` carries.
-      def layout
-        framework_static, view = FRAMEWORK.partition { |spec| spec[:region] == "static" }
-        own = declared_blocks.map { |called, block| { name: called, region: block[:region] } }
-        static, dynamic = own.partition { |spec| spec[:region] == "static" }
-        framework_static + static + dynamic + view
-      end
-
-      # The template of one declared block, by name.
-      def block_view(called) = declared_blocks.fetch(called)[:view]
-
-      # The blocks this class declared, its parent's included, in declaration order.
-      def declared_blocks
-        @declared_blocks ||= superclass.respond_to?(:declared_blocks) ? superclass.declared_blocks.dup : {}
       end
 
       # `views/<slug>.erb` beside the file the class was written in.
@@ -122,51 +77,17 @@ module Pinecall
         found = name && Object.const_source_location(name)
         found&.first
       end
-
-      private
-
-      # One block, checked the way the gateway would check it and refused here instead: a name
-      # the wire would not take, one of the framework's own, one declared twice, one with no file.
-      def declare_block(called, region)
-        spec = Protocol::Validate.call!("PromptBlockSpec", { name: called, region: }, where: "prompt #{called}")
-        taken = FRAMEWORK.map { |spec| spec[:name] }
-        if taken.include?(called)
-          raise DeclarationRefused, "#{called} is one of the framework's own blocks " \
-                                    "(#{taken.join(", ")}); call yours something else"
-        end
-        if declared_blocks.key?(called)
-          raise DeclarationRefused, "#{name || "this agent"} declares the block #{called} twice"
-        end
-
-        declared_blocks[called] = { region: spec[:region], view: template_of_block(called) }
-      rescue Protocol::ProtocolError => e
-        raise DeclarationRefused, e.message
-      end
-
-      def template_of_block(called)
-        here = source_file
-        if here.nil?
-          raise DeclarationRefused, "a block is a file beside the class, and #{called} has no class file to be beside"
-        end
-
-        path = View.beside(here, slug, block: called)
-        raise DeclarationRefused, "#{called} has no template: write #{path}" unless File.exist?(path)
-
-        View.file(path)
-      end
     end
 
     module_function
 
     # The whole prompt of this agent right now, block by block, in send order.
-    def render(agent, resumed: false, memory: nil, line: nil)
-      fills = View::Fills.new
-      reading = reading_for(agent, resumed:, memory:, line:)
-      blocks = agent.class.layout.map do |spec|
-        Block.new(name: spec[:name], region: spec[:region],
-                  text: text_of(agent, spec[:name], spec[:region], reading, fills))
+    def render(agent, resumed: false, remembered: [], line: nil)
+      reading = reading_for(agent, resumed:, remembered:, line:)
+      blocks = FRAMEWORK.map do |spec|
+        Block.new(name: spec[:name], region: spec[:region], text: text_of(agent, spec[:name], reading))
       end
-      Blocks.new(blocks:, history: history(agent), fills:)
+      Blocks.new(blocks:, history: history(agent))
     end
 
     # The class docstring and the framework's own words: who the agent is, in every call.
@@ -176,11 +97,11 @@ module Pinecall
         .compact.reject { |part| part.strip.empty? }.join("\n\n")
     end
 
-    # The marker the gateway opens the knowledge file into, or nothing.
-    def knowledge(agent)
-      file = agent.class.knowledge
-      file ? View.marker("knowledge", file.to_s) : ""
-    end
+    # The one file the agent knows by heart, whole. It is a file the tenant writes and ships with
+    # the class, so it is the operator's own words and belongs with them, in the cached prefix.
+    # The day it stops being written by hand it belongs in a knowledge base instead, which is
+    # retrieved and reaches the model as a tool result.
+    def knowledge(agent) = agent.class.knowledge_text.to_s.strip
 
     # Every tool the class declares, visible right now or not: the model reads the docstring, and
     # the schema is what the wire carries.
@@ -193,33 +114,23 @@ module Pinecall
     # summaries a `collapse` left where a stretch of the call used to be.
     def history(agent)
       agent.changes.select { |change| change.field == "@summary" }
-           .map { |change| "#{View.marker("collapsed", JSON.generate({ seq: change.seq }))}\n#{change.next}" }
+           .map { |change| "#{collapsed(change.seq)}\n#{change.next}" }
            .join("\n\n")
     end
 
-    # The view: the memory marker and whatever the template says about now.
-    def view(agent, reading, fills)
+    # Where a stretch of the call used to be. The one line this package writes that is not prose.
+    def collapsed(seq) = "<!-- collapsed: #{JSON.generate({ seq: })} -->"
+
+    # The view: what the template says about now, and nothing else.
+    def view(agent, reading)
       view = agent.class.view
-      return "" if view.nil?
-
-      text = view.render(reading, fills:, remembers: remembers(agent)).text
-      return text unless agent.class.memory && !text.include?("<!-- memory:")
-
-      # A view that asks for memory itself decides where it goes; one that does not still gets it,
-      # because a class configured with `memory` expects the caller to be remembered.
-      [View.marker("memory", "{}"), text].reject(&:empty?).join("\n\n")
+      view.nil? ? "" : view.render(reading)
     end
 
-    # What a view is called with: the state and its derived fields, plus what surrounds the call.
-    #
-    # What the agent already knows about this caller reads as `remembered` and not as `memory`,
-    # because in a template `memory` is the tag that writes the marker. One word, one meaning.
-    def reading_for(agent, resumed: false, memory: nil, line: nil)
-      Reading.new(agent.snapshot.merge(
-                    remembered: memory || Remembered.new,
-                    resumed:,
-                    call: line || { channel: "web" }
-                  ))
+    # What a view is called with: the state and its derived fields, what surrounds the call, and
+    # what the agent already knows about this caller — which it may ask about, never print.
+    def reading_for(agent, resumed: false, remembered: [], line: nil)
+      Reading.new(agent.snapshot.merge(resumed:, call: line || { channel: "web" }), remembered)
     end
 
     # The header a section of the printed page carries. One definition, so every page is ruled
@@ -236,24 +147,15 @@ module Pinecall
       sections.map { |header, text| "#{header}\n#{text}".rstrip }.join("\n\n")
     end
 
-    # The text of one block: the framework's four by what they are, the class's own by its
-    # template — against the state when dynamic, against a reading that refuses when static.
-    def text_of(agent, called, region, reading, fills)
+    # The text of one block, by what that block is.
+    def text_of(agent, called, reading)
       case called
       when "identity" then identity(agent)
       when "knowledge" then knowledge(agent)
       when "tools" then tools(agent)
-      when "view" then view(agent, reading, fills)
-      else
-        template = agent.class.block_view(called)
-        read = region == "static" ? StaticReading.new(File.basename(template.path)) : reading
-        template.render(read, fills:, remembers: remembers(agent)).text
+      when "view" then view(agent, reading)
       end
     end
-
-    # The words a class said it remembers about a caller: the only categories a template may ask
-    # the memory for by name, and none at all for a class that said nothing about it.
-    def remembers(agent) = agent.class.memory&.dig(:remember) || []
 
     def tagged(name, body)
       body.to_s.empty? ? "" : "<#{name}>\n#{body}\n</#{name}>"

@@ -1,12 +1,7 @@
-<%# El prompt como función del estado: lo único que cambia entre dos turnos de una llamada. %>
-<%# Dos huecos que el runtime rellena en cada turno, cada uno bajo su título: lo que la memoria
-    guarda de este paciente, y lo que la base de conocimiento dice de lo que acaba de preguntar. %>
-## Lo que recordamos de este paciente
-<%= memory %>
-
-## De la base de conocimiento
-<%= retrieved k: 4, min_score: 0.5 %>
-
+<%# El prompt como función del estado: lo único que cambia entre dos turnos de una llamada.
+    Todo lo que hay aquí lo escribe la clínica. Lo que la memoria recuerda de este paciente y lo
+    que dice la base de conocimiento NO pasa por aquí: llega al modelo como resultado de una
+    herramienta, en el historial, que es donde se lee como información y no como una orden. %>
 <% if resumed -%>
 Se cortó su llamada anterior. Retoma desde donde quedó sin volver a preguntar.
 <% end -%>
@@ -28,7 +23,9 @@ Es paciente nuevo, todavía sin cita.
 <% end -%>
 <% end -%>
 
-<% if remembered.has?("médico habitual") -%>
+<%# No se imprime lo que recordamos: se decide con ello. Preguntar por una palabra es lo único
+    que la vista hace con la memoria, y la respuesta la pone el runtime. %>
+<% if remembers?("médico habitual") -%>
 Ofrece primero las horas de su médico habitual.
 <% end -%>
 
@@ -39,7 +36,20 @@ Si el paciente nombra un día, consulta SIEMPRE la agenda de ese día, aunque su
 cita ese día. Si todavía no ha nombrado ninguno, pregúntale para qué día la quiere.
 <% end -%>
 
-<%# Las horas libres van en su propio bloque, views/clinica-norte/availability.erb. %>
+<% if slots.any? -%>
+## Horas libres, en orden
+
+<% slots.each do |hueco| -%>
+<%= hueco.cuando %> con <%= hueco.doctor %>
+<% end -%>
+
+<% if call[:channel] == "phone" -%>
+Ofrece como máximo dos de estas horas y pregunta cuál prefiere.
+<% else -%>
+Ofrécele la lista y pregunta cuál prefiere.
+<% end -%>
+<% end -%>
+
 <% if proposed && booking.nil? -%>
 Ha nombrado <%= proposed.cuando %> con <%= proposed.doctor %>. Léesela tal cual y espera un sí
 antes de reservar.

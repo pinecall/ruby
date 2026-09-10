@@ -2,23 +2,28 @@
 
 The prompt is a list of named **blocks** in two regions, in this order, always:
 
-| region | when it changes | the framework's blocks |
+| region | when it changes | the blocks |
 |---|---|---|
-| `static` — before the history, cached by the provider | never during a call | `identity` (the class comment · the framework's rules and protocols) · `knowledge` (the marker) · `tools` (every tool's name and comment) |
-| the history — the turns, and the summaries a `collapse` left | the runtime writes it; the app never does | |
+| `static` — before the history, cached by the provider | never during a call | `identity` (the class comment · the framework's rules and protocols) · `knowledge` (the one file the class knows by heart, whole) · `tools` (every tool's name and comment) |
+| the history — the turns, the lookups, and the summaries a `collapse` left | the runtime writes it; the app never does | |
 | `dynamic` — after the history, replaced every turn | on every state change | `view` — the last thing the model reads |
 
-The cut between the two regions is where the provider's cache is cut. A static block may not
-read the state (it is refused at render if it tries); a dynamic block is rendered against it on
-every change. The bridge sends each block **by name and only when its own text changed**: a
-`when:` that opens a tool rewrites `tools` and nothing else, and the provider reads `identity`
-and `knowledge` back from its cache.
+There are four blocks, the same four for every agent. The cut between the two regions is where the
+provider's cache is cut, and the bridge sends each block **by name and only when its own text
+changed**: a `when:` that opens a tool rewrites `tools` and nothing else, and the provider reads
+`identity` and `knowledge` back from its cache.
+
+**Every word of every block is yours.** Nothing that arrived from outside the conversation is ever
+put in one — not a fact memory kept from an earlier call, not a chunk of a document. Those reach
+the model as a **tool result**, JSON-encoded, in the history, which is the place both vendors name
+for content a model should read as information and not as an instruction. The whole rule, and the
+guidance it follows, is `runtime/docs/security/prompt-injection.md`.
 
 ## The view is a template, beside the class
 
 It is a view in the sense Rails means: a file of its own, mostly prose with holes in it, rendered
-with the state in scope. `views/<slug>.erb`, beside the file the class is written in — the
-convention this package has instead of a setting.
+with the state in scope. The object renders itself. `views/<slug>.erb`, beside the file the class
+is written in — the convention this package has instead of a setting.
 
 ```
 examples/clinica_norte/
@@ -27,12 +32,6 @@ examples/clinica_norte/
 ```
 
 ```erb
-## Lo que recordamos de este paciente
-<%= memory %>
-
-## De la base de conocimiento
-<%= retrieved k: 4, min_score: 0.5 %>
-
 <% if stage == :identify -%>
 Saluda y pide nombre y teléfono. Nada más hasta identificar al paciente.
 <% end -%>
@@ -41,17 +40,28 @@ Saluda y pide nombre y teléfono. Nada más hasta identificar al paciente.
 Hablas con <%= patient.nombre %>, ya en la ficha: no vuelvas a pedirle el nombre.
 <% end -%>
 
+<% if remembers?("médico habitual") -%>
+Ofrece primero las horas de su médico habitual.
+<% end -%>
+
 <% if proposed && booking.nil? -%>
 Ha nombrado <%= proposed.cuando %>. Léesela tal cual y espera un sí antes de reservar.
 <% end -%>
 ```
 
 Every state field is in scope by its own name, derived fields included. So is what surrounds the
-call: `resumed`, `call[:channel]`, `call[:from]`, and `remembered.has?("médico habitual")`.
+call: `resumed`, `call[:channel]`, `call[:from]`.
 
 `-%>` swallows the newline after a tag, which is how a template stays readable and its output
 stays tight. Whatever slips through is tidied anyway: no trailing spaces, never more than one
 blank line in a row, nothing hanging off either end.
+
+Two helpers sit beside the state, for the two things prose alone does not do:
+
+| in a template | what it is |
+|---|---|
+| `state` | the whole reading, when the template wants to pass it on rather than ask it something |
+| `each_line(items)` | a list, one item per line, the way a person would read it out |
 
 Somewhere else, or inline:
 
@@ -64,87 +74,28 @@ view template: <<~ERB           # small enough to live inside the class
 ERB
 ```
 
-## Blocks of your own
+## What the agent already knows about this caller
 
-A class adds blocks with `prompt`, by region. Each one is a template of its own,
-`views/<slug>/<name>.erb`, beside the class:
+`remembers?("médico habitual")` answers whether memory holds something about this caller matching
+those words. The runtime supplies the facts; a render nobody gave any — `pinecall prompt`, a ring-0
+test that says nothing about it — answers no rather than guessing.
+
+It is a **question**, and that is the whole of what a view does with memory. The fact itself never
+appears in the prompt: it reached the model as the result of the platform's `recall` tool, in the
+history. What the view adds is the sentence *you* want said when the answer is yes.
 
 ```ruby
-prompt static: %i[faq], dynamic: %i[availability]
+Pinecall.render(agent, remembered: ["su médico habitual es la doctora Vidal"])[:view]
 ```
 
-```
-examples/clinica_norte/
-  agent.rb
-  views/clinica-norte.erb                 the view
-  views/clinica-norte/availability.erb    a dynamic block: the free slots, sent when they change
-```
+The same is true of the knowledge base. `docs` names the base and says how to search it —
+`docs base: "clinica-norte", k: 4, min_score: 0.5` — and the platform runs the search itself, at
+the end of the caller's turn, through its `search` tool. The view says nothing about it.
 
-```erb
-<%# views/clinica-norte/availability.erb %>
-<% if slots.any? -%>
-## Horas libres, en orden
-
-<% slots.each do |hueco| -%>
-<%= hueco.cuando %> con <%= hueco.doctor %>
-<% end -%>
-<% end -%>
-```
-
-The send order is the framework's static blocks, then yours in the order you declared them,
-then the history, then your dynamic blocks, and `view` last: the view is always the last thing
-the model reads. A name must match `^[a-z][a-z0-9_]*$`, cannot be one of the framework's four,
-and its template must exist — all three are refused when the class loads, with the path.
-
-A **static** block is prose the provider caches: a FAQ, a price list, the house style. It is
-rendered against nothing, so a template that asks the state a question is refused at render,
-naming the template and the field:
-
-```
-a static block cannot read the state: faq.erb reads slots
-```
-
-`prompt` reads `slug`, so a class that names its own slug does so above that line.
-
-## Markers: the holes the gateway fills
-
-A marker is a placeholder this package writes and never resolves. The gateway reads the line, does
-the work, and replaces it with text.
-
-| written | becomes | filled with |
-|---|---|---|
-| `<%= memory kinds: %w[alergias], limit: 6 %>` | `<!-- memory: {"kinds":["alergias"],"limit":6} -->` | the contact's facts, one `- ` line each, after the caller's turn and before the model reads |
-| `<%= retrieved k: 4, min_score: 0.5 %>` | `<!-- retrieved: {"k":4,"min_score":0.5} -->` | the chunks of the base `docs` names, `### path › heading` then the text |
-| `knowledge "./file.md"` on the class | `<!-- knowledge: ./file.md -->`, the whole `knowledge` block | the file's text, once per call, so the cached prefix never moves |
-| `<%= marker "precio", { sku: 4 } %>` | `<!-- precio: {"sku":4} -->` | whatever a filler you run puts there |
-
-The payload is the keywords as you typed them, as JSON, and the runtime reads them by those
-names: `kinds`, `limit` (memory), `k`, `min_score` (retrieved). Write the heading the model reads
-above the marker, in the template — the fill is the facts or the chunks and nothing else. A
-marker never delays a reply: the runtime gives both fills one budget, and past it the turn goes
-on with the marker empty and an `error` entry in the log saying which was skipped.
-
-A class configured with `memory` gets the memory marker even if its view never asks: configuring
-memory is expecting the caller to be remembered.
-
-`kinds` asks for some of what was kept, by the word the fact was filed under — which is one of the
-words the class wrote in `memory remember:`. Any other word is refused as the marker is written:
-`memory kinds: "preference" is not one of the words this class remembers (cómo prefiere que le
-llamen, alergias, su médico habitual)`. It would have matched nothing, for ever, and an empty
-recall reads exactly like a caller nobody has met. A bare `<%= memory %>` asks for everything the
-class keeps, which is what the example writes; a class that declares no `remember` keeps whatever
-the model finds worth keeping and constrains no kind at all.
-
-**A render prop** shapes whatever the gateway finds. A block cannot travel inside a marker, so it
-stays behind under an id the marker carries — one registry per prompt, so an id is never used by
-two blocks:
-
-```erb
-<%= memory(kinds: %w[alergias]) { |facts| "Recuerda: #{facts.join(", ")}" } %>
-```
-
-The id travels as `fill` in the payload. This release the runtime renders the facts in its own
-shape and does not call the block back; it stays behind for the release that does.
+`knowledge`, on the other hand, is a file **you** wrote and ship with the class, so it is your own
+words and goes where your words go: the `knowledge` block, whole, in the cached prefix. The day it
+stops being written by hand — generated from a CMS, exported from a customer's system — it belongs
+in a knowledge base instead, pushed with `pinecall knowledge push`.
 
 ## Reading the prompt
 
@@ -162,7 +113,7 @@ function:
 ```ruby
 prompt = Pinecall.render(agent, resumed: true)
 prompt[:view]             # the text of one block, by name
-prompt[:availability]
+prompt[:knowledge]
 prompt.static             # the blocks before the history, in send order
 prompt.instructions       # those joined: the one text the provider caches
 prompt.blocks             # every block, in send order

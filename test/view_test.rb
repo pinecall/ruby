@@ -2,40 +2,43 @@
 
 require "test_helper"
 
-# The markers a template writes and never resolves: the runtime reads the line, so the payload's
-# keys are the runtime's and are pinned here, snake_case, exactly as the tag was called.
+# The view: the tenant's own words, rendered against the state, and nothing of the framework in it.
 class ViewTest < Minitest::Test
-  def rendered(template)
-    Pinecall::View.inline(template).render(Pinecall::Reading.new({}))
+  def rendered(template, state = {}, remembered = [])
+    Pinecall::View.inline(template).render(Pinecall::Reading.new(state, remembered))
   end
 
-  def test_the_memory_tag_writes_kinds_and_limit_as_the_runtime_reads_them
-    assert_equal %(<!-- memory: {"kinds":["preference","health"],"limit":6} -->),
-                 rendered("<%= memory kinds: %w[preference health], limit: 6 %>").text
+  def test_every_state_field_is_in_scope_by_its_own_name
+    assert_equal "Hablas con Marta Ruiz.",
+                 rendered("Hablas con <%= patient %>.", { patient: "Marta Ruiz" })
   end
 
-  def test_the_retrieved_tag_writes_k_and_min_score_in_snake_case
-    assert_equal %(<!-- retrieved: {"k":4,"min_score":0.5} -->),
-                 rendered("<%= retrieved k: 4, min_score: 0.5 %>").text
+  def test_a_field_the_class_never_declared_is_refused_rather_than_read_as_nothing
+    assert_raises(NameError) { rendered("<%= paciente %>") }
   end
 
-  def test_the_knowledge_tag_writes_the_bare_path
-    assert_equal "<!-- knowledge: ./knowledge/clinica.md -->", rendered(%(<%= knowledge "./knowledge/clinica.md" %>)).text
+  # A fact never travels through the prompt; what a view may do with one is branch on it.
+  def test_what_the_agent_remembers_about_this_caller_decides_a_sentence_and_is_never_printed
+    text = rendered(%(<% if remembers?("médico habitual") -%>\nOfrece sus horas.\n<% end -%>),
+                    {}, ["su médico habitual es la doctora Vidal"])
+
+    assert_equal "Ofrece sus horas.", text
+    refute_includes text, "doctora Vidal"
   end
 
-  def test_a_tag_with_nothing_to_say_writes_an_empty_payload
-    assert_equal "<!-- memory: {} -->", rendered("<%= memory %>").text
-    assert_equal "<!-- retrieved: {} -->", rendered("<%= retrieved k: nil %>").text
+  def test_a_view_nobody_told_what_is_remembered_answers_no_rather_than_guessing
+    assert_equal "", rendered(%(<% if remembers?("alergias") -%>\nPregúntale.\n<% end -%>))
   end
 
-  def test_a_render_prop_rides_as_fill_beside_the_other_keys_and_stays_behind
-    render = rendered(%(<%= memory(kinds: %w[preference]) { |facts| facts.size } %>))
+  def test_a_template_is_read_by_a_person_and_the_ragged_edges_come_off_for_the_model
+    text = rendered("\n\n Hola.   \n\n\n\n  Adiós.  \n\n")
 
-    assert_equal %(<!-- memory: {"kinds":["preference"],"fill":"fill-1"} -->), render.text
-    assert_equal "2", render.fills.fill("fill-1", %w[a b])
+    assert_equal "Hola.\n\n  Adiós.", text
   end
 
-  def test_a_marker_of_the_tenant_s_own_takes_any_name_and_any_payload
-    assert_equal %(<!-- precio: {"sku":4} -->), rendered(%(<%= marker "precio", { sku: 4 } %>)).text
+  # The two helpers a template has beside the state: the reading whole, and a list read out loud.
+  def test_a_template_can_take_the_whole_state_and_lay_a_list_out_one_per_line
+    assert_equal "el martes\nel jueves",
+                 rendered("<%= each_line(state[:slots]) %>", { slots: ["el martes ", " el jueves"] })
   end
 end

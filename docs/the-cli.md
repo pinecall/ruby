@@ -60,8 +60,8 @@ page. Ctrl-C closes the port with the command.
 ## knowledge
 
 The base an agent's `docs` names is a folder of Markdown, pushed whole under that name. The
-gateway cuts it by heading, embeds it, and from then on the view's `retrieved` marker is filled
-from it on every turn.
+gateway cuts it by heading, embeds it, and from then on the platform's `search` tool answers from
+it — at the end of the caller's turn, as a tool result the model reads in the history.
 
 ```bash
 pinecall knowledge push                                   # knowledge/docs beside agent.rb, as its `docs` base

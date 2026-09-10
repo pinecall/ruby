@@ -18,11 +18,9 @@ module Pinecall
     # | `says`              | a map written as a map, carried as a list of pronunciations       |
     # | `hears`             | the words the ears must know                                      |
     # | `language`          | which of the framework's two word-sets the identity block carries |
-    # | `knowledge`         | the `knowledge` block's marker, and the file itself — path and     |
-    # |                     | text — for the runtime to put where the marker is, once per call  |
+    # | `knowledge`         | the `knowledge` block, whole, and the file itself — path and text |
     # | `docs`              | the knowledge base by name, and how its chunks reach the model    |
     # | `memory`            | what memory keeps about a contact across calls, and never keeps   |
-    # | `prompt`            | the class's own blocks, in send order (`blocks.rb`)               |
     module Config
       # The eight that travel as the class wrote them. The other three name a file, a base or a
       # policy, and each is checked at declaration below.
@@ -70,6 +68,16 @@ module Pinecall
         # Where the knowledge file is on disk: this class's, or its parent's when it named none.
         def knowledge_file
           @knowledge_file || (superclass.respond_to?(:knowledge_file) ? superclass.knowledge_file : nil)
+        end
+
+        # The file's text, read once per process. It is the `knowledge` block and it is half of
+        # what `agent.configure` carries, so it is read here and nowhere else — a render happens
+        # on every state change, and a file opened per turn is a file opened for nothing.
+        def knowledge_text
+          return @knowledge_text if defined?(@knowledge_text)
+
+          file = knowledge_file
+          @knowledge_text = file && File.read(file)
         end
 
         # The knowledge base the agent answers from, by the name it was pushed under, and how its
@@ -144,7 +152,7 @@ module Pinecall
         # Everything the class says about itself, as the AgentConfig the gateway is sent.
         def wire_config(tools: nil)
           {
-            prompt: layout,
+            prompt: Prompt::FRAMEWORK,
             language: config[:language]&.to_s,
             voice: voice_config,
             llm: model_config,
@@ -195,14 +203,11 @@ module Pinecall
           words.empty? ? nil : words
         end
 
-        # The file, path and text, sent whole: the runtime puts the text where the marker is,
-        # once per call, so the cached prefix never moves. Read at mount, so an edit to the file
-        # is what the next process sends.
+        # The file, path and text, sent whole: the same words that are already in the `knowledge`
+        # block, so a gateway that keeps a declaration has the file without asking for it.
         def knowledge_config
-          file = knowledge_file
-          return nil if file.nil?
-
-          { path: config[:knowledge], text: File.read(file) }
+          text = knowledge_text
+          text.nil? ? nil : { path: config[:knowledge], text: }
         end
 
         def state_field_specs

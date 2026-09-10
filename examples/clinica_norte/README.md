@@ -6,8 +6,6 @@ y su propia suite de ring 0.
 ```
 agent.rb                      la clase: canales, estado, herramientas, hooks
 views/clinica-norte.erb       el prompt como función del estado: el bloque `view`
-views/clinica-norte/
-  availability.erb            las horas sobre la mesa: un bloque dinámico propio
 knowledge/clinica.md          lo que el agente sabe de memoria: entero, en el prefijo estático
 knowledge/docs/*.md           de lo que responde: se sube con `pinecall knowledge push`, por nombre
 lib/agenda.rb                 lo que en producción sería el ERP. No sabe nada de Pinecall
@@ -41,9 +39,10 @@ cd examples/clinica_norte && ../../bin/pinecall knowledge push
   sí, y sólo entonces corre el método.
 - **`preview: 2` corta lo que ve el modelo, no lo que guarda el estado.**
 - **Tres cosas que el agente sabe, tres declaraciones.** `knowledge` es un archivo entero en el
-  prefijo estático; `docs` nombra la base que se subió y la vista pide `retrieved k: 4`; `memory`
-  dice con nuestras palabras qué guardar de un paciente entre llamadas y qué nunca. La vista
-  escribe los dos marcadores bajo su título y el runtime los rellena en cada turno.
-- **Un bloque propio viaja solo cuando cambia.** `prompt dynamic: %i[availability]` saca las horas
-  de la vista a `views/clinica-norte/availability.erb`; el bridge reenvía cada bloque por su
-  nombre y solo el que cambió de texto.
+  prefijo estático; `docs base: "clinica-norte", k: 4, min_score: 0.5` nombra la base que se subió
+  y dice cómo buscarla; `memory` dice con nuestras palabras qué guardar de un paciente entre
+  llamadas y qué nunca.
+- **La vista es solo lo que escribe la clínica.** Lo que la memoria recuerda y lo que la base
+  responde no pasan por el prompt: llegan al modelo como resultado de una herramienta, en el
+  historial. La vista pregunta `remembers?("médico habitual")` y decide una frase suya con la
+  respuesta; el hecho no se imprime en ningún sitio.

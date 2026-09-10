@@ -38,7 +38,7 @@ one the person typed.
 lib/pinecall.rb              the door: what a stranger who types `require "pinecall"` may reach
 lib/pinecall/
   version.rb errors.rb       0.0.0 until the human names a number; one error root, five words
-  reading.rb                 the state as something you can ask questions of by name — and the one that refuses
+  reading.rb                 the state as something you can ask questions of by name, this caller included
   agent.rb                   the base class: config, state, tools, the four hooks, this call
   agent/author.rb            who is writing right now — `Fiber[]`, per call, never a global
   agent/doc.rb               the comment above a class or a method, read back out of the source
@@ -48,7 +48,7 @@ lib/pinecall/
   agent/config.rb            the eleven declarations, what each becomes on the wire, and the three refused at load
   view.rb                    the ERB template and what it is rendered in
   lang.rb                    the framework's own words: the rules and the protocols, es · en
-  blocks.rb                  the prompt as named blocks in two regions: the layout, `render`, `show`
+  blocks.rb                  the prompt as four named blocks in two regions: the layout, `render`, `show`
   call_world.rb              the live call as the class holds it: the room, the turns, six verbs
   bridge.rb                  `mount`: one instance per call, and the sync that sends what changed
   client.rb                  `Pinecall::Client`: one socket, the agents on it, observe · history
@@ -94,25 +94,21 @@ gives that TypeScript does not, or what it takes away.
 | `AsyncLocalStorage` for the current author | `Fiber[:pinecall_author]` | Ruby 3.2's fiber storage: inherited by the fibers a fiber starts, and per thread. Same guarantee, one line. |
 | `zod` parses a command before it leaves | the generated shape table plus `Validate` | The schema already generated the table; walking it is thirty lines that cannot drift from zod or pydantic. |
 | `Camel<T>`, `toCamel`, `toSnake` — a whole conversion layer | *nothing* | The wire is snake_case and so is Ruby. The layer does not exist here. |
-| a `.tsx` view compiled by a JSX transform | an **ERB template** beside the class, `views/<slug>.erb` | Same idea in each language's own material: the view Rails means. No build step, and `pinecall prompt` reads the file a person edited. |
+| `render()`, a method on the class, returning JSX | an **ERB template** beside the class, `views/<slug>.erb`, rendered with the instance in scope | The same sentence — the object renders itself — in each language's own idiom. A TypeScript class renders in a method because JSX is an expression; a Ruby class renders in a view because that is what a view *is* here, and it costs no build step: `pinecall prompt` reads the file a person edited. |
 | `knowledge = "./knowledge/clinica.md"`, the file read by `load.ts` at connect | `knowledge "./knowledge/clinica.md"`, the file checked at load beside the class | Ruby knows the class's file at the line, so a path with nothing behind it is refused when the class loads, with the path — before any gateway is involved. `wire_config` sends `{path, text}` from the file that was checked. |
 | `docs = "clinica"` or `docs = { base, mode?, k?, minScore? }`, `toSnake` on the way out | `docs "clinica-norte"` or `docs base:, mode:, k:, min_score:` | The keyword IS the wire's field: nothing converts, and `DocsConfig` is checked at declaration. A glob is refused with the command that makes a base. |
-| `<Memory kinds limit>`, `<Retrieved k minScore>` writing snake_case by hand | `<%= memory kinds:, limit: %>`, `<%= retrieved k:, min_score: %>` | The payload is the keywords as typed, as JSON. There is no conversion to get wrong, and `test/view_test.rb` pins the names the runtime reads. In both, a `kinds` outside the words the class wrote under `remember` is refused as the marker is written. |
+| `this.remembers("médico habitual")` inside `render()` | `remembers?("médico habitual")` in the template | The same question, asked of the runtime's answer, in each language's own punctuation. Neither prints the fact: a fact reaches the model as a `recall` tool result, in the history, and the view only branches on it. |
 | `pinecall knowledge push`, `pinecall memory` in `src/cli`, on the login path | the same verbs on `Client::Rest`, with the key `cli/env.rb` resolves for every verb | One resolution order for the socket and the REST doors; a refusal is printed as the gateway wrote it. |
-| `static prompt = { static: ["faq"], dynamic: ["availability"] }` on the class | `prompt static: %i[faq], dynamic: %i[availability]` | The same declaration as a macro. Ruby reads the templates *at the line*, so a block with no file is refused when the class loads, with the path. |
-| a tenant block is `views/<name>.tsx`, a default-export function | `views/<slug>/<name>.erb`, under the slug | One directory per agent keeps two agents in one tree from sharing a `faq`. |
-| a static block's props are a `Proxy` that throws on any read | a static block is rendered against `StaticReading`, which refuses every question by name | Same law — nothing static reads the state — as an exception at render: `a static block cannot read the state: faq.erb reads slots`. |
-| `Blocks = { blocks, fills }`; the layout is `Block[]` in send order | `Blocks = Data.define(:blocks, :history, :fills)`, `Block = Data.define(:name, :region, :text)` | Ruby keeps the history on the same value, because `pinecall prompt` prints it between the regions and a `collapse` is the one thing the app knows about the turns. |
-| `Fills` on an `AsyncLocalStorage` | one `Fills` per render, handed to every block's context | A JSX component is a function anybody may call, so the registry has to travel. An ERB template is rendered *in* an object, and that object holds the prompt's one registry — so a fill id is never used by two blocks. The words the class remembers travel the same way in each: on the async context there, on that object here. |
+| `Blocks = { blocks }`; the layout is `Block[]` in send order | `Blocks = Data.define(:blocks, :history)`, `Block = Data.define(:name, :region, :text)` | Ruby keeps the history on the same value, because `pinecall prompt` prints it between the regions and a `collapse` is the one thing the app knows about the turns. |
 | `Promise`, one event loop | one reader thread, one thread per call, one per tool call | The socket is never blocked by a hook or a tool. Everything belonging to one call is still serialised, which is what makes `call.cause` mean anything. |
 | `WeakMap` internals kept off the instance | plain ivars behind declared readers | Nothing enumerates a Ruby object's fields by accident, so nothing has to be hidden from a snapshot. |
 | `test/index.test.ts` pins the exports by name | `sig/pinecall.rbs` and `rake rbs` | Ruby's answer to a `.d.ts`: adding to the surface means editing the signature on purpose. |
 | the console is built into `dist/cli/ui/console` by the package that owns its source | the same build, **vendored** into `console/`, with `rake console:check` guarding it | One React program, built once. Ruby ships the bytes the way a Rails engine ships assets; installing the gem must not mean installing Node. |
 | `node:http` server, `fetch` proxying, `Readable.fromWeb` | HTTP/1.1 on a `TCPServer`, `Net::HTTP` streaming, one connection per answer | Ruby has no HTTP server in the stdlib, and an SSE proxy has to own the write side. Loopback, one person: `connection: close` makes the framing exact and the file short. |
 
-What did **not** change, because it is the product and not the language: the blocks of the
-prompt, their two regions and their order, the markers the gateway fills, `stage` as sugar over
-`when`, `confirm` being what makes a tool irreversible, `preview` cutting what the model sees and
+What did **not** change, because it is the product and not the language: the four blocks of the
+prompt, their two regions and their order, `recall` and `search` being tools whose answers reach
+the model as tool results, `stage` as sugar over `when`, `confirm` being what makes a tool irreversible, `preview` cutting what the model sees and
 not what the state keeps, the registration being memory rather than a database, and the four
 rings.
 
@@ -130,10 +126,9 @@ diffed, and no view renders it.
 | `says` | a map written as a map, carried as a list of pronunciations |
 | `hears` | the words the ears must know before they hear them |
 | `language` | which of `lang.rb`'s two word-sets the `identity` block carries |
-| `knowledge` | the `knowledge` block's marker, and `{path, text}` in `agent.configure`: the runtime puts the text where the marker is, once per call. Refused at load when the file is not beside the class |
-| `docs` | the base by name, `mode`, `k`, `min_score` — what the view's `retrieved` marker searches. A path or a glob is refused: a base is pushed first |
-| `memory` | `remember` and `forget`, the tenant's words: what `remember` writes at hang-up, and what it never may. Each fact is filed under the word it was remembered by, so those words are the only ones a view's `memory kinds:` may name |
-| `prompt` | the class's own blocks; the whole layout travels as `AgentConfig.prompt` in send order |
+| `knowledge` | the `knowledge` block, whole, and the same `{path, text}` in `agent.configure`. It is the tenant's own file, so it is the tenant's own words, in the cached prefix. Refused at load when the file is not beside the class |
+| `docs` | the base by name, `mode`, `k`, `min_score` — what the platform's `search` tool runs with. A path or a glob is refused: a base is pushed first |
+| `memory` | `remember` and `forget`, the tenant's words: what `remember` writes at hang-up, and what it never may. What was kept comes back through the platform's `recall` tool, and a view asks it a question with `remembers?` |
 
 **State** is declared with `state`, and the rules are enforced in code:
 
@@ -169,23 +164,22 @@ does not have, `stage:` on a class that declares no stage, a stage that is not o
 | block | region | what is in it | when it changes |
 |---|---|---|---|
 | `identity` | static | the class docstring · `<rules>` and `<protocols>` | never during a call |
-| `knowledge` | static | the `<!-- knowledge: … -->` marker | never during a call |
+| `knowledge` | static | the one file the class knows by heart, whole | never during a call |
 | `tools` | static | every tool's name and docstring, visible or not | never during a call |
-| the class's own static blocks | static | `views/<slug>/<name>.erb`, rendered against nothing | never during a call |
-| *the history* | — | the turns (the runtime's) and the `<!-- collapsed: … -->` summaries a `collapse` left | when the app collapses |
-| the class's own dynamic blocks | dynamic | `views/<slug>/<name>.erb`, rendered against the state | on every state change |
-| `view` | dynamic | the memory marker, the retrieval marker, and what the view says now | on every state change |
+| *the history* | — | the turns and the lookups (the runtime's) and the `<!-- collapsed: … -->` summaries a `collapse` left | when the app collapses |
+| `view` | dynamic | what the template says about the state right now | on every state change |
 
 The static blocks are what the provider caches, and it caches them block by block: rewriting
 `tools` (a `when:` opened) leaves `identity` and `knowledge` cache hits. That is why the layout is
 a list of names and not two strings, and why a block is sent by name and only when its own text
 changed. The whole layout travels once, in `agent.configure`, as `AgentConfig.prompt`.
 
-A **marker** is a placeholder this package writes and never resolves — `<!-- memory: {…} -->`,
-`<!-- retrieved: {…} -->`, `<!-- knowledge: ./file.md -->`. The gateway reads the line, does the
-work, and replaces it. A template that passed a block to `memory` left a **render prop** behind:
-the block cannot travel inside a marker, so it stays in that render's `Fills` under an id the
-marker carries — one `Fills` for the whole prompt, so two blocks never mint the same id.
+**Every block is the tenant's own words, and nothing else is ever put in one.** What memory kept
+from an earlier call and what the knowledge base returned reach the model as `tool_result` blocks,
+JSON, in the history — the platform runs `recall` and `search` on the app's behalf, and neither
+answer passes through this package at all. The rule and the vendor guidance behind it are
+`runtime/docs/security/prompt-injection.md`; what a view may do with memory is ask it a question
+with `remembers?`, which the runtime answers, and say a sentence of its own about the answer.
 
 `pinecall prompt` prints one section per block, `── identity (static) ──` … `── history ──` …
 `── view (dynamic) ──`, in send order. It needs no gateway, no key and no network.
