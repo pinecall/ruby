@@ -145,6 +145,7 @@ assert_equal %w[propose], call.tools
 
 | what | where |
 |---|---|
+| the walk a newcomer takes: from an empty directory to an agent that answers from your documents and remembers who called | [docs/tutorial.md](docs/tutorial.md) |
 | the map: every file, every entity, every rule | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | how to write an agent, step by step | [docs/writing-an-agent.md](docs/writing-an-agent.md) |
 | the view, and the blocks of a prompt | [docs/the-view.md](docs/the-view.md) |
