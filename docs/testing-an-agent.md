@@ -101,3 +101,70 @@ other door and means something stronger: a whole state, so a field it leaves out
 | 2 | does it hold on a real line? | `pinecall simulate --voice` — the Node CLI today |
 | 3 | what does one real call score? | `pinecall eval <call-id>` |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up |
+
+## The index has a golden of its own
+
+The rings test the agent. None of them tests the **index**, and they cannot: a ring watches a
+conversation, so it only ever sees the passage retrieval handed over. Whether a better one existed
+and was missed is a question no conversation can answer, because the model never saw the one it
+missed.
+
+That is what a knowledge golden is for. One file beside the documents it asks about — a question,
+and the chunk that should answer it:
+
+```json
+[
+  { "asks": "¿cuánto tengo que pagar de copago?",
+    "expects": "seguros-y-autorizaciones.md › Seguros, autorizaciones y facturación › Copagos" },
+  { "asks": "¿tengo que ir en ayunas para el análisis?",
+    "expects": "preparacion-de-pruebas.md › Preparación de las pruebas › Analíticas" }
+]
+```
+
+`expects` is the heading path a chunk carries, which is what you can read off your own documents:
+naming a file alone accepts any chunk of it, naming a heading accepts that section and what is
+under it. Fifty to a hundred questions per base is the size that stops being noise.
+
+```bash
+pinecall knowledge eval                        # knowledge/golden.json beside agent.rb
+pinecall knowledge eval --k 4                  # as many chunks as the class asks for
+pinecall knowledge eval golden.json --base clinica-norte
+```
+
+```
+clinica-norte · pplx-embed-context-v1-0.6b · 7 questions · recall@4 1.00 · nDCG@10 0.89 · 918 ms
+```
+
+| figure | means |
+|---|---|
+| `recall@k` | the share of questions whose chunk came back at all. **The one that matters**: a chunk the model never sees cannot be used, whatever its rank |
+| `nDCG@10` | how high it ranked, discounted logarithmically. Two indexes that both find a passage are not equal if one puts it first and the other seventh, because `k` cuts |
+| the model named | the embedder that wrote the vectors. Two scores are comparable only under one model |
+
+Every question it missed is printed with what came back instead, and the verb **exits 1** when
+anything did — so a base belongs in CI beside `rake test`. Both figures are computed by code, with
+no model in the loop, so two runs over one base answer the same numbers.
+
+A golden is fixed and the index is the variable. **A question is never softened so a change can
+pass.** What you change instead is the documents, the chunking, `k`, `min_score`, or the embedder.
+
+`client.knowledge.eval(base, questions, k:)` is the same thing from Ruby, when a rake task suits
+you better than a shell line.
+
+## Is there a score for retrieval on a call?
+
+No, and the reason is worth knowing rather than working around.
+
+`call.score` carries the panel's verdicts, and the one that touches retrieval is `grounded`: it
+checks that every price, hour, date and name the agent stated appears in the evidence it was given —
+and since a lookup arrives as a tool result, that evidence **is** the chunks. So the rate of `held`
+over calls carrying a `docs.sources` entry is the precision of retrieval on real traffic, for free.
+
+What no live call can score is whether the index missed a **better** passage, because there is no
+truth to compare against outside a golden. The judge says the answer was grounded in what it was
+given; the golden says what it was given was the best there was.
+
+What a call does carry, per turn, is the fact of it: `docs.sources` with the query, every chunk and
+its score, and `took_ms`; `memory.ops` with the facts recalled; `metrics.eou` with what the lookup
+cost the caller in silence. The runtime's `docs/retrieval/spec.md` is the contract for all of it.
+

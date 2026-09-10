@@ -9,7 +9,7 @@ are the reference it points at.
 | [tutorial.md](tutorial.md) | forty minutes, from nothing: the class, a call, knowledge, the knowledge base, memory, the log, and a test |
 | [writing-an-agent.md](writing-an-agent.md) | the class: config, state, tools, hooks, and what is refused at load |
 | [the-view.md](the-view.md) | the prompt as named blocks in two regions, and the template that renders the view |
-| [testing-an-agent.md](testing-an-agent.md) | a suite with no network, no key and no model |
+| [testing-an-agent.md](testing-an-agent.md) | the index's own golden, why a call has no retrieval score, and a suite with no network, no key and no model |
 | [the-cli.md](the-cli.md) | `pinecall prompt`, `run`, `whoami`, and where the key comes from |
 | [the-console.md](the-console.md) | `pinecall ui`: what it shows, what it contains, and how the bundle gets here |
 
