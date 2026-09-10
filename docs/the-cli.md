@@ -10,6 +10,7 @@ pinecall <verb>
   knowledge push|list|drop|eval a folder of Markdown as a base the agent retrieves from,
                                 and a golden that says how well it answers
   memory [forget] CONTACT       what is remembered about a contact, and forgetting it
+  memory eval [GOLDEN]          a golden that says whether recall brings the right facts back
   keys add|rm|list VENDOR       the provider keys this org brought of its own
   version
 ```
@@ -101,6 +102,21 @@ pinecall memory forget +34600123456
 The history is current facts first; a fact a later call superseded keeps its dates and is dimmed
 on a terminal. `forget` is the right to be forgotten: it asks once when stdin is a terminal and
 not at all from a pipe, and it is the one verb that removes rows.
+
+```bash
+pinecall memory eval                        # memory/golden.json beside agent.rb
+pinecall memory eval --k 1                  # the best fact alone: is the right one first?
+pinecall memory eval test/recall.json
+# memory · pplx-embed-context-v1-0.6b · 7 questions · recall@6 1.00 · nDCG@10 0.78 · 12107 ms
+```
+
+| the line | what it takes |
+|---|---|
+| `eval [GOLDEN] [--k N]` | every question of a golden asked of `recall`, and `recall@k` and `nDCG@10` — computed by code with no model, so two runs answer the same numbers. GOLDEN is `memory/golden.json` beside the `agent.rb` here: a JSON list of `{ "holds", "asks", "expects" }`, where `holds` is what memory holds about that question's contact and `expects` is the fact or facts that should come back. No contact of yours is read or written — each question's facts go to a scratch contact and are deleted again. Prints every question memory did not answer whole with what came back instead, and **exits 1** when anything did |
+
+A fact answers when what came back CONTAINS what was expected, folded for case, accents and
+whitespace: a fact is a sentence a model wrote, and a golden names the substance and not the
+wording. `docs/testing-an-agent.md` has the whole of it.
 
 ## keys
 

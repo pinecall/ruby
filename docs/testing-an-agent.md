@@ -151,6 +151,73 @@ pass.** What you change instead is the documents, the chunking, `k`, `min_score`
 `client.knowledge.eval(base, questions, k:)` is the same thing from Ruby, when a rake task suits
 you better than a shell line.
 
+## Memory has one too, and it is the other table
+
+`recall` makes the same promise over the other table — the facts this caller taught earlier calls,
+the best six of them in front of the model — and it is just as invisible to a ring, for the same
+reason. Whether a better fact existed and was missed is something no conversation can answer.
+
+What differs from the index is the question. Nobody can name "the fact that should have won" for a
+contact the way they can name a heading in a file they wrote, because a contact's facts are
+whatever their earlier calls taught. So a memory question **brings its own facts**:
+
+```json
+[
+  { "holds": ["Prefiere mañanas", "Paciente de la doctora Vidal desde 2024", "Alérgica a la penicilina"],
+    "asks": "¿le va bien el martes?",
+    "expects": ["Prefiere mañanas"] }
+]
+```
+
+| field | means |
+|---|---|
+| `holds` | every fact memory holds about this question's contact, in the words a fact is written in |
+| `asks` | what the caller just said, in their own words — this is the query `recall` is given |
+| `expects` | the fact or facts that should come back |
+
+**No contact of yours is read or written.** Each question's facts go to a scratch contact of your
+org, `recall` runs, and they are deleted again before the next question — which is also what makes
+the figures the real ranking: the same two index scans, the same fusion, the same embedder a call
+uses, rather than an arithmetic in a test.
+
+**A fact answers when what came back CONTAINS what you expected**, folded for case, accents and
+whitespace. A fact is a sentence a model wrote and you know the substance, not the wording: so
+`"Prefiere mañanas"` is answered by *"Prefiere mañanas, nunca después de comer"*, and an expected
+`"Alérgica a la penicilina"` is not answered by *"Alérgica"*, which says less than you asked for.
+
+```bash
+pinecall memory eval                  # memory/golden.json beside agent.rb
+pinecall memory eval --k 1            # the best fact alone: is the right one first?
+```
+
+```
+memory · pplx-embed-context-v1-0.6b · 7 questions · recall@6 1.00 · nDCG@10 0.78 · 12107 ms
+```
+
+The two figures are the index's two, generalised once: a question may expect several facts, so
+`recall@k` is the share of the facts you asked for that came back and `nDCG@10` is normalised by
+the best places they could have taken.
+
+**Write questions whose contact holds more facts than a turn asks for.** A turn takes six; a
+contact with four gets all four back whatever the ranking did, and `recall@6 1.00` then says
+nothing at all. Clínica Norte's golden holds eight or nine per question for that reason, and the
+way to make recall bite is a smaller `k`:
+
+```
+$ pinecall memory eval --k 1
+memory · pplx-embed-context-v1-0.6b · 7 questions · recall@1 0.57 · nDCG@10 0.57 · 11568 ms
+  missed: me han mandado una resonancia, ¿me la puedo hacer? → wanted Le pusieron un marcapasos en 2023, got Prefiere que le llamen don Julián
+  missed: me han pedido una radiografía de la espalda → wanted Está embarazada de cinco meses, got Su médico habitual es el doctor Ferrán
+  missed: llamadme mañana a las nueve para confirmar → wanted Trabaja de noche, Prefiere que le escriban por WhatsApp, got Prefiere que le llamen Aixa
+```
+
+Every question memory did not answer whole is printed with what came back instead, and the verb
+**exits 1** when anything did. A golden is fixed and the ranking is the variable here too: what you
+change is the words a fact is written in — `memory remember:` is that vocabulary — the embedder,
+or `k`.
+
+`client.memory.eval(questions, k:)` is the same thing from Ruby.
+
 ## Is there a score for retrieval on a call?
 
 No, and the reason is worth knowing rather than working around.

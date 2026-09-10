@@ -2,7 +2,7 @@
 
 module Pinecall
   class Client
-    # One base URL, eight doors. The app configures a host; nothing else writes a path.
+    # One base URL, ten doors. The app configures a host; nothing else writes a path.
     module Endpoints
       module_function
 
@@ -26,6 +26,10 @@ module Pinecall
 
       # `GET` and `DELETE /v1/contacts/{contact}/memory`: what is remembered about one contact.
       def contact_memory(base, contact) = door(base, "/v1/contacts/#{CGI.escape(contact)}/memory")
+
+      # `POST /v1/contacts/memory/eval`: the golden recall is held to. It names no contact on
+      # purpose — every question brings the facts of its own.
+      def memory_eval(base) = door(base, "/v1/contacts/memory/eval")
 
       # `GET /v1/provider-keys`: which vendors this org brought its own key for, by name.
       def provider_keys(base) = door(base, "/v1/provider-keys")

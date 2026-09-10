@@ -93,4 +93,51 @@ class CLIMemoryTest < Minitest::Test
     assert_equal 1, status
     assert_equal "pinecall: 404: no contact called x\n", err
   end
+
+  # A golden is the only thing that can say recall returned the WRONG facts: a ring watches a
+  # conversation and only ever sees the facts memory handed over. runtime/docs/retrieval/spec.md.
+  A_QUESTION = {
+    holds: ["Prefiere mañanas", "Alérgica a la penicilina"],
+    asks: "¿le va bien el martes?",
+    expects: ["Prefiere mañanas"]
+  }.freeze
+
+  def test_eval_sends_the_whole_golden_to_the_one_door_and_prints_the_two_figures
+    gateway("POST /v1/contacts/memory/eval" => [200, {
+              model: "BAAI/bge-m3", questions: 1, k: 6,
+              recall_at_k: 1.0, ndcg_at_10: 1.0, took_ms: 612.4, misses: []
+            }])
+    status, out, = run_cli("memory", "eval", a_golden, "--k", "6")
+
+    assert_equal 0, status
+    assert_equal "memory · BAAI/bge-m3 · 1 questions · recall@6 1.00 · nDCG@10 1.00 · 612 ms\n", out
+    assert_equal({ questions: [A_QUESTION], k: 6 }, @gateway.asked.first.body)
+  end
+
+  def test_eval_names_every_fact_a_question_wanted_and_did_not_get_and_exits_one
+    gateway("POST /v1/contacts/memory/eval" => [200, {
+              model: "m", questions: 1, k: 1, recall_at_k: 0.0, ndcg_at_10: 0.0, took_ms: 12.0,
+              misses: [{ asks: "¿le va bien el martes?", missing: ["Prefiere mañanas"],
+                         found: ["Alérgica a la penicilina"] }]
+            }])
+    status, out, = run_cli("memory", "eval", a_golden, "--k", "1")
+
+    assert_equal 1, status
+    assert_includes out, "missed: ¿le va bien el martes? → wanted Prefiere mañanas, " \
+                         "got Alérgica a la penicilina"
+  end
+
+  def test_eval_says_where_it_looked_when_there_is_no_golden_there
+    status, _, err = run_cli("memory", "eval", "/nope/golden.json")
+
+    assert_equal 2, status
+    assert_includes err, "there is no /nope/golden.json"
+  end
+
+  # One question, on disk, as a person writes it beside their own agent.
+  def a_golden
+    path = File.join(Dir.mktmpdir("pinecall-golden"), "golden.json")
+    File.write(path, JSON.generate([A_QUESTION]))
+    path
+  end
 end

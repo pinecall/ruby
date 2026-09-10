@@ -7,6 +7,15 @@ version number is the human's call.
 ## [Unreleased]
 
 ### Added
+- `pinecall memory eval [GOLDEN] [--k N]`, and `client.memory.eval`: the other table's golden.
+  A list of `{ "holds", "asks", "expects" }` — what memory holds about a question's contact, what
+  the caller said, and the fact or facts that should come back — asked of `recall`, and `recall@k`
+  and `nDCG@10` printed, computed by code with no model. No contact of the org is read or written:
+  each question's facts go to a scratch contact and are deleted again, which is what makes the
+  figures the real ranking. A fact answers when what came back CONTAINS what was expected, folded
+  for case, accents and whitespace, because a fact is a sentence a model wrote. Names every
+  question memory did not answer whole with what came back instead and exits 1 when anything did.
+  Clínica Norte ships one of seven questions, eight or nine facts each.
 - `pinecall knowledge eval [GOLDEN] [--base NAME] [--k N]`, and `client.knowledge.eval`: every
   question of a golden asked of the base, and `recall@k` and `nDCG@10` printed — computed by code
   with no model, so two runs answer the same numbers. Names every question it missed with what came
