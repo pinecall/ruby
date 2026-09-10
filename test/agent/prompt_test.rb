@@ -247,6 +247,44 @@ class PromptTest < Minitest::Test
     assert_includes refused.message, "no class file"
   end
 
+  # Un hecho se archiva con la palabra con la que la clase dijo que lo recuerda, así que esas son
+  # las únicas que una vista puede pedirle a la memoria por su nombre. Una llamada real archivó
+  # `cómo prefiere que le llamen` mientras la vista pedía `preference`: el recuerdo volvió vacío
+  # para siempre, con toda la pinta de funcionar (2026-09-10). El marcador se escribe al renderizar,
+  # y ahí es donde se rechaza.
+  def test_a_memory_kind_the_class_never_said_it_remembers_is_refused_by_name
+    refused = assert_raises(Pinecall::DeclarationRefused) do
+      Pinecall.render(remembering(%(<%= memory kinds: %w[preference] %>)))
+    end
+
+    assert_equal 'memory kinds: "preference" is not one of the words this class remembers ' \
+                 "(cómo prefiere que le llamen, alergias)", refused.message
+  end
+
+  def test_a_memory_kind_the_class_does_remember_is_written_into_the_marker
+    prompt = Pinecall.render(remembering(%(<%= memory kinds: %w[alergias], limit: 3 %>)))
+
+    assert_equal %(<!-- memory: {"kinds":["alergias"],"limit":3} -->), prompt[:view]
+  end
+
+  def test_a_class_that_says_nothing_about_what_it_remembers_takes_any_kind
+    agent = Class.new(Pinecall::Agent) do
+      doc "Agenda que recuerda lo que al modelo le parezca."
+      view template: %(<%= memory kinds: %w[preference] %>)
+    end.new.seal
+
+    assert_equal %(<!-- memory: {"kinds":["preference"]} -->), Pinecall.render(agent)[:view]
+  end
+
+  # Una agenda que dice con qué palabras recuerda, y una vista que le pide algo a la memoria.
+  def remembering(template)
+    Class.new(Pinecall::Agent) do
+      doc "Agenda que dice con qué palabras recuerda."
+      memory remember: ["cómo prefiere que le llamen", "alergias"], forget: ["pagos"]
+      view template: template
+    end.new.seal
+  end
+
   # Un bloque estático que pregunta por el estado: lo que la ley refusa.
   class ReadsState < Pinecall::Agent
     state :slots, []

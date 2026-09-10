@@ -2,7 +2,7 @@
 <%# Dos huecos que el runtime rellena en cada turno, cada uno bajo su título: lo que la memoria
     guarda de este paciente, y lo que la base de conocimiento dice de lo que acaba de preguntar. %>
 ## Lo que recordamos de este paciente
-<%= memory kinds: %w[preference health] %>
+<%= memory %>
 
 ## De la base de conocimiento
 <%= retrieved k: 4, min_score: 0.5 %>

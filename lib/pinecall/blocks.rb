@@ -202,7 +202,7 @@ module Pinecall
       view = agent.class.view
       return "" if view.nil?
 
-      text = view.render(reading, fills:).text
+      text = view.render(reading, fills:, remembers: remembers(agent)).text
       return text unless agent.class.memory && !text.include?("<!-- memory:")
 
       # A view that asks for memory itself decides where it goes; one that does not still gets it,
@@ -247,9 +247,13 @@ module Pinecall
       else
         template = agent.class.block_view(called)
         read = region == "static" ? StaticReading.new(File.basename(template.path)) : reading
-        template.render(read, fills:).text
+        template.render(read, fills:, remembers: remembers(agent)).text
       end
     end
+
+    # The words a class said it remembers about a caller: the only categories a template may ask
+    # the memory for by name, and none at all for a class that said nothing about it.
+    def remembers(agent) = agent.class.memory&.dig(:remember) || []
 
     def tagged(name, body)
       body.to_s.empty? ? "" : "<#{name}>\n#{body}\n</#{name}>"

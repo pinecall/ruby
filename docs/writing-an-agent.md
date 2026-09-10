@@ -58,7 +58,9 @@ or a glob in `docs` is refused, because a base is a name: the files are pushed f
 name is what the agent says.
 
 `memory`'s words are yours — `"alergias"`, `"su médico habitual"` — and become the categories the
-runtime extracts; `forget` names the ones it must never write, `"pagos"` say. The history of a
+runtime extracts and files each fact under, so they are the only words the view may ask for:
+`<%= memory kinds: %w[alergias] %>`, and a bare `<%= memory %>` for everything the class keeps.
+`forget` names the ones it must never write, `"pagos"` say. The history of a
 contact, and the right to be forgotten, are `pinecall memory CONTACT` and `pinecall memory forget
 CONTACT`.
 
@@ -144,9 +146,11 @@ call, and never as a 1008 from a gateway:
 | `docs base: "x", top: 3` | `docs: DocsConfig has no field called top` |
 | `memory keep: […]` | `memory: MemoryConfig has no field called keep` |
 
-And one refused at render, because it is about what a template says and not what a class
+And two refused at render, because they are about what a template says and not what a class
 declares: a static block that reads a field — `a static block cannot read the state: faq.erb
-reads slots`.
+reads slots` — and a memory kind the class never said it remembers, which would have matched
+nothing for ever while the recall looked like it worked — `memory kinds: "preference" is not one
+of the words this class remembers (cómo prefiere que le llamen, alergias, su médico habitual)`.
 
 ## The hooks
 

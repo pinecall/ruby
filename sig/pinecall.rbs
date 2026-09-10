@@ -81,7 +81,7 @@ module Pinecall
     def self.file: (String) -> View
     def self.inline: (String, ?String) -> View
     attr_reader path: String
-    def render: (Reading | StaticReading, ?fills: Fills) -> Rendered
+    def render: (Reading | StaticReading, ?fills: Fills, ?remembers: Array[String]) -> Rendered
 
     class Rendered
       attr_reader text: String

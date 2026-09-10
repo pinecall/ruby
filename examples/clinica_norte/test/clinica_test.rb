@@ -99,7 +99,7 @@ class ClinicaTest < Minitest::Test
   def test_los_dos_marcadores_van_en_la_vista_cada_uno_bajo_su_titulo
     call = @gateway.call_started(from: "+34600123456")
 
-    assert_includes call.prompt, %(## Lo que recordamos de este paciente\n<!-- memory: {"kinds":["preference","health"]} -->)
+    assert_includes call.prompt, %(## Lo que recordamos de este paciente\n<!-- memory: {} -->)
     assert_includes call.prompt, %(## De la base de conocimiento\n<!-- retrieved: {"k":4,"min_score":0.5} -->)
     refute_includes call.block("identity"), "<!-- memory:"
   end

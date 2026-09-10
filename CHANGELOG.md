@@ -36,7 +36,11 @@ version number is the human's call.
   `retrieved` marker searches, and a path or a glob is refused with the command that makes a
   base; `memory remember:, forget:` travels as the wire's `MemoryConfig`, checked at load.
 - The marker payloads pinned: `memory kinds:, limit:` and `retrieved k:, min_score:`, snake_case
-  as typed. The example's view puts each under its heading.
+  as typed. The example's view puts each under its heading, and asks for memory with a bare
+  `<%= memory %>`: a fact is filed under the word the class remembers it by, so a `kinds` naming
+  any other word is refused as the marker is written — `memory kinds: "preference" is not one of
+  the words this class remembers (cómo prefiere que le llamen, alergias, su médico habitual)` —
+  where before it matched nothing for ever while the recall looked like it worked.
 - `pinecall knowledge push [DIR] --base NAME` · `list` · `drop BASE`, and `pinecall memory
   CONTACT` · `memory forget CONTACT`, on the same key every verb resolves; a refusal is printed
   as the gateway wrote it. On the client: `client.knowledge` and `client.memory_of(contact)`.

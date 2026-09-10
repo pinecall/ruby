@@ -28,7 +28,7 @@ examples/clinica_norte/
 
 ```erb
 ## Lo que recordamos de este paciente
-<%= memory kinds: %w[preference health] %>
+<%= memory %>
 
 ## De la base de conocimiento
 <%= retrieved k: 4, min_score: 0.5 %>
@@ -113,7 +113,7 @@ the work, and replaces it with text.
 
 | written | becomes | filled with |
 |---|---|---|
-| `<%= memory kinds: %w[preference], limit: 6 %>` | `<!-- memory: {"kinds":["preference"],"limit":6} -->` | the contact's facts, one `- ` line each, after the caller's turn and before the model reads |
+| `<%= memory kinds: %w[alergias], limit: 6 %>` | `<!-- memory: {"kinds":["alergias"],"limit":6} -->` | the contact's facts, one `- ` line each, after the caller's turn and before the model reads |
 | `<%= retrieved k: 4, min_score: 0.5 %>` | `<!-- retrieved: {"k":4,"min_score":0.5} -->` | the chunks of the base `docs` names, `### path › heading` then the text |
 | `knowledge "./file.md"` on the class | `<!-- knowledge: ./file.md -->`, the whole `knowledge` block | the file's text, once per call, so the cached prefix never moves |
 | `<%= marker "precio", { sku: 4 } %>` | `<!-- precio: {"sku":4} -->` | whatever a filler you run puts there |
@@ -127,12 +127,20 @@ on with the marker empty and an `error` entry in the log saying which was skippe
 A class configured with `memory` gets the memory marker even if its view never asks: configuring
 memory is expecting the caller to be remembered.
 
+`kinds` asks for some of what was kept, by the word the fact was filed under — which is one of the
+words the class wrote in `memory remember:`. Any other word is refused as the marker is written:
+`memory kinds: "preference" is not one of the words this class remembers (cómo prefiere que le
+llamen, alergias, su médico habitual)`. It would have matched nothing, for ever, and an empty
+recall reads exactly like a caller nobody has met. A bare `<%= memory %>` asks for everything the
+class keeps, which is what the example writes; a class that declares no `remember` keeps whatever
+the model finds worth keeping and constrains no kind at all.
+
 **A render prop** shapes whatever the gateway finds. A block cannot travel inside a marker, so it
 stays behind under an id the marker carries — one registry per prompt, so an id is never used by
 two blocks:
 
 ```erb
-<%= memory(kinds: %w[preference]) { |facts| "Recuerda: #{facts.join(", ")}" } %>
+<%= memory(kinds: %w[alergias]) { |facts| "Recuerda: #{facts.join(", ")}" } %>
 ```
 
 The id travels as `fill` in the payload. This release the runtime renders the facts in its own

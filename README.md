@@ -41,7 +41,7 @@ end
 
 ```erb
 ## Lo que recordamos de este paciente
-<%= memory kinds: %w[preference] %>
+<%= memory %>
 
 ## De la base de conocimiento
 <%= retrieved k: 4 %>

@@ -11,7 +11,7 @@ module Pinecall
   # TypeScript one — the same idea in each language's own material. What it renders to is TEXT,
   # because text is the only thing a model reads.
   #
-  #     <%= memory kinds: %w[preference health] %>
+  #     <%= memory %>
   #
   #     <% if stage == :identify -%>
   #     Saluda y pide nombre y teléfono. Nada más hasta identificar al paciente.
@@ -62,8 +62,11 @@ module Pinecall
     # Render the view against one reading of the state. Returns the text and the render props it
     # left behind, which is everything one render needs and nothing another one can reach. The
     # blocks of one prompt share one registry, so an id is unique across the whole prompt.
-    def render(reading, fills: Fills.new)
-      context = Context.new(reading, fills)
+    #
+    # `remembers` is what the class said it remembers about a caller: the only words a `memory`
+    # tag may ask for by name, and empty for a class that said nothing about it.
+    def render(reading, fills: Fills.new, remembers: [])
+      context = Context.new(reading, fills, remembers)
       Rendered.new(text: tidy(@erb.result(context.binding_for_the_template)), fills: context.fills)
     end
 
@@ -116,9 +119,10 @@ module Pinecall
     class Context
       attr_reader :fills
 
-      def initialize(reading, fills)
+      def initialize(reading, fills, remembers = [])
         @reading = reading
         @fills = fills
+        @remembers = remembers
       end
 
       # ERB needs somewhere to run. This is that place, and its scope is this object.
@@ -126,7 +130,11 @@ module Pinecall
 
       # What the agent remembers about this caller: a marker the memory service fills at send
       # time. With a block, the block shapes whatever it finds and stays behind under an id.
-      def memory(**options, &shape) = placeholder("memory", options, shape)
+      # `kinds` asks for some of it, in the words the class remembers, and is refused otherwise.
+      def memory(**options, &shape)
+        refuse_a_kind_nobody_remembers(options[:kinds])
+        placeholder("memory", options, shape)
+      end
 
       # The passages retrieved for this turn: a marker the retriever fills at send time.
       def retrieved(**options, &shape) = placeholder("retrieved", options, shape)
@@ -154,6 +162,25 @@ module Pinecall
       end
 
       private
+
+      # `kinds` asks the memory for some of what it kept, by the CATEGORY each fact was filed
+      # under — and a fact is filed under one of the words the class declared with `memory
+      # remember:`. A word that is not one of them matches nothing, for ever, and an empty recall
+      # reads exactly like a caller nobody has met, so the template looks like it works: a real
+      # call filed `cómo prefiere que le llamen` while the view asked for `preference`
+      # (2026-09-10). It is a typo, and the render is the only place that sees the tag and the
+      # class at once. A class that declares no `remember` keeps whatever the model finds worth
+      # keeping and constrains no kind at all.
+      def refuse_a_kind_nobody_remembers(kinds)
+        return if @remembers.empty? || kinds.nil?
+
+        Array(kinds).each do |kind|
+          next if @remembers.include?(kind.to_s)
+
+          raise DeclarationRefused, "memory kinds: #{kind.to_s.inspect} is not one of the words " \
+                                    "this class remembers (#{@remembers.join(", ")})"
+        end
+      end
 
       def placeholder(name, options, shape)
         payload = options.reject { |_, value| value.nil? }
