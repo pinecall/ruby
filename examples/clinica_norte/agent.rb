@@ -7,37 +7,15 @@ require_relative "lib/agenda"
 # Todo lo que dices se lee en voz alta: sin listas, sin markdown, los números como se dicen.
 # Nunca inventes una hora: las horas salen de la agenda, siempre.
 class ClinicaNorte < Pinecall::Agent
-  # Los canales: un agente, tres puertas.
-  phone "+34910000000"
-  whatsapp "+34910000000"
-  web true
-
-  voice "carolina"
-  llm "haiku"
   language :es
 
-  # Quién abre la llamada y cómo: las palabras tal cual, porque una recepción dice siempre lo
-  # mismo al descolgar. La otra forma, `greeting reply: "..."`, deja que el modelo la encuentre.
-  greeting "Clínica Norte, buenos días. ¿En qué puedo ayudarle?"
-
-  # Cómo se dice una palabra que la voz leería mal. DKV deletreado suena a error.
-  says DKV: "de ka uve", TAC: "tac"
-  # Lo que los oídos tienen que conocer antes de oírlo.
-  hears ["Clínica Norte", "doctora Vidal", "doctor Sáez", "doctor Ferrán"]
-
-  # Lo que sabe de memoria: un archivo, entero, en el prefijo estático de cada llamada.
-  knowledge "./knowledge/clinica.md"
-  # De lo que responde: la base que se subió con `pinecall knowledge push`, por su nombre. La
-  # plataforma la busca por su cuenta y lo que encuentra llega como resultado de una herramienta.
-  docs base: "clinica-norte", k: 4, min_score: 0.5
-  # Lo que la memoria guarda de un paciente entre llamadas, con nuestras palabras, y lo que nunca.
-  # El modelo puede terminar la llamada él mismo: la herramienta es la de livekit (`end_call`), va
-  # oculta mientras saluda, y el log recibe `call.ended` con `agent_hung_up`. Sin esta línea nadie
-  # cuelga salvo el paciente o un supervisor.
-  hangup when: "cuando el paciente ya tiene su cita, o dice que no quiere nada más y se despide"
-
-  memory remember: ["cómo prefiere que le llamen", "alergias", "su médico habitual"],
-         forget: ["pagos"]
+  # Y nada más de configuración: la voz, el modelo, el saludo, cuándo colgar, las palabras
+  # (`pinecall lexicon`), lo que recuerda (`pinecall memory policy`), lo que se sabe de memoria
+  # (Settings ▸ Knowledge) y la base que busca por turno (`pinecall docs push`, `pinecall docs
+  # attach`) son del MUNDO — por mundo, por rincón, versionados — y una clase que todavía los
+  # declara es rechazada al cargar nombrando el verbo. Tampoco las puertas: un número se apunta a
+  # un agente con `pinecall numbers import`. La clase es el contrato: el idioma, el estado, las
+  # herramientas y la vista.
 
   # La fase es un campo del estado como cualquier otro, y es lo único que mueve las herramientas.
   stage :identify, :choose, :book, :done

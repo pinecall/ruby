@@ -14,9 +14,7 @@ module Pinecall
   # prompt is `render(state)`. Tools are the only thing that changes state. The log is the truth.
   #
   #     class ClinicaNorte < Pinecall::Agent
-  #       phone "+34910000000"
-  #       voice "carolina"
-  #       llm "haiku"
+  #       language "es"
   #
   #       stage :identify, :book
   #       state :patient

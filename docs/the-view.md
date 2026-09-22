@@ -4,7 +4,7 @@ The prompt is a list of named **blocks** in two regions, in this order, always:
 
 | region | when it changes | the blocks |
 |---|---|---|
-| `static` — before the history, cached by the provider | never during a call | `identity` (the class comment · the framework's rules and protocols) · `knowledge` (the one file the class knows by heart, whole) · `tools` (every tool's name and comment) |
+| `static` — before the history, cached by the provider | never during a call | `identity` (the class comment · the framework's rules and protocols) · `knowledge` (the page the agent knows by heart, written by the gateway from its settings) · `tools` (every tool's name and comment) |
 | the history — the turns, the lookups, and the summaries a `collapse` left | the runtime writes it; the app never does | |
 | `dynamic` — after the history, replaced every turn | on every state change | `view` — the last thing the model reads |
 
@@ -88,14 +88,13 @@ history. What the view adds is the sentence *you* want said when the answer is y
 Pinecall.render(agent, remembered: ["su médico habitual es la doctora Vidal"])[:view]
 ```
 
-The same is true of the knowledge base. `docs` names the base and says how to search it —
-`docs base: "clinica-norte", k: 4, min_score: 0.5` — and the platform runs the search itself, at
-the end of the caller's turn, through its `search` tool. The view says nothing about it.
+The same is true of the knowledge base. The base attached to the agent, and how to search it, are
+the world's settings, not the class's; the platform runs the search itself, at the end of the
+caller's turn, through its `search` tool. The view says nothing about it.
 
-`knowledge`, on the other hand, is a file **you** wrote and ship with the class, so it is your own
-words and goes where your words go: the `knowledge` block, whole, in the cached prefix. The day it
-stops being written by hand — generated from a CMS, exported from a customer's system — it belongs
-in a knowledge base instead, pushed with `pinecall knowledge push`.
+What the agent knows by heart, on the other hand, is a page the org wrote in the agent's settings,
+so it is its own words and goes where those go: the `knowledge` block, whole, in the cached prefix,
+written there by the gateway once per call. The view says nothing about it either.
 
 ## Reading the prompt
 

@@ -45,7 +45,7 @@ lib/pinecall/
   agent/state.rb             the `state` and `stage` macros, the store, snapshot · restore · collapse
   agent/tools.rb             the `tool` macro, the registry, what this state shows
   agent/spec.rb              one tool as the gateway receives it, and what is refused at load
-  agent/config.rb            the eleven declarations, what each becomes on the wire, and the three refused at load
+  agent/config.rb            the four a class may still declare, and the world's eleven, refused at load by name
   view.rb                    the ERB template and what it is rendered in
   lang.rb                    the framework's own words: the rules and the protocols, es · en
   blocks.rb                  the prompt as four named blocks in two regions: the layout, `render`, `show`
@@ -88,7 +88,7 @@ gives that TypeScript does not, or what it takes away.
 | in `pinecall/agents` (TS) | here (Ruby) | why it is different |
 |---|---|---|
 | `class X extends Agent { patient = null }` and a `Proxy` on the constructor | `state :patient` | TypeScript must catch an assignment to *any* field, so it needs a Proxy. Ruby declares its state, so the writer the macro generates **is** the recorder. What you cannot do by accident, you cannot do. |
-| `CONFIG_FIELDS`: eleven names skipped on every write | config declared on the **class**, state on the **instance** | "config is not state" stops being a rule anybody has to remember and becomes where the words are written. There is no list. |
+| `CONFIG_FIELDS`: four names skipped on every write | config declared on the **class**, state on the **instance** | "config is not state" stops being a rule anybody has to remember and becomes where the words are written. There is no list. |
 | `@tool({...})` decorator | `tool ...` above the `def`, caught by `method_added` | Ruby has no decorators; it has the hook Sorbet's `sig` uses. The declaration still reads top to bottom. |
 | `docstrings.ts`: the class's own source parsed with **oxc** | `Method#source_location` + the comment block above it | Ruby keeps where every method was defined and the file is still on disk. No parser, no dependency, same two lines. |
 | parameter types read out of the TypeScript signature | `Method#parameters` for the names, `params:` for the types | A Ruby signature carries no types. Names are free; anything that is not text says so once. |
@@ -97,9 +97,7 @@ gives that TypeScript does not, or what it takes away.
 | `zod` parses a command before it leaves | the generated shape table plus `Validate` | The schema already generated the table; walking it is thirty lines that cannot drift from zod or pydantic. |
 | `Camel<T>`, `toCamel`, `toSnake` — a whole conversion layer | *nothing* | The wire is snake_case and so is Ruby. The layer does not exist here. |
 | `render()`, a method on the class, returning JSX | an **ERB template** beside the class, `views/<slug>.erb`, rendered with the instance in scope | The same sentence — the object renders itself — in each language's own idiom. A TypeScript class renders in a method because JSX is an expression; a Ruby class renders in a view because that is what a view *is* here, and it costs no build step: `pinecall prompt` reads the file a person edited. |
-| `knowledge = "./knowledge/clinica.md"`, the file read by `load.ts` at connect | `knowledge "./knowledge/clinica.md"`, the file checked at load beside the class | Ruby knows the class's file at the line, so a path with nothing behind it is refused when the class loads, with the path — before any gateway is involved. `wire_config` sends `{path, text}` from the file that was checked. |
-| `docs = "clinica"` or `docs = { base, mode?, k?, minScore? }`, `toSnake` on the way out | `docs "clinica-norte"` or `docs base:, mode:, k:, min_score:` | The keyword IS the wire's field: nothing converts, and `DocsConfig` is checked at declaration. A glob is refused with the command that makes a base. |
-| `greeting = "Buenos días."` or `greeting = { reply: "saluda" }` | `greeting "Buenos días."` or `greeting reply: "saluda"` | The keyword IS the wire's field, as with `docs`. Both refuse the same way when a class names both verbs or neither, in the same sentence, because it is the same rule the runtime holds. |
+| `THE_WORLDS` and `refuseTheEnvironment`: a field of the world's on the probe instance, refused when `load.ts` loads the class | `Config::THE_WORLDS`, the same table word for word, and a class macro per field that raises `DeclarationRefused` | TypeScript can only see a field once an instance exists, so it builds one to look. Ruby's config words are calls in the class body, so the refusal is the call itself: it fires on the line that wrote it, while the file is still loading, with the same sentence. |
 | `this.remembers("médico habitual")` inside `render()` | `remembers?("médico habitual")` in the template | The same question, asked of the runtime's answer, in each language's own punctuation. Neither prints the fact: a fact reaches the model as a `recall` tool result, in the history, and the view only branches on it. |
 | `pinecall knowledge push`, `pinecall memory` in `src/cli`, on the login path | the same verbs on `Client::Rest`, with the key `cli/env.rb` resolves for every verb | One resolution order for the socket and the REST doors; a refusal is printed as the gateway wrote it. |
 | `Blocks = { blocks }`; the layout is `Block[]` in send order | `Blocks = Data.define(:blocks, :history)`, `Block = Data.define(:name, :region, :text)` | Ruby keeps the history on the same value, because `pinecall prompt` prints it between the regions and a `collapse` is the one thing the app knows about the turns. |
@@ -118,20 +116,13 @@ rings.
 ## 4. The class a tenant writes
 
 **Config** is declared on the class and is not state: it never changes during a call, is never
-diffed, and no view renders it.
+diffed, and no view renders it. The class is the contract; what it runs on is the world's.
 
 | declared | becomes |
 |---|---|
-| `phone`, `whatsapp` | a route in `agent.register`, with that number |
-| `web` | a route with no number: that is what the widget is |
-| `voice` | a **name** the platform resolves to a vendor and an id, never an id |
-| `llm` | `"haiku"`/`"sonnet"`/`"opus"` lowered to real ids; `"provider/model"` names both halves |
-| `says` | a map written as a map, carried as a list of pronunciations |
-| `hears` | the words the ears must know before they hear them |
-| `language` | which of `lang.rb`'s two word-sets the `identity` block carries |
-| `knowledge` | the `knowledge` block, whole, and the same `{path, text}` in `agent.configure`. It is the tenant's own file, so it is the tenant's own words, in the cached prefix. Refused at load when the file is not beside the class |
-| `docs` | the base by name, `mode`, `k`, `min_score` — what the platform's `search` tool runs with. A path or a glob is refused: a base is pushed first |
-| `memory` | `remember` and `forget`, the tenant's words: what `remember` writes at hang-up, and what it never may. What was kept comes back through the platform's `recall` tool, and a view asks it a question with `remembers?` |
+| `language` | which of `lang.rb`'s two word-sets the `identity` block carries, and `language` in `agent.configure` |
+| `phone`, `whatsapp`, `web` | nothing: accepted, so an old class still loads, and read by nobody. A door is a row the org keeps (`pinecall numbers import`) |
+| `voice`, `llm`, `stt`, `greeting`, `hangup`, `says`, `hears`, `memory`, `record`, `knowledge`, `docs` | refused at load, `` `voice` is the world's now, not the class's: pinecall agent set --voice <name> — remove it from the class``, each with the verb that sets it. None of them is sent: the runtime reads them off the world's settings |
 
 **State** is declared with `state`, and the rules are enforced in code:
 
@@ -167,7 +158,7 @@ does not have, `stage:` on a class that declares no stage, a stage that is not o
 | block | region | what is in it | when it changes |
 |---|---|---|---|
 | `identity` | static | the class docstring · `<rules>` and `<protocols>` | never during a call |
-| `knowledge` | static | the one file the class knows by heart, whole | never during a call |
+| `knowledge` | static | the page the agent knows by heart, from the world's settings, written by the gateway — the class sends nothing | never during a call |
 | `tools` | static | every tool's name and docstring, visible or not | never during a call |
 | *the history* | — | the turns and the lookups (the runtime's) and the `<!-- collapsed: … -->` summaries a `collapse` left | when the app collapses |
 | `view` | dynamic | what the template says about the state right now | on every state change |

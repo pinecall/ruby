@@ -21,73 +21,68 @@ out loud instead: `doc "Eres la recepción…"`.
 
 ## Config: what the agent *is*
 
-Declared on the class, because it is not something the agent remembers — it is what it was set up
-as. It never changes during a call and no view renders it.
+Declared on the class, because it is not something the agent remembers. It never changes during a
+call and no view renders it. There is one word left:
 
 ```ruby
-phone "+34910000000"      # a route in agent.register, with that number
-whatsapp "+34910000000"
-web true                  # a route with no number: that is what the widget is
-voice "carolina"          # a NAME. The platform resolves it to a vendor and an id
-llm "haiku"               # or "sonnet", "opus", or "openai/gpt-5.4-mini"
 language :es              # which of the framework's two word-sets the prompt carries
-greeting "Clínica Norte, buenos días."            # how the call opens: the words, as written
-says DKV: "de ka uve"     # how a word is said when the voice would read it wrong
-hears ["Clínica Norte"]   # what the ears must know before they hear it
-knowledge "./knowledge/clinica.md"                # the one file it knows by heart
-docs "clinica-norte"                              # the base it answers from, by name
-memory remember: ["cómo prefiere que le llamen"], forget: ["pagos"]
 ```
 
-`voice` is a name and never an id. Sending an id is how a call once spent twenty seconds retrying
-`voice_id_does_not_exist` while the model apologised.
+**The doors are not here.** A number is bought, pointed at an agent and moved by whoever answers
+the telephone, not by whoever deploys: it is a row the org keeps — `pinecall numbers import
+<+34…> --agent <slug>`, or the console's Numbers screen. And the web needs no door at all: every
+agent can be talked to from a page. A class that still writes `phone "+34…"`, `whatsapp` or
+`web true` still loads, and is writing something nobody reads.
 
-### Opening the call
+### The world's, not the class's
 
-An agent that answers a phone speaks first, and there are exactly two ways to do it:
+Everything the agent **runs on** is the world's: set per world and per corner, versioned, with who
+set it and why, and changed without a deploy — by `pinecall agent set`, the console's Settings
+tab, or the verb the table names. Those verbs belong to the Node CLI (`@pinecall/agents`); this
+gem's `pinecall` does not have them. A class that still declares one of these fields is refused
+when it loads, before a prompt is printed or a gateway is knocked at, with the verb that sets it
+now:
 
-```ruby
-# the words, read out as written — no model runs, so it is the same sentence every time
-greeting "Clínica Norte, buenos días. ¿En qué puedo ayudarle?"
-
-# or: what the model reads before it finds its own words. The caller never hears this line
-greeting reply: "saluda, di que eres la recepción y pregunta en qué puedes ayudar"
-
-# a notice nobody may talk over
-greeting say: "Esta llamada será grabada.", allow_interruptions: false
+```
+`voice` is the world's now, not the class's: pinecall agent set --voice <name> — remove it from the class
 ```
 
-Both at once, or neither, is refused when the class loads. Saying nothing at all is the third
-option: nobody speaks until the caller does.
+| field | what it is | where it is set |
+|---|---|---|
+| `voice` | a voice **by name** — the platform resolves it to a vendor and an id | `pinecall agent set --voice` |
+| `llm` | `haiku`, `sonnet`, `opus`, or `vendor/model` | `pinecall agent set --llm` |
+| `stt` | the ears: `deepgram` (Flux), `soniox`, or `vendor/model` | `pinecall agent set --stt` |
+| `greeting` | how the call opens: the words, or what the model reads before finding its own | `pinecall agent set --greeting '…'` · `--reply '…'` |
+| `hangup` | whether the model may end the call itself, and when, in your words | `pinecall agent set --hangup '…'` |
+| `says` | how a word the voice would misread is said: `DKV` → `de ka uve` | `pinecall lexicon add <word> --say '…'` |
+| `hears` | the words the ears must know: names, brands, the doctor's surname | `pinecall lexicon hear <word> …` |
+| `memory` | what to remember about a caller across calls, and what never to | `pinecall memory policy --remember '…' --forget '…'` |
+| `record` | whether the call is recorded | `pinecall agent set --record on\|off` |
+| `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `pinecall agent knowledge edit`, or Settings ▸ Knowledge |
+| `docs` | the bases the agent searches per turn, and how many chunks a turn reads | `pinecall docs push`, then `pinecall docs attach <base>` |
 
-The opening is a `turn.agent` like any other — on the log, on the console, judged by ring 4. A
-golden never hears it, because a golden is one turn under the state it declares and that call is
-already underway. Mid-call the same two verbs are methods: `say "..."` and `reply "..."`.
+Mid-call, `say "..."` and `reply "..."` are still methods of the class, for when something happens
+that the caller should hear now; how the call *opens* is the world's.
 
 ### What it knows, what it reads, what it remembers
 
-Three declarations, three different things, and the runtime does the work for all of them:
+None of the three is in the class any more, and the runtime does the work for all of them:
 
-| declared | what it is | where it lands |
-|---|---|---|
-| `knowledge "./knowledge/clinica.md"` | **one file, known by heart.** Read beside the class and sent whole, path and text | the `knowledge` block, static: your own words in the cached prefix, once per call |
-| `docs "clinica-norte"` | **a base it answers from**, by the name it was pushed under with `pinecall knowledge push` | the platform's `search` tool: it runs at the end of the caller's turn and the chunks reach the model as a **tool result** |
-| `memory remember: […], forget: […]` | **what to keep about a contact across calls**, in your own words — and what never to keep | the platform's `recall` tool, the same way; at hang-up one model call writes what this call taught |
-
-`docs` takes keywords when the name is not enough: `docs base: "clinica-norte", mode: :retrieved,
-k: 4, min_score: 0.5`. That declaration is where `k` and `min_score` live, because the view no
-longer asks for anything. A path or a glob in `docs` is refused, because a base is a name: the
-files are pushed first, and the name is what the agent says.
+- **What it knows by heart** — the hours, the prices — is a page of Markdown in the agent's
+  settings. The gateway writes it, whole, into the `knowledge` block of the prompt, once per call,
+  in the cached prefix. The class sends nothing for that block, so `pinecall prompt` prints it
+  empty.
+- **What it searches** is a base: a folder of Markdown pushed to the gateway and attached to the
+  agent. The platform's `search` tool runs it and the chunks reach the model as a **tool result**.
+- **What it remembers** about a contact is the org's memory policy, in its own words; the
+  platform's `recall` tool answers from it, the same way, and at hang-up one model call writes what
+  this call taught.
 
 **Neither a fact nor a chunk ever reaches the prompt.** Both arrive as a `tool_result`, JSON, in
 the history, where a model reads them as information rather than as an instruction — the rule, and
 the vendor guidance behind it, is `runtime/docs/security/prompt-injection.md`. What the view may do
 with memory is ask it a question: `remembers?("médico habitual")`, and then say a sentence of your
-own.
-
-`memory`'s words are yours — `"alergias"`, `"su médico habitual"` — and become the categories the
-runtime extracts and files each fact under. `forget` names the ones it must never write, `"pagos"`
-say. The history of a contact, and the right to be forgotten, are `pinecall memory CONTACT` and
+own. The history of a contact, and the right to be forgotten, are `pinecall memory CONTACT` and
 `pinecall memory forget CONTACT`.
 
 ## State: what it remembers
@@ -164,10 +159,7 @@ call, and never as a 1008 from a gateway:
 | `stage: :pay` where `stage` has no `:pay` | `pay is not one of this agent's stages (identify, book)` |
 | `stage:` on a class with no `stage` | `…declares none; add \`stage :identify, :book\`` |
 | `state :cart` twice | `declares cart twice` |
-| `knowledge "./no.md"` with no such file | `knowledge names a file beside the class, and there is no …/no.md` |
-| `docs "./knowledge/docs/**/*.md"` | `docs name the base they were pushed to: run \`pinecall knowledge push ./knowledge/docs --base <slug>\`` |
-| `docs base: "x", top: 3` | `docs: DocsConfig has no field called top` |
-| `memory keep: […]` | `memory: MemoryConfig has no field called keep` |
+| `voice`, `llm`, `stt`, `greeting`, `hangup`, `says`, `hears`, `memory`, `record`, `knowledge`, `docs` | `` `<field>` is the world's now, not the class's: <verb> — remove it from the class``, the verb from the table above |
 
 A view is the one thing read later, at render: a field the class never declared raises there, by
 name, the same way an undefined instance variable does in a Rails view.

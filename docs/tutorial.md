@@ -51,9 +51,7 @@ require "pinecall"
 
 # Eres la recepción de Clínica Norte. Hablas de usted, con frases cortas.
 class ClinicaNorte < Pinecall::Agent
-  web true
-  voice "carolina"
-  llm "haiku"
+  language :es
 
   stage :identify, :resolve
   state :patient, visibility: :pii
@@ -142,7 +140,7 @@ The first terminal is the process you deploy:
 
 ```bash
 pinecall run
-# clinica-norte is answering on http://127.0.0.1:8080 (1 routes)
+# clinica-norte is answering on http://127.0.0.1:8080
 ```
 
 The second is a caller, and here Ruby is one verb short of TypeScript:
@@ -170,26 +168,17 @@ TypeScript class in its own process and names it in the URL, so its call is serv
 Either way your tools run in the `pinecall run` process, on a thread of that call's own: the gateway
 asks, your method answers, and no code of yours ever crosses the socket.
 
-## 4. Knowledge: one file the agent knows by heart
+## 4. Knowledge: a page the agent knows by heart
 
-Write `knowledge/clinica.md` — hours, prices, what needs an authorisation — and name it on the
-class: `knowledge "./knowledge/clinica.md"`. The path is read **beside the class**, when the class
-loads, so a path with nothing behind it is refused there and then, with the path, rather than
-opening into an empty block on the first call. Run `pinecall prompt` again and the second block is
-no longer empty:
+The voice, the model, the opening and everything else the agent runs on are not in the class: they
+are the world's, set with the Node CLI's `pinecall agent set` or the console's Settings, and a class
+that still declares one is refused at load with the verb (`docs/writing-an-agent.md`).
 
-```
-── knowledge (static) ──
-# Clínica Norte
-
-Centro médico en Madrid. Medicina general, traumatología y radiodiagnóstico.
-
-- Horario: de lunes a viernes, de ocho a veinte.
-…
-```
-
-It goes up whole, once per call, in the cached prefix: the model has it in every turn and you pay for
-it once. The provider caches the static blocks one by one, which is why rewriting the tool list
+What the agent knows by heart — hours, prices, what needs an authorisation — is one of those: a page
+of Markdown in the agent's settings, written in the console, Settings ▸ Knowledge, or with the Node
+CLI's `pinecall agent knowledge edit`. The class sends nothing for it, so `pinecall prompt` prints the
+second block empty; the gateway writes the page into it, whole, once per call, in the cached prefix:
+the model has it in every turn and you pay for it once. The provider caches the static blocks one by one, which is why rewriting the tool list
 leaves identity and knowledge read from cache.
 
 Use this for what is small, stable and always relevant. Seventeen thousand characters is fine. A
@@ -197,10 +186,10 @@ folder of a hundred documents is not, and that is the next step.
 
 ## 5. The knowledge base: what it looks up per turn
 
-Put your Markdown under `knowledge/docs/`, one file per subject, with headings. Name the base on the
-class — `docs base: "clinica-norte", k: 4, min_score: 0.5` — and push it. With no arguments the verb
-reads both halves off the `agent.rb` in this directory: `knowledge/docs` beside it, under the name
-its `docs` says.
+Put your Markdown under `knowledge/docs/`, one file per subject, with headings, and push it. With no
+arguments the verb reads both halves off the `agent.rb` in this directory: `knowledge/docs` beside
+it, under the agent's slug. The class does not name the base: attaching it to the agent, with its
+`k` and `min_score`, is the world's — the Node CLI's `pinecall docs attach clinica-norte --k 4`.
 
 ```bash
 pinecall knowledge push
@@ -208,8 +197,7 @@ pinecall knowledge push
 ```
 
 That is all: no vector-database client, no `search` call in your code, no `if` that decides when to
-look. A path or a glob in `docs` is refused at load, with the command that turns files into a base —
-a base is a name, and the files are pushed first.
+look.
 
 **What the push did.** Each file was cut at its headings, each chunk prefixed with its heading path
 (`tarifas.md › Tarifas › Revisión`), and embedded — **contextually**, one document at a time, so a
@@ -236,12 +224,11 @@ pinecall knowledge drop clinica-norte
 
 ## 6. Memory: what it keeps between calls
 
-```ruby
-memory remember: ["cómo prefiere que le llamen", "alergias", "su médico habitual"],
-       forget: ["pagos"]
+```bash
+pinecall memory policy --remember "cómo prefiere que le llamen" "alergias" "su médico habitual" --forget "pagos"
 ```
 
-`remember` is the vocabulary, **in your own words**, of what is worth keeping about a person.
+The policy is the org's, set with the Node CLI, not declared on the class. `remember` is the vocabulary, **in your own words**, of what is worth keeping about a person.
 `forget` is what is never written whatever the model heard.
 
 **Reading, on a turn.** A `recall` runs beside the `search`, on the same path and budget. It answers
@@ -254,7 +241,7 @@ supersedes the old one, and nothing is deleted except by `forget`.
 
 **Who a caller is.** On the phone and on WhatsApp the number is the identity. On the web nobody is
 anybody until somebody says so — the token door seals a contact id the browser cannot forge — and an
-agent that declares `memory` remembers nothing of an anonymous visitor, which is right. The
+agent with a memory policy remembers nothing of an anonymous visitor, which is right. The
 console's Talk screen mints its token with no contact, so a call made from there is one of those.
 
 Two calls that did name a contact, and you can see it: current facts first, then the one the second

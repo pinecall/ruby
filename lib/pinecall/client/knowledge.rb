@@ -6,7 +6,7 @@ module Pinecall
     # listed, one dropped. `client.knowledge`.
     #
     # A push is the tenant's folder as of now: the base is replaced, never merged, so a file that
-    # is not in the list is gone from it. The name is what an agent's `docs` declaration says.
+    # is not in the list is gone from it. The name is what the agent's settings attach.
     class Knowledge
       def initialize(url:, api_key:)
         @url = url

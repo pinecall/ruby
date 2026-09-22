@@ -6,19 +6,31 @@ version number is the human's call.
 
 ## [Unreleased]
 
+### Changed
+- **Breaking: the class is code, the world is environment.** A class declares the contract — its
+  `language`, `state` and `stage`, its `tool`s, `accepts`, its view — and nothing it runs on.
+  `voice`, `llm`, `stt`, `greeting`, `hangup`, `says`, `hears`, `memory`, `record`, `knowledge`
+  and `docs` in a class body now raise `DeclarationRefused` when the class loads, before a prompt
+  is printed or a gateway is knocked at, naming the verb that sets each instead:
+  `` `voice` is the world's now, not the class's: pinecall agent set --voice <name> — remove it
+  from the class``. What to run instead, per world, with the Node CLI or the console's Settings:
+  `pinecall agent set --voice | --llm | --stt | --greeting '…' (or --reply '…') | --hangup '…' |
+  --record on|off`, `pinecall lexicon add <word> --say '…'` and `pinecall lexicon hear <word>`,
+  `pinecall memory policy --remember '…' --forget '…'`, `pinecall agent knowledge edit` for what
+  the agent knows by heart, and `pinecall docs attach <base>` for the base it searches. None of
+  them travels on `agent.configure` any more, and the `knowledge` block is the gateway's to fill:
+  the class sends nothing for it, so `pinecall prompt` prints it empty.
+- **A class declares no doors.** `phone`, `whatsapp` and `web` still load and are read by nobody:
+  `agent.register` carries no routes from the class, and `pinecall run` no longer counts them. A
+  number is pointed at an agent with `pinecall numbers import <+34…> --agent <slug>`, and every
+  agent can be talked to from a page.
+- `pinecall knowledge push` and `knowledge eval` default the base to the agent's slug, since a
+  class no longer names one. `examples/clinica_norte` declares only its contract, and its
+  `knowledge/clinica.md` is gone: that page lives in the agent's settings.
+
 ### Added
-- **`greeting`**: how the class opens a call, without a hook to do it.
-  `greeting "Clínica Norte, buenos días."` is the words, read out as written;
-  `greeting reply: "saluda y preséntate"` is what the model is told before it finds its own, and
-  the caller never hears it. Exactly one of the two, refused at declaration when it is neither or
-  both. `greeting say: "...", allow_interruptions: false` is the notice nobody talks over.
-- **`hangup when: "..."`** on a class: the model may end the call itself, and you say in your own
-  words when. The tool is livekit's own `end_call`, hidden while the agent is greeting, and the
-  call's log gets `call.ended` with `agent_hung_up`. `hangup` alone is a declaration too, with the
-  wording left to livekit. A class that says nothing cannot hang up: only the caller and a
-  supervisor end a call. Clínica Norte declares one.
 - **`pinecall remember [PATHS]`**, and `client.memory.extraction(slug, cases)` — the goldens
-  `memory remember:` is held to, which is the write side and the half that persists. A case is one
+  the memory policy is held to, which is the write side and the half that persists. A case is one
   call already held (both speakers, in `said`), the facts memory already holds (`holds`), and what
   must come of the hang-up's one model call: which categories got a fact (`writes`), which never
   did (`never`), which values must not survive in any fact's text (`never_says`), and which held
@@ -26,8 +38,8 @@ version number is the human's call.
   whatever it touches is caught too. A case may `plants` sentences somebody tried to get into
   memory, and planting one IS the assertion that admission refuses it. Nothing asks a model whether
   two sentences mean the same thing: a category is your own word, a value is a literal, a
-  supersession is an id. The class is mounted in this terminal, because the categories a case may
-  name and the tool names admission refuses a fact for are the class's own declaration; the one
+  supersession is an id. The class is mounted in this terminal, because the tool names admission
+  refuses a fact for are the class's own declaration; the one
   model call per case runs in the gateway on the org's keys. Exits 1 when a case did not hold.
   `test/memory` beside the `agent.rb` by default; Clínica Norte ships three.
 - `pinecall memory eval [GOLDEN] [--k N]`, and `client.memory.eval`: the other table's golden.
@@ -66,12 +78,6 @@ version number is the human's call.
 - `rake console:build` and `rake console:check`: how the bundle gets here, and how a reader finds
   out that what is here is stale.
 - `examples/clinica_norte`: a whole agent, its view, and its own ring-0 suite.
-- What the agent knows, reads and remembers, on the wire. `knowledge "./knowledge/clinica.md"`
-  is read beside the class, refused at load when the file is not there, and is the `knowledge`
-  block whole as well as the `{path, text}` of `agent.configure`; `docs "clinica-norte"` (or
-  `docs base:, mode:, k:, min_score:`) names the base and how to search it, and a path or a glob
-  is refused with the command that makes a base; `memory remember:, forget:` travels as the
-  wire's `MemoryConfig`, checked at load.
 - **A lookup is a tool result, never a piece of the prompt.** What memory kept from an earlier
   call and what the knowledge base returned no longer travel through the view: the platform runs
   its own `recall` and `search` tools and their answers reach the model as `tool_result` blocks,
@@ -81,7 +87,7 @@ version number is the human's call.
   gone, and so are the tenant-declared blocks (`prompt static:`/`dynamic:`) and the render props
   that came with them. What a view may still do with memory is ask it a question —
   `remembers?("médico habitual")`, answered by the runtime — and say a sentence of its own about
-  the answer. `k` and `min_score` are declared once, on `docs`.
+  the answer.
 - `pinecall keys add VENDOR` · `rm VENDOR` · `list`: the org brings its own provider key for a
   vendor on its own API key, with no operator in it. The key is read from stdin — typed with
   nothing echoed on a terminal, one piped line off one — and never from a flag, because argv

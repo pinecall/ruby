@@ -9,13 +9,7 @@ require "pinecall"
 
 # Eres la recepción de Clínica Norte. Hablas de usted, con frases cortas.
 class ClinicaNorte < Pinecall::Agent
-  phone "+34910000000"
-  voice "carolina"
-  llm   "haiku"
-
-  knowledge "./knowledge/clinica.md"   # one file, known by heart
-  docs base: "clinica-norte", k: 4     # the base it answers from, pushed by name
-  memory remember: ["alergias"], forget: ["pagos"]
+  language :es
 
   stage :identify, :book
   state :patient, visibility: :pii
@@ -74,7 +68,7 @@ gem install pinecall
 pinecall prompt agent.rb              # the exact prompt this state would produce. No gateway.
 pinecall prompt agent.rb --stage book
 pinecall run agent.rb                 # registered and answering: the process you deploy
-pinecall knowledge push               # knowledge/docs, as the base `docs` names
+pinecall knowledge push               # knowledge/docs, as a base named after the agent
 pinecall memory +34600123456          # what is remembered about a contact; `forget` to forget
 pinecall memory eval                  # the golden: does recall bring the right facts back?
 pinecall keys add elevenlabs          # this org's own key for a vendor, read off stdin

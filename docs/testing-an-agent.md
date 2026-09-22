@@ -186,7 +186,7 @@ facts memory already holds about that caller, and what must come of it. One file
 | `holds` | what memory already holds about this caller. They are shown to the model with ids, and nothing is written to or read from the memory table |
 | `plants` | sentences somebody tried to get into memory. Planting one IS the assertion: admission must refuse every one of them |
 | `channel` | `phone` (the default), `web` or `whatsapp`, as the model is told it |
-| `expect.writes` | every category named got at least one fact. The words are your class's own `memory remember:` — a category you never declared is refused as a bug in the golden, not run |
+| `expect.writes` | every category named got at least one fact. The words are the org's memory policy, `pinecall memory policy --remember` — a category the policy never names is refused as a bug in the golden, not run |
 | `expect.never` | no fact was written under any of these. Your class's own `forget:` words |
 | `expect.never_says` | **the sharper one**: no fact CARRIES this value, under whatever category. Matched on the words as they fold and on the digits alone, so `4242 4242 4242 4242` catches `4242424242424242` too |
 | `expect.invalidates` | every held fact named here was superseded — and, the mirror, **no other held fact was**. That is the half that catches a model which replaces whatever it touches |
@@ -295,7 +295,7 @@ memory · pplx-embed-context-v1-0.6b · 7 questions · recall@1 0.57 · nDCG@10 
 
 Every question memory did not answer whole is printed with what came back instead, and the verb
 **exits 1** when anything did. A golden is fixed and the ranking is the variable here too: what you
-change is the words a fact is written in — `memory remember:` is that vocabulary — the embedder,
+change is the words a fact is written in — the memory policy's `--remember` is that vocabulary — the embedder,
 or `k`.
 
 `client.memory.eval(questions, k:)` is the same thing from Ruby.

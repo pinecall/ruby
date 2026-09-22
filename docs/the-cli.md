@@ -44,7 +44,7 @@ page. Ctrl-C closes the socket, and every agent's slug is free the moment it shu
 
 ```bash
 pinecall run examples/clinica_norte/agent.rb
-# clinica-norte is answering on http://localhost:8080 (3 routes)
+# clinica-norte is answering on http://localhost:8080
 ```
 
 ## ui
@@ -63,12 +63,13 @@ page. Ctrl-C closes the port with the command.
 
 ## knowledge
 
-The base an agent's `docs` names is a folder of Markdown, pushed whole under that name. The
-gateway cuts it by heading, embeds it, and from then on the platform's `search` tool answers from
-it — at the end of the caller's turn, as a tool result the model reads in the history.
+A base is a folder of Markdown, pushed whole under a name — the agent's slug when nobody says
+otherwise. The gateway cuts it by heading and embeds it; once the base is attached to the agent in
+its settings (the Node CLI's `pinecall docs attach <base>`), the platform's `search` tool answers
+from it — at the end of the caller's turn, as a tool result the model reads in the history.
 
 ```bash
-pinecall knowledge push                                   # knowledge/docs beside agent.rb, as its `docs` base
+pinecall knowledge push                                   # knowledge/docs beside agent.rb, as its slug
 pinecall knowledge push ./knowledge/docs --base clinica-norte
 # clinica-norte · 2 files · 14 chunks · 312 ms
 pinecall knowledge list
@@ -82,7 +83,7 @@ pinecall knowledge eval                                   # knowledge/golden.jso
 | | |
 |---|---|
 | `push [DIR] [--base NAME]` | every `*.md` under DIR, recursively, each as its path relative to DIR and its text. The base is **replaced**: a file not in the folder is gone from it |
-| defaults | DIR is `knowledge/docs` beside the `agent.rb` here; NAME is what that agent's `docs` says, or its slug |
+| defaults | DIR is `knowledge/docs` beside the `agent.rb` here; NAME is that agent's slug |
 | `list` | every base this org has pushed: name, chunks, when |
 | `drop BASE` | the base is gone; an agent still naming it retrieves nothing until the next push |
 | `eval [GOLDEN] [--base NAME] [--k N]` | every question of a golden asked of the base, and `recall@k` and `nDCG@10` — computed by code with no model, so two runs answer the same numbers. Prints every question it missed with what came back instead, and **exits 1** when anything did, so a base can be held to its golden in CI. GOLDEN is `knowledge/golden.json` beside the `agent.rb` here: a JSON list of `{ "asks", "expects" }`, where `expects` is the heading path the answer should carry. A golden is fixed and the index is the variable |
@@ -144,7 +145,7 @@ A case is one call **already held**, written down for BOTH speakers, so nothing 
 | `holds` | what memory already holds about this caller, shown to the model with ids. Nothing is read from or written to the memory table |
 | `plants` | sentences somebody tried to get into memory. Planting one IS the assertion that admission refuses it |
 | `channel` | `phone` (the default), `web` or `whatsapp` |
-| `expect.writes` | every category named got at least one fact. Your class's own `memory remember:` words; a category you never declared is refused as a bug in the golden |
+| `expect.writes` | every category named got at least one fact. The words of the org's memory policy (`pinecall memory policy --remember`); a category the policy never names is refused as a bug in the golden |
 | `expect.never` | no fact was written under any of these. Your class's own `forget:` words |
 | `expect.never_says` | no fact CARRIES this value, under whatever category. Matched on the folded words and on the digits alone, so `4242 4242 4242 4242` catches `4242424242424242` |
 | `expect.invalidates` | every held fact named here was superseded, and no other held fact was |

@@ -8,8 +8,6 @@ class PromptTest < Minitest::Test
   # Todo lo que dices se lee en voz alta.
   class Clinica < Pinecall::Agent
     language :es
-    knowledge "./knowledge/clinica.md"
-    memory remember: ["cómo prefiere que le llamen"]
 
     stage :identify, :book
     state :patient
@@ -60,13 +58,12 @@ class PromptTest < Minitest::Test
     assert_equal Pinecall::Prompt::FRAMEWORK, Clinica.wire_config[:prompt]
   end
 
-  def test_the_static_blocks_joined_are_one_text_the_docstring_the_words_the_knowledge_the_tools
+  def test_the_static_blocks_joined_are_one_text_the_docstring_the_words_the_tools
     words = Pinecall::Lang.words_for(Clinica)
     whole = [
       @agent.doc,
       "<rules>\n#{words[:rules]}\n</rules>",
       "<protocols>\n#{words[:protocols]}\n</protocols>",
-      rendered[:knowledge],
       "<tools>\n- find_patient: Busca al paciente.\n</tools>"
     ].join("\n\n")
 
@@ -82,11 +79,10 @@ class PromptTest < Minitest::Test
     refute_includes text, "find_patient"
   end
 
-  # The file the class knows by heart is the tenant's own words, so it goes in the cached prefix
-  # whole — never a line for somebody else to fill in, and never a tool result.
-  def test_the_knowledge_block_is_the_file_beside_the_class_read_whole
-    assert_equal File.read(File.expand_path("knowledge/clinica.md", __dir__)).strip, rendered[:knowledge]
-    assert_includes rendered[:knowledge], "Lo que el agente de la suite sabe del centro"
+  # What the agent knows by heart is a page in the world's settings, and the gateway writes it into
+  # this block once per call. The class carries no business, so it sends nothing for it.
+  def test_the_knowledge_block_is_the_gateway_s_and_the_class_sends_nothing_for_it
+    assert_equal "", rendered[:knowledge]
   end
 
   def test_the_tools_block_is_every_tool_the_class_declares

@@ -24,7 +24,7 @@ module Pinecall
   #
   # Static blocks go before the history and are what the provider caches; the view goes after it
   # and is replaced every turn. Nothing may reorder them: the cut between the two is where the
-  # cache is cut. Every one of them is the tenant's own words — the class docstring, the file it
+  # cache is cut. Every one of them is the tenant's own words — the class docstring, the page it
   # knows by heart, its tools' comments, its view — and nothing else is ever put in them: what a
   # lookup returned reaches the model as a tool result, in the history.
   module Prompt
@@ -97,12 +97,6 @@ module Pinecall
         .compact.reject { |part| part.strip.empty? }.join("\n\n")
     end
 
-    # The one file the agent knows by heart, whole. It is a file the tenant writes and ships with
-    # the class, so it is the operator's own words and belongs with them, in the cached prefix.
-    # The day it stops being written by hand it belongs in a knowledge base instead, which is
-    # retrieved and reaches the model as a tool result.
-    def knowledge(agent) = agent.class.knowledge_text.to_s.strip
-
     # Every tool the class declares, visible right now or not: the model reads the docstring, and
     # the schema is what the wire carries.
     def tools(agent)
@@ -151,7 +145,10 @@ module Pinecall
     def text_of(agent, called, reading)
       case called
       when "identity" then identity(agent)
-      when "knowledge" then knowledge(agent)
+      # What the agent knows by heart is a page the world keeps in the agent's settings
+      # (`pinecall agent knowledge edit`). The gateway writes it into this block, once per call, in
+      # the cached prefix; the app sends nothing for it — the class carries no business.
+      when "knowledge" then ""
       when "tools" then tools(agent)
       when "view" then view(agent, reading)
       end

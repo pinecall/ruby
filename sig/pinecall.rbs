@@ -72,22 +72,24 @@ module Pinecall
     def self.phone: (?String) -> untyped
     def self.whatsapp: (?String) -> untyped
     def self.web: (?bool) -> untyped
-    def self.voice: (?String | Hash[Symbol, untyped]) -> untyped
-    def self.llm: (?String | Hash[Symbol, untyped]) -> untyped
     def self.language: (?String | Symbol) -> untyped
-    def self.says: (?Hash[Symbol | String, String]) -> untyped
-    def self.hears: (?Array[String]) -> untyped
-    def self.knowledge: (?String) -> String?
-    def self.knowledge_file: () -> String?
-    def self.knowledge_text: () -> String?
-    def self.docs: (?String | Symbol, **untyped) -> Hash[Symbol, untyped]?
-    def self.memory: (**untyped) -> Hash[Symbol, untyped]?
-    def self.greeting: (?String, **untyped) -> Hash[Symbol, untyped]?
-    def self.hangup: (**untyped) -> Hash[Symbol, untyped]?
+
+    # the world's, refused at load with the verb that sets each
+    def self.voice: (*untyped, **untyped) -> bot
+    def self.llm: (*untyped, **untyped) -> bot
+    def self.stt: (*untyped, **untyped) -> bot
+    def self.greeting: (*untyped, **untyped) -> bot
+    def self.hangup: (*untyped, **untyped) -> bot
+    def self.says: (*untyped, **untyped) -> bot
+    def self.hears: (*untyped, **untyped) -> bot
+    def self.memory: (*untyped, **untyped) -> bot
+    def self.record: (*untyped, **untyped) -> bot
+    def self.knowledge: (*untyped, **untyped) -> bot
+    def self.docs: (*untyped, **untyped) -> bot
+
     def self.doc: (?String) -> String?
     def self.slug: (?String) -> String
     def self.accepts: (String | Symbol, from: Array[String | Symbol]) -> untyped
-    def self.routes: () -> Array[Hash[Symbol, untyped]]
     def self.wire_config: (?tools: Array[spec]?) -> Hash[Symbol, untyped]
 
     # the state and the verbs
@@ -285,7 +287,6 @@ module Pinecall
     FRAMEWORK: Array[block_spec]
     def self?.render: (Agent, ?resumed: bool, ?remembered: Array[String], ?line: line?) -> Blocks
     def self?.identity: (Agent) -> String
-    def self?.knowledge: (Agent) -> String
     def self?.tools: (Agent) -> String
     def self?.history: (Agent) -> String
     def self?.collapsed: (Integer) -> String

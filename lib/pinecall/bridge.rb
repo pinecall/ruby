@@ -77,8 +77,9 @@ module Pinecall
       # One instance to read the class with: its tools and everything it declares about itself are
       # read off the same probe, which is then thrown away. Every call gets an instance of its own.
       probe = klass.new
-      options = klass.wire_config(tools: tools_for(probe, live)).merge(routes: klass.routes,
-                                                                      takes_unclaimed:)
+      # No doors: a number is a row the org keeps and points at an agent, and every agent can be
+      # talked to from a page. A class that still says `phone` is saying something nobody reads.
+      options = klass.wire_config(tools: tools_for(probe, live)).merge(takes_unclaimed:)
       agent = client.agent(name, **options)
       agent.on("call.started") { |_data, call| start(klass, live, call, agent, last, opening) }
       agent.on("call.ended") { |_data, call| finish(live, call) }

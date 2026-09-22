@@ -4,9 +4,8 @@ Un agente entero, escrito como lo escribiría un cliente: la clase, su vista, su
 y su propia suite de ring 0.
 
 ```
-agent.rb                      la clase: canales, estado, herramientas, hooks
+agent.rb                      la clase: idioma, estado, herramientas, hooks
 views/clinica-norte.erb       el prompt como función del estado: el bloque `view`
-knowledge/clinica.md          lo que el agente sabe de memoria: entero, en el prefijo estático
 knowledge/docs/*.md           de lo que responde: se sube con `pinecall knowledge push`, por nombre
 lib/agenda.rb                 lo que en producción sería el ERP. No sabe nada de Pinecall
 test/clinica_test.rb          ring 0: sin red, sin clave, sin modelo, sin gateway
@@ -23,9 +22,16 @@ ruby -Ilib -I../protocol/ruby/lib examples/clinica_norte/test/clinica_test.rb
 # el proceso que se despliega
 bin/pinecall run examples/clinica_norte/agent.rb
 
-# la base de conocimiento, subida con el nombre que dice `docs "clinica-norte"`
+# la base de conocimiento, subida con el slug del agente: clinica-norte
 cd examples/clinica_norte && ../../bin/pinecall knowledge push
 ```
+
+Lo que la recepción se sabe de memoria — horarios, precios, qué necesita autorización — no está en
+este repo: se escribe en la consola, Settings ▸ Knowledge (o `pinecall agent knowledge edit`), y el
+modelo lo lee entero en cada llamada. La voz, el modelo, el saludo, cuándo colgar, las palabras, lo
+que la memoria guarda (`pinecall memory policy`) y la base que busca por turno (`pinecall docs
+attach clinica-norte --k 4`) son del mundo, no de la clase: se ponen con el CLI de Node
+(`pinecall agent set`) o en Settings, y una clase que todavía los declara se rechaza al cargar.
 
 ## Lo que este ejemplo enseña
 
@@ -38,10 +44,9 @@ cd examples/clinica_norte && ../../bin/pinecall knowledge push
 - **`confirm:` es lo que hace `book` irreversible en el cable.** La plataforma lee la frase, oye el
   sí, y sólo entonces corre el método.
 - **`preview: 2` corta lo que ve el modelo, no lo que guarda el estado.**
-- **Tres cosas que el agente sabe, tres declaraciones.** `knowledge` es un archivo entero en el
-  prefijo estático; `docs base: "clinica-norte", k: 4, min_score: 0.5` nombra la base que se subió
-  y dice cómo buscarla; `memory` dice con nuestras palabras qué guardar de un paciente entre
-  llamadas y qué nunca.
+- **La clase es el contrato; el mundo, el entorno.** Lo que sabe de memoria, la base que busca y
+  lo que recuerda de un paciente entre llamadas son ajustes del agente, por mundo y versionados, y
+  no una línea de la clase.
 - **La vista es solo lo que escribe la clínica.** Lo que la memoria recuerda y lo que la base
   responde no pasan por el prompt: llegan al modelo como resultado de una herramienta, en el
   historial. La vista pregunta `remembers?("médico habitual")` y decide una frase suya con la

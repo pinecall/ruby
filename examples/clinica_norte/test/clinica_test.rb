@@ -78,18 +78,19 @@ class ClinicaTest < Minitest::Test
     enviados = call.commands.select { |sent| sent.type == "prompt.set" }.map { |sent| sent.data[:name] }
 
     assert_equal 1, enviados.count("identity")
-    assert_equal 1, enviados.count("knowledge")
+    assert_equal 0, enviados.count("knowledge")
     assert_operator enviados.count("view"), :>, 1
   end
 
-  def test_la_declaracion_lleva_el_archivo_entero_la_base_y_lo_que_la_memoria_guarda
+  # La voz, el modelo, el saludo, lo que sabe y lo que recuerda son del mundo: la declaración lleva
+  # el contrato y nada más.
+  def test_la_declaracion_es_el_contrato_y_nada_del_mundo
     declared = @mounted.options
 
-    assert_equal "./knowledge/clinica.md", declared[:knowledge][:path]
-    assert_includes declared[:knowledge][:text], "calle Mayor 14"
-    assert_equal({ base: "clinica-norte", k: 4, min_score: 0.5 }, declared[:docs])
-    assert_includes declared[:memory][:remember], "alergias"
-    assert_equal ["pagos"], declared[:memory][:forget]
+    assert_equal "es", declared[:language]
+    %i[voice llm greeting hangup says hears knowledge docs memory routes].each do |field|
+      refute declared.key?(field), "la declaración no lleva #{field}"
+    end
   end
 
   # Lo que la memoria y la base devuelven llega como resultado de una herramienta, en el
@@ -98,7 +99,6 @@ class ClinicaTest < Minitest::Test
     call = @gateway.call_started(from: "+34600123456")
 
     refute_includes call.prompt, "<!--"
-    assert_includes call.block("knowledge"), "calle Mayor 14"
   end
 
   # Lo que ya sabemos del paciente decide una frase nuestra; el hecho en sí no se imprime.
@@ -111,13 +111,12 @@ class ClinicaTest < Minitest::Test
     refute_includes vista, "su médico habitual: la doctora Vidal"
   end
 
-  def test_una_ruta_o_un_glob_no_es_una_base_y_se_rechaza_al_cargar
+  def test_una_clase_que_todavia_declara_la_voz_se_rechaza_al_cargar_con_el_verbo
     refused = assert_raises(Pinecall::DeclarationRefused) do
-      Class.new(ClinicaNorte) { docs "./knowledge/docs/**/*.md" }
+      Class.new(ClinicaNorte) { voice "carolina" }
     end
 
-    assert_includes refused.message, "docs name the base they were pushed to"
-    assert_includes refused.message, "pinecall knowledge push ./knowledge/docs --base"
+    assert_includes refused.message, "pinecall agent set --voice <name>"
   end
 
   def test_al_reservar_el_prompt_deja_de_pedir_nada_y_se_despide

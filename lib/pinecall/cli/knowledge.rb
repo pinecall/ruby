@@ -3,7 +3,7 @@
 module Pinecall
   module CLI
     # `pinecall knowledge push | list | drop | eval`: a folder of Markdown becomes a base the
-    # gateway retrieves from, under the name an agent's `docs` says — and a golden says how well.
+    # gateway retrieves from, under the agent's slug or the name given — and a golden says how well.
     module Knowledge
       # Where an agent keeps the files it answers from, beside `agent.rb`, when nobody said.
       DEFAULT_DIR = "knowledge/docs"
@@ -26,15 +26,14 @@ module Pinecall
       end
 
       # Every `*.md` under DIR, sent whole to `PUT /v1/knowledge/{base}`. DIR and the base come
-      # from the line, or from the `agent.rb` here: its `docs` base (or its slug), and
-      # `knowledge/docs` beside it.
+      # from the line, or from the `agent.rb` here: its slug, and `knowledge/docs` beside it.
       def push(argv, out:, err:)
         dir, base = parse(argv)
         if dir.nil? || base.nil?
           agent = CLI.load_agent(nil, err:)
           return said_what_push_needs(err) if agent.nil?
 
-          base ||= agent.docs&.dig(:base) || agent.slug
+          base ||= agent.slug
           dir ||= File.join(File.dirname(agent.source_file || File.expand_path("agent.rb")), DEFAULT_DIR)
         end
         files = files_under(dir, err:) or return 2
@@ -71,7 +70,7 @@ module Pinecall
           agent = CLI.load_agent(nil, err:)
           return said_what_eval_needs(err) if agent.nil?
 
-          base ||= agent.docs&.dig(:base) || agent.slug
+          base ||= agent.slug
           file ||= File.join(File.dirname(agent.source_file || File.expand_path("agent.rb")), DEFAULT_GOLDEN)
         end
         questions = golden_at(file, err:) or return 2
@@ -157,8 +156,8 @@ module Pinecall
           pinecall knowledge <verb>
 
             push [DIR] [--base NAME]   every *.md under DIR, sent whole as the base NAME.
-                                       DIR is knowledge/docs beside agent.rb and NAME is what
-                                       its `docs` says (or its slug) when nobody says otherwise
+                                       DIR is knowledge/docs beside agent.rb and NAME is its
+                                       slug when nobody says otherwise
             list                       every base this org has pushed
             drop BASE                  drop one base
             eval [GOLDEN] [--base NAME] [--k N]

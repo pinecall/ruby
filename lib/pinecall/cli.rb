@@ -59,7 +59,7 @@ module Pinecall
       client = door(err) or return 2
       mounted = Pinecall.mount(agent, client:)
       client.connect
-      out.puts("#{mounted.slug} is answering on #{client.url} (#{mounted.options[:routes].size} routes)")
+      out.puts("#{mounted.slug} is answering on #{client.url}")
       sleep
       0
     rescue Interrupt

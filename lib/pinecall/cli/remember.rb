@@ -7,7 +7,7 @@ module Pinecall
     #
     # A case is one call already held, written down for BOTH speakers, so nothing here is re-run:
     # it is handed to the hang-up's one model call exactly as a real call would hand it over. Every
-    # answer is judged by code — a category is the class's own word, a value is a literal, a
+    # answer is judged by code — a category is the policy's own word, a value is a literal, a
     # supersession is an id — because two ways of writing one fact are one fact.
     module Remember
       HELD = "✓"
@@ -29,9 +29,10 @@ module Pinecall
         held_to_the_goldens(agent, cases, out:, err:)
       end
 
-      # The class is mounted HERE, exactly as a run mounts it, because the categories a case may
-      # name and the tool names admission refuses a fact for are the class's OWN declaration: the
-      # gateway reads it off the socket this process opens. The extraction itself runs there, on
+      # The class is mounted HERE, exactly as a run mounts it, because the tool names admission
+      # refuses a fact for are the class's OWN declaration: the gateway reads it off the socket
+      # this process opens. The categories a case may name are the world's memory policy
+      # (`pinecall memory policy`). The extraction itself runs there, on
       # the org's model and the org's provider keys and never this terminal's.
       def held_to_the_goldens(agent, cases, out:, err:)
         client = CLI.door(err) or return 2

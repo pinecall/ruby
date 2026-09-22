@@ -7,7 +7,6 @@ class BridgeTest < Minitest::Test
   # Eres la recepción de Clínica Norte.
   class Clinica < Pinecall::Agent
     web true
-    llm "haiku"
     language :es
 
     stage :identify, :book
@@ -58,8 +57,8 @@ class BridgeTest < Minitest::Test
 
   def test_the_declaration_is_what_the_class_says_about_itself
     assert_equal "clinica", @mounted.slug
-    assert_equal [{ channel: "web", number: nil }], @mounted.options[:routes]
-    assert_equal({ provider: "anthropic", model: "claude-haiku-4-5-20251001" }, @mounted.options[:llm])
+    refute @mounted.options.key?(:routes)
+    assert_equal "es", @mounted.options[:language]
     assert_equal %w[find_patient stop], @mounted.options[:tools].map { |spec| spec[:name] }
     assert_equal [{ name: "agenda.changed", from: %w[app] }], @mounted.options[:events]
     assert_equal %w[identity knowledge tools view], @mounted.options[:prompt].map { |spec| spec[:name] }
