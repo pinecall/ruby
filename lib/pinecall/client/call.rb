@@ -2,11 +2,9 @@
 
 module Pinecall
   class Client
-    # One call the app is serving: what is known about the line, and every command it can send.
+    # A call being served: line details read from the log, and the commands it can send.
     #
-    # Everything readable here was read off the log — the client never invents a field the wire
-    # does not carry — and every method is one command, sent and not awaited: the gateway answers
-    # with the events the command lands as, and those arrive as entries like everything else.
+    # Commands are not awaited; their effects arrive later as log entries.
     class Call
       attr_reader :id, :today
       attr_accessor :status, :channel, :from, :to, :contact, :state
@@ -24,31 +22,29 @@ module Pinecall
         @listeners = Listeners.new { |error| agent.on_error(error) }
       end
 
-      # The agent serving this call.
       def agent_slug = @agent.slug
 
-      # Listen for one event type on this call alone. The returned callable stops listening.
+      # Listen for one event type on this call; the returned lambda unsubscribes.
       def on(type, &listener) = @listeners.on(type, &listener)
 
       # Listen for every event on this call.
       def on_any(&listener) = @listeners.on_any(&listener)
 
-      # ── the commands ───────────────────────────────────────────────────────
+      # ── commands ───────────────────────────────────────────────────────────
 
-      # Say this, verbatim, now. Lands as `turn.agent`.
+      # Speak `text` verbatim now, as a `turn.agent`.
       def say(text, **options) = command("agent.say", { text: }.merge(options))
 
-      # Make the model speak now, guided by an instruction the caller never hears.
+      # Make the model speak now, guided by instructions the caller does not hear.
       def reply(instructions, **options) = command("agent.reply", { instructions: }.merge(options))
 
-      # Rewrite one block of the prompt, whole, by name: one of the agent's declared blocks, or
-      # one of the framework's four.
+      # Replace one prompt block by name.
       def set_prompt(name, text) = command("prompt.set", { name: name.to_s, text: })
 
-      # The tools the model may see now: the subset of the declaration this state allows.
+      # Set the tools currently visible to the model (a subset of the declared ones).
       def set_tools(tools) = command("tools.set", { tools: })
 
-      # The app's state changed and this is all of it. Lands as `state.changed`.
+      # Send the full state; answered with `state.changed`.
       def set_state(state, changed = nil)
         @state = state
         wire = { state: }
@@ -56,24 +52,23 @@ module Pinecall
         command("state.set", wire)
       end
 
-      # What came back from running a tool here, against the `call_id` the model gave.
       def tool_result(result) = command("tool.result", result)
 
-      # A fact from the tenant's backend. The agent must have declared the name, or this is refused.
+      # Send an event from the application's backend; the agent must declare `name`.
       def event(name, data) = command("call.event", { name: name.to_s, data: })
 
-      # End the call from the app's side. `call.ended` follows with reason agent_hung_up.
+      # End the call; `call.ended` follows with reason `agent_hung_up`.
       def hangup(reason = nil) = command("call.hangup", reason.nil? ? {} : { reason: })
 
-      # Write a line of the app's own into the call's log. Lands as `custom`, with a seq like any.
+      # Append an application entry to the call's log, as a `custom` entry.
       def log(name, data = {}) = command("call.log", { name: name.to_s, data: })
 
-      # Anything else the protocol declares about a call, for an app ahead of this library.
+      # Send any call-scoped protocol command.
       def command(type, data) = @agent.command(type, @id, data)
 
-      # ── what the log teaches it ────────────────────────────────────────────
+      # ── entries ────────────────────────────────────────────────────────────
 
-      # Fold one event into what the call knows, then hand it to this call's listeners.
+      # Apply an event to the call, then notify listeners.
       def take(event)
         learn(event)
         @listeners.emit(event, self)
@@ -100,7 +95,7 @@ module Pinecall
       end
     end
 
-    # Every call this agent is serving right now, by id. A call is forgotten when its log ends.
+    # Live calls by id; a call is dropped once it has ended.
     class CallBook
       def initialize(agent)
         @agent = agent
@@ -108,15 +103,14 @@ module Pinecall
         @lock = Mutex.new
       end
 
-      # The calls in progress, in the order they opened.
       def live = @lock.synchronize { @live.values.dup }
 
-      # The call this entry belongs to, opened on the first entry that named it.
+      # Find or create the call for an entry.
       def of(id, at)
         @lock.synchronize { @live[id] ||= Call.new(id, @agent, at) }
       end
 
-      # Forget a call whose log has ended. Listeners for `call.ended` have already run.
+      # Drop an ended call; `call.ended` listeners have already run.
       def forget(call)
         @lock.synchronize { @live.delete(call.id) } if call.status == "ended"
       end

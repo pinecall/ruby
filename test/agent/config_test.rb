@@ -2,8 +2,7 @@
 
 require "test_helper"
 
-# What a class may still say about itself, what `agent.configure` carries of it, and the fields
-# that are the world's now: each refused at load, naming the verb that sets it.
+# Class config, what `agent.configure` sends, and refusal of world settings at load.
 class ConfigTest < Minitest::Test
   # Un agente que sólo dice su contrato.
   class Clinica < Pinecall::Agent

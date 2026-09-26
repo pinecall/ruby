@@ -4,8 +4,8 @@ require "io/console"
 
 module Pinecall
   module CLI
-    # `pinecall keys add | rm | list`: the provider keys this org brought of its own, read from
-    # stdin and printed back never.
+    # `pinecall keys add | rm | list`: the org's provider keys. Keys are read from stdin and
+    # never printed.
     module Keys
       module_function
 
@@ -20,9 +20,7 @@ module Pinecall
         end
       end
 
-      # The key never travels on the command line: argv is visible in `ps` to every user on the
-      # box, and a key pasted as an argument is a key in the shell history. On success the vendor
-      # is printed and nothing else — the key is echoed nowhere and said in no refusal.
+      # Never take the key from argv: it shows in `ps` and in shell history. Print only the vendor.
       def add(vendor, input:, out:, err:)
         return err.puts("pinecall: keys add takes the vendor to bring a key for") || 2 if vendor.nil?
 
@@ -52,8 +50,7 @@ module Pinecall
         end
       end
 
-      # Typed with nothing echoed when a person is there, and one piped line when nobody is. A key
-      # on the screen is a key in the scrollback, in a screen share and in whatever recorded it.
+      # No echo on a TTY; otherwise read one line from the pipe.
       def a_key(vendor, input:, out:)
         return input.gets.to_s.chomp unless input.tty?
 

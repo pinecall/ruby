@@ -4,8 +4,6 @@ require "test_helper"
 require "tmpdir"
 require_relative "rest_gateway"
 
-# `pinecall remember`: the goldens the write side of memory is held to. Everything a person reads
-# is judged by code, so everything below is too — no model is asked anything here.
 class CLIRememberTest < Minitest::Test
   Remember = Pinecall::CLI::Remember
 
@@ -37,7 +35,7 @@ class CLIRememberTest < Minitest::Test
     path
   end
 
-  # ── what a person types ──────────────────────────────────────────────────────
+  # ── arguments ────────────────────────────────────────────────────────────────
 
   def test_the_flags_are_read_in_any_order_and_the_rest_are_paths
     paths, named, grep = Remember.parse(["--grep", "alergia", "test/memory", "--agent", "clara.rb"])
@@ -55,7 +53,7 @@ class CLIRememberTest < Minitest::Test
     assert_nil grep
   end
 
-  # ── reading the cases ────────────────────────────────────────────────────────
+  # ── loading cases ────────────────────────────────────────────────────────────
 
   def test_a_file_holding_one_case_is_called_after_its_own_basename
     in_a_directory do |dir|
@@ -146,7 +144,7 @@ class CLIRememberTest < Minitest::Test
     assert_equal lines[2].index("nothing under"), lines[3].index("'Prefiere la tarde'")
   end
 
-  # ── the door ─────────────────────────────────────────────────────────────────
+  # ── gateway ──────────────────────────────────────────────────────────────────
 
   def test_the_cases_go_to_the_agents_own_extraction_door
     @gateway = RestGateway.new(

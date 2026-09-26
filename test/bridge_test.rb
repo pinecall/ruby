@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-# The bridge, against a gateway that is not there: what a mounted agent sends, and when.
+# What a mounted agent sends, and when, against the testing gateway.
 class BridgeTest < Minitest::Test
   # Eres la recepción de Clínica Norte.
   class Clinica < Pinecall::Agent

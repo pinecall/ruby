@@ -2,19 +2,15 @@
 
 module Pinecall
   module UI
-    # This machine's browser: whether it has one to speak of, and how a URL is handed to it.
+    # Detects whether a local browser is usable and opens URLs in it.
     module Browser
-      # One command per platform. Anything else is treated as a Linux with xdg-open, which is
-      # what a BSD or a container with a desktop most likely has.
+      # Unknown platforms fall back to xdg-open.
       OPENERS = { darwin: "open", windows: "start", linux: "xdg-open" }.freeze
 
       module_function
 
-      # Why no page can open here, or nil when one can.
-      #
-      # The Talk screen needs a microphone, and a microphone is a browser's on a screen: over ssh
-      # there is no screen on this end, and a Linux with no display has no browser to hand a URL
-      # to. Both are said before anything is served.
+      # The reason no local browser is usable (ssh session, Linux without a display), or nil.
+      # The Talk screen needs a local microphone.
       def headless(env: ENV, platform: this_platform)
         return "this is an ssh session" if env["SSH_CONNECTION"]
         return nil unless platform == :linux
@@ -23,7 +19,7 @@ module Pinecall
         "no DISPLAY and no WAYLAND_DISPLAY"
       end
 
-      # Hand this URL to the browser and never wait for it: the URL is on screen either way.
+      # Open `url` without waiting; failures are ignored since the URL is also printed.
       def open(url, platform: this_platform)
         opener = OPENERS.fetch(platform, OPENERS[:linux])
         pid = Process.spawn(opener, url, out: File::NULL, err: File::NULL)

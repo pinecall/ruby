@@ -2,22 +2,17 @@
 
 module Pinecall
   class Client
-    # The socket to the gateway: the key at the door, backoff on the way back, a ping while it is
-    # up, and one thread reading it for the life of the process.
+    # The gateway websocket: auth, reconnect with backoff, heartbeat, and one reader thread.
     #
-    # The key travels as `Authorization: Bearer` on the upgrade, never in the URL, because a URL
-    # ends up in an access log. A wrong key is closed with 1008 and no body, so a socket that
-    # never opens is retried like any other: the gateway will not say more the second time either.
-    #
-    # `websocket-driver` is the protocol and nothing else — the same driver ActionCable runs on —
-    # so the transport here is a plain TCP or TLS socket and there is no event loop to adopt.
+    # The key goes in the `Authorization` header, never the URL (URLs end up in access logs).
+    # A bad key closes with 1008 and no body. `websocket-driver` handles framing over a plain
+    # TCP/TLS socket, so no event loop is needed.
     class Connection
       FIRST_WAIT_S = 0.5
       LONGEST_WAIT_S = 30.0
       GROWS_BY = 2
       PINGS_EVERY_S = 30
 
-      # What the client does with what the socket brings.
       Handlers = Data.define(:on_open, :on_entry, :on_error, :on_heartbeat)
 
       attr_reader :url
@@ -34,18 +29,16 @@ module Pinecall
         @attempt = 0
       end
 
-      # True while the socket is up.
       def open? = @open
 
-      # Open the socket and return once the gateway has answered and `on_open` has run. After
-      # that, staying up is this object's problem and not the caller's.
+      # Connect and return once `on_open` has run; reconnects are handled internally afterwards.
       def start
         @closed = false
         @opened = Thread::Queue.new
         @reader = Thread.new { dial_until_closed }
         @reader.abort_on_exception = false
         answer = @opened.pop(timeout: 30)
-        # Nobody waits here again: from the second dial on, a failure is the app's error door's.
+        # Later failures go to `on_error`, not to this caller.
         @opened = nil
         raise NotConnected, "the gateway did not answer in 30s: #{@url}" if answer.nil?
         raise answer if answer.is_a?(Exception)
@@ -53,8 +46,7 @@ module Pinecall
         self
       end
 
-      # One frame up. A command sent while the socket is down is refused, not queued: an app that
-      # is told now can decide, and a queue would deliver it into a call that has ended.
+      # Raises when disconnected instead of queueing: a queued command could land after its call ended.
       def send_frame(command)
         @lock.synchronize do
           raise NotConnected, "#{command.type}: the gateway is not connected" unless @open
@@ -63,7 +55,7 @@ module Pinecall
         end
       end
 
-      # Stop, and stay stopped: no reconnect follows a close the app asked for.
+      # Close without reconnecting.
       def close
         @closed = true
         @open = false
@@ -73,7 +65,7 @@ module Pinecall
         nil
       end
 
-      # websocket-driver writes its bytes through here.
+      # Called by websocket-driver.
       def write(bytes)
         @socket.write(bytes)
       rescue IOError, SystemCallError => e
@@ -129,13 +121,8 @@ module Pinecall
         @open = false
       end
 
-      # The socket is up. Everything that must be true on it goes up before anything else, and
-      # only then does whoever called `start` hear that it worked.
-      #
-      # It happens on a thread of its own because this one is the reader: `agent.register` is
-      # answered by an entry, and a thread that is waiting for that entry is a thread that is not
-      # reading it. Whoever called `start` is still waiting, so nothing is racing — the socket is
-      # simply being read while the declaration goes up and comes back.
+      # Registration runs on its own thread: this is the reader thread, and `agent.register` is
+      # answered by an entry it has to read.
       def opened
         @open = true
         @attempt = 0
@@ -147,9 +134,7 @@ module Pinecall
         @handlers.on_open.call
         @opened&.push(:open)
       rescue StandardError => e
-        # The socket is up and what must be true on it is not. On the first connection whoever
-        # called `start` hears it as a raise; on a reconnect nobody is waiting there, and then the
-        # app's error door is the only one.
+        # First connection: raise from `start`. Reconnect: report via `on_error`.
         @opened.nil? || @opened.closed? ? @handlers.on_error.call(e) : @opened.push(e)
       end
 
@@ -164,8 +149,7 @@ module Pinecall
         @heartbeat&.kill
         return if @closed
 
-        # The first connection failing is the app's to hear: a wrong key, a host nobody is on.
-        # Every close after one that worked is a blip, and a blip is answered with a retry.
+        # Only a failed first connection is reported to `start`; later closes just retry.
         return unless @opened && !@opened.closed? && @attempt.zero?
 
         @opened.push(NotConnected.new("the gateway refused the socket: closed with #{event.code}"))
@@ -189,8 +173,7 @@ module Pinecall
         @handlers.on_error.call(e)
       end
 
-      # Full jitter: every client that lost the same gateway comes back at a different moment,
-      # instead of all of them together on the second it returns.
+      # Full jitter, so clients do not reconnect in lockstep.
       def wait_s
         window = [@backoff[:longest], @backoff[:first] * (@backoff[:grows_by]**@attempt)].min
         @attempt += 1

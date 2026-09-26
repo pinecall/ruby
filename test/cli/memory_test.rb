@@ -4,10 +4,8 @@ require "test_helper"
 require "tmpdir"
 require_relative "rest_gateway"
 
-# `pinecall memory`: what is remembered about a contact, and forgetting it — asked once, on a
-# terminal, and never from a pipe.
 class CLIMemoryTest < Minitest::Test
-  # A terminal that answers what the test typed.
+  # A TTY stdin with scripted input.
   class Terminal < StringIO
     def tty? = true
   end
@@ -94,8 +92,6 @@ class CLIMemoryTest < Minitest::Test
     assert_equal "pinecall: 404: no contact called x\n", err
   end
 
-  # A golden is the only thing that can say recall returned the WRONG facts: a ring watches a
-  # conversation and only ever sees the facts memory handed over. runtime/docs/retrieval/spec.md.
   A_QUESTION = {
     holds: ["Prefiere mañanas", "Alérgica a la penicilina"],
     asks: "¿le va bien el martes?",
@@ -134,7 +130,6 @@ class CLIMemoryTest < Minitest::Test
     assert_includes err, "there is no /nope/golden.json"
   end
 
-  # One question, on disk, as a person writes it beside their own agent.
   def a_golden
     path = File.join(Dir.mktmpdir("pinecall-golden"), "golden.json")
     File.write(path, JSON.generate([A_QUESTION]))

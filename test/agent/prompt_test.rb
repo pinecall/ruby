@@ -2,7 +2,6 @@
 
 require "test_helper"
 
-# The prompt: four named blocks in two regions, in one order, and only the view may move.
 class PromptTest < Minitest::Test
   # Eres la recepción de Clínica Norte.
   # Todo lo que dices se lee en voz alta.
@@ -79,8 +78,7 @@ class PromptTest < Minitest::Test
     refute_includes text, "find_patient"
   end
 
-  # What the agent knows by heart is a page in the world's settings, and the gateway writes it into
-  # this block once per call. The class carries no business, so it sends nothing for it.
+  # The gateway fills `knowledge` from the agent's settings.
   def test_the_knowledge_block_is_the_gateway_s_and_the_class_sends_nothing_for_it
     assert_equal "", rendered[:knowledge]
   end
@@ -105,8 +103,7 @@ class PromptTest < Minitest::Test
     refute_includes rendered[:view], "Saluda"
   end
 
-  # Nothing that arrived from outside the conversation is ever spliced into a block: a fact and a
-  # chunk reach the model as a tool result, in the history, and the prompt stays the operator's.
+  # Lookup results reach the model as tool results, never inside a prompt block.
   def test_no_block_of_the_prompt_carries_anything_a_lookup_returned
     Pinecall::Agent::Author.with("the test") { @agent.slots = ["martes 10:00"] }
     page = Pinecall.render(@agent, remembered: ["le gusta por la mañana"])

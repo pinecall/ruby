@@ -1,21 +1,15 @@
 # frozen_string_literal: true
 
 module Pinecall
-  # The state as something you can ask questions of by name.
-  #
-  # A snapshot is a plain Hash — that is what goes on the wire and what a test compares — but the
-  # two places a person writes a question about it, a tool's `when:` and a view, read far better
-  # as sentences. So both are handed this: `s.slots.any?` and `s[:slots].any?` are the same
-  # question, and a field nobody declared raises instead of quietly being nil.
+  # Read-only view of a state snapshot for `when:` and views: `s.slots` and `s[:slots]` are
+  # equivalent, and an undeclared field raises instead of returning nil.
   class Reading
-    # @param remembered [Array<String>] what the agent already knows about this caller, as the
-    #   runtime supplies it. A render nobody gave any answers no rather than guessing.
+    # @param remembered [Array<String>] facts known about the caller, supplied by the runtime
     def initialize(state, remembered = [])
       @state = state
       @remembered = remembered
     end
 
-    # The state as the Hash it is: what the wire carries and what a golden compares against.
     def to_h = @state
 
     def [](name) = @state[name.to_sym]
@@ -24,12 +18,8 @@ module Pinecall
 
     def fetch(name, *rest) = @state.fetch(name.to_sym, *rest)
 
-    # Whether the agent already knows something about this caller matching these words.
-    #
-    # A fact itself never travels through the prompt — it reaches the model as a tool result, in
-    # the history, where a model reads it as information and not as an instruction. What the view
-    # may do with one is BRANCH on it: knowing that this caller has a usual doctor is what decides
-    # which of the tenant's own sentences to say.
+    # Whether a remembered fact contains `text`. Views may branch on facts but never print them;
+    # facts reach the model only as tool results.
     def remembers?(text) = @remembered.any? { |fact| fact.to_s.include?(text.to_s) }
 
     def respond_to_missing?(name, include_private = false)

@@ -99,3 +99,12 @@ When a doc and the code disagree, the code is what happened and the doc is the b
 ## Commits
 
 Versions and tags are the human's call — never pick a number, never tag.
+
+## Comments and doc comments
+
+The bar is an open-source library: plain technical English, and less prose than code.
+- A comment says WHY, only when the code cannot: a constraint, a trap, an external fact. Never
+  what the next line does. One line by default, three at most; more belongs in `docs/`.
+- No history in code (dates, incidents, "until X this did Y"): that is the commit message.
+- Public API keeps a concise doc comment a user reads in their editor; internals need none unless
+  the name is not enough. No figures of speech.

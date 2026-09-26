@@ -1,8 +1,8 @@
 # pinecall
 
-Write a voice agent as a Ruby class. Its declared fields are the state, its `tool` methods are the
-verbs the model may call, the comment above each one is what the model reads, and an ERB view is
-the part of the prompt that changes while the call is happening.
+Build voice agents as Ruby classes. Declared fields are the agent's state, `tool` methods are
+what the model can call, the comment above each tool is its description, and an ERB view renders
+the part of the prompt that changes during the call.
 
 ```ruby
 require "pinecall"
@@ -31,7 +31,7 @@ class ClinicaNorte < Pinecall::Agent
 end
 ```
 
-`views/clinica-norte.erb`, beside it, is the prompt as a function of that state:
+`views/clinica-norte.erb` renders the prompt from that state:
 
 ```erb
 <% if stage == :identify -%>
@@ -51,15 +51,14 @@ Ofrece primero las horas de su médico habitual.
 <% end -%>
 ```
 
-The prompt is four named blocks in two regions: static ones before the history, cached by the
-provider — `identity`, `knowledge`, `tools` — and one after it, replaced every turn: the `view`.
-Each goes up by name and only when its text changed.
+The prompt has four named blocks: `identity`, `knowledge` and `tools` are static and cached
+before the history; `view` comes after it and is replaced every turn. A block is re-sent only when
+its text changes.
 
-**Every word of it is yours.** What memory kept from an earlier call and what the knowledge base
-returned never travel through the prompt: the platform runs `recall` and `search` itself and their
-answers reach the model as **tool results**, JSON, in the history — where a model reads them as
-information and not as an instruction. A view asks memory a question, `remembers?("médico
-habitual")`, and says a sentence of its own about the answer.
+Memory and knowledge-base results never enter the prompt. The platform runs `recall` and `search`
+and returns their results to the model as tool results, so retrieved text is treated as data, not
+instructions. A view can ask `remembers?("médico habitual")` and write its own sentence about the
+answer.
 
 ## Five minutes
 
@@ -75,36 +74,22 @@ pinecall keys add elevenlabs          # this org's own key for a vendor, read of
 pinecall ui                           # the console on 127.0.0.1: calls, sessions, evals, talk
 ```
 
-`pinecall prompt` needs no gateway, no key and no network, which is why it is the verb to run
-first: the whole point of the design is that the prompt is a function you can call.
+`pinecall prompt` needs no gateway, key or network: the prompt is a function of the state.
 
 ## The console
 
-`pinecall ui` opens the console on 127.0.0.1 for as long as the command runs: the agents this
-gateway holds, their calls and logs as they happen, the finished sessions read whole, the eval
-runs, the pipeline of a voice turn, and a page to talk to an agent with this browser's microphone.
+`pinecall ui` serves the console on 127.0.0.1 while the command runs: live calls and logs,
+finished sessions, eval runs, and a page to talk to an agent with the browser's microphone. It is
+the same compiled React console the TypeScript package builds, vendored into the gem, so no Node
+is needed. It listens on a random port under a random path prefix, and the org key never reaches
+the browser: this process signs and forwards each request.
 
-It is **the same React console the TypeScript package builds** — the same screens, the same
-bundle — vendored into this gem already compiled, the way a Rails engine ships its assets. A
-browser reads no TypeScript, and a Ruby shop should not have to install Node to look at its own
-calls.
+## Architecture
 
-What Ruby owns is everything around it, and all of it is a containment decision: the loopback and
-a port the kernel picks, a random nonce that every path answers under (a process that scans the
-loopback finds a 404), and **the org key, which never reaches the browser** — the page asks this
-process, this process signs the request and forwards it. Ctrl-C closes the port with the command.
-
-## What it is
-
-An agent is an object. Fields are state. Methods are capabilities. Docstrings are prompts. The
-prompt is `render(state)`. Tools are the only thing that changes state. The log is the truth.
-
-This package is the application's side of that. It never imports the runtime, never talks to a
-model vendor, never sees audio: it sends **commands** and reads **entries** over one socket, both
-of them shapes generated from `pinecall/protocol`'s JSON Schema — the same schema the Python
-runtime and the TypeScript package are generated from.
-
-Two doors out:
+This gem is the application side. It never talks to a model vendor or handles audio: it sends
+commands and reads log entries over one WebSocket, using types generated from the
+[`pinecall/protocol`](https://github.com/pinecall/protocol) JSON Schema, the same schema the
+Python runtime and the TypeScript package use. Tools are the only code that may change state.
 
 | you want | you use |
 |---|---|
@@ -121,7 +106,7 @@ pc.connect
 
 ## Testing it
 
-Ring 0 is the ring your own suite lives in: no network, no key, no model, no gateway.
+Agent tests run with no network, key, model or gateway:
 
 ```ruby
 require "pinecall/testing"
@@ -140,25 +125,20 @@ assert_equal %w[propose], call.tools
 
 | what | where |
 |---|---|
-| the walk a newcomer takes: from an empty directory to an agent that answers from your documents and remembers who called | [docs/tutorial.md](docs/tutorial.md) |
-| the map: every file, every entity, every rule | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| tutorial: an agent with knowledge and memory, from an empty directory | [docs/tutorial.md](docs/tutorial.md) |
+| every file, entity and rule | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | how to write an agent, step by step | [docs/writing-an-agent.md](docs/writing-an-agent.md) |
 | the view, and the blocks of a prompt | [docs/the-view.md](docs/the-view.md) |
 | how to test one | [docs/testing-an-agent.md](docs/testing-an-agent.md) |
 | the CLI, verb by verb | [docs/the-cli.md](docs/the-cli.md) |
 | the console, and how it is vendored | [docs/the-console.md](docs/the-console.md) |
-| a whole agent, written the way a customer writes one | [examples/clinica_norte](examples/clinica_norte) |
+| a complete example agent | [examples/clinica_norte](examples/clinica_norte) |
 | the wire itself | `pinecall-protocol`, generated in the `pinecall/protocol` repository |
 
 ## Requirements
 
-Ruby 3.2 or newer. It uses fiber storage (`Fiber[]`), `Data.define` and endless methods, and it
-depends on `websocket-driver` — the protocol driver ActionCable runs on — and nothing else.
+Ruby 3.2+. The only runtime dependency is `websocket-driver` (the driver ActionCable uses).
 
 ## License
 
-[Apache-2.0](LICENSE). Use it, change it, run it in production, sell what you build with it —
-commercially or not, on your own box or somebody else's. The licence carries an explicit patent
-grant, which is why it is the one this stack uses (LiveKit's is the same). There is no NOTICE
-file, so nothing has to be reproduced downstream beyond the licence itself, and there is no CLA:
-a patch is yours and stays under the same terms.
+[Apache-2.0](LICENSE), including its patent grant. No CLA.

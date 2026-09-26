@@ -2,13 +2,13 @@
 
 module Pinecall
   module CLI
-    # `pinecall knowledge push | list | drop | eval`: a folder of Markdown becomes a base the
-    # gateway retrieves from, under the agent's slug or the name given — and a golden says how well.
+    # `pinecall knowledge push | list | drop | eval`: manage and score knowledge bases built
+    # from a folder of Markdown.
     module Knowledge
-      # Where an agent keeps the files it answers from, beside `agent.rb`, when nobody said.
+      # Relative to `agent.rb`.
       DEFAULT_DIR = "knowledge/docs"
 
-      # The golden beside the documents it asks about: the questions the base is held to.
+      # Relative to `agent.rb`.
       DEFAULT_GOLDEN = "knowledge/golden.json"
 
       module_function
@@ -25,8 +25,8 @@ module Pinecall
         end
       end
 
-      # Every `*.md` under DIR, sent whole to `PUT /v1/knowledge/{base}`. DIR and the base come
-      # from the line, or from the `agent.rb` here: its slug, and `knowledge/docs` beside it.
+      # Push every `*.md` under DIR as `base`. Defaults come from `agent.rb`: its slug and
+      # `knowledge/docs`.
       def push(argv, out:, err:)
         dir, base = parse(argv)
         if dir.nil? || base.nil?
@@ -62,8 +62,7 @@ module Pinecall
         end
       end
 
-      # A golden is run when somebody changed the documents, the embedder or a knob — never on a
-      # caller's clock. Exit 1 when anything missed, so a base can be held to its golden in CI.
+      # Exits 1 on any miss, for CI.
       def evaluate(argv, out:, err:)
         file, base, k = parse(argv, with_k: true)
         if file.nil? || base.nil?
@@ -82,8 +81,7 @@ module Pinecall
         end
       end
 
-      # The two figures on one line, with the embedder that wrote the vectors: two scores are
-      # comparable only under one model.
+      # Includes the embedding model: scores are only comparable under the same model.
       def score_line(score)
         "#{score[:base]} · #{score[:model]} · #{score[:questions]} questions · " \
           "recall@#{score[:k]} #{format("%.2f", score[:recall_at_k])} · " \
@@ -94,7 +92,7 @@ module Pinecall
         "  missed: #{missed[:asks]} → wanted #{missed[:expects]}, got #{missed[:found].first || "nothing"}"
       end
 
-      # A JSON list of `{ asks, expects }`, as a person writes it beside their own documents.
+      # Read a JSON array of `{ asks, expects }`.
       def golden_at(file, err:)
         return err.puts("pinecall: there is no #{file}") && nil unless File.file?(file)
 
@@ -123,7 +121,7 @@ module Pinecall
         with_k ? found + [k] : found
       end
 
-      # Each file as the wire carries it: its path relative to DIR, and its text.
+      # `{ path:, text: }` per file, paths relative to DIR.
       def files_under(dir, err:)
         return err.puts("pinecall: there is no #{dir}") && nil unless File.directory?(dir)
 
@@ -133,7 +131,7 @@ module Pinecall
         found.map { |path| { path: path.delete_prefix("#{dir}/"), text: File.read(path) } }
       end
 
-      # The gateway this terminal is pointed at, and the refusal as it wrote it. Exit 1 on one.
+      # Yield a client; print refusals and exit 1 on failure.
       def at_the_gateway(err)
         client = CLI.door(err) or return 2
         yield client

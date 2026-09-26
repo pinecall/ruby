@@ -1,34 +1,30 @@
 # frozen_string_literal: true
 
 module Pinecall
-  # One named block of the prompt: which region it lives in, and its text right now.
+  # One named prompt block and its region (`static` or `dynamic`).
   Block = Data.define(:name, :region, :text)
 
-  # The whole prompt of one render: every block in send order, and the history between the two
-  # regions.
+  # One rendered prompt: blocks in send order, plus the history between the two regions.
   Blocks = Data.define(:blocks, :history) do
-    # The text of one block, by name.
     def [](name) = blocks.find { |block| block.name == name.to_s }&.text
 
-    # The blocks before the history: what the provider caches.
+    # Blocks before the history; cached by the provider.
     def static = blocks.select { |block| block.region == "static" }
 
-    # The blocks after the history: replaced every turn.
+    # Blocks after the history; replaced every turn.
     def dynamic = blocks.select { |block| block.region == "dynamic" }
 
-    # The static blocks as the model reads them, one text: joined, empty ones skipped.
+    # Non-empty static blocks joined into one text.
     def instructions = static.map(&:text).reject(&:empty?).join("\n\n")
   end
 
-  # The prompt as named blocks in two regions, in the one order they are ever sent.
+  # Renders the prompt as named blocks in two regions.
   #
-  # Static blocks go before the history and are what the provider caches; the view goes after it
-  # and is replaced every turn. Nothing may reorder them: the cut between the two is where the
-  # cache is cut. Every one of them is the tenant's own words — the class docstring, the page it
-  # knows by heart, its tools' comments, its view — and nothing else is ever put in them: what a
-  # lookup returned reaches the model as a tool result, in the history.
+  # Static blocks precede the history and are cached; the view follows it and changes every turn.
+  # Do not reorder them: the region boundary is the cache boundary. Blocks hold only the
+  # operator's text; lookup results go in the history as tool results.
   module Prompt
-    # The blocks every agent has, in send order. There are four, the same four for everybody.
+    # Blocks every agent has, in send order.
     FRAMEWORK = [
       { name: "identity", region: "static" }.freeze,
       { name: "knowledge", region: "static" }.freeze,
@@ -36,16 +32,14 @@ module Pinecall
       { name: "view", region: "dynamic" }.freeze
     ].freeze
 
-    # The macro a class declares its view with.
     module Declaring
-      # The view this class renders its `view` block with.
+      # Declare or read the template for the `view` block.
       #
-      #     view                          # views/<slug>.erb beside this file — the convention
-      #     view "views/reception.erb"    # somewhere else, relative to this file
-      #     view template: <<~ERB         # small enough to live inside the class
+      #     view                          # views/<slug>.erb next to this file (the default)
+      #     view "views/reception.erb"    # relative to this file
+      #     view template: <<~ERB         # inline
       #
-      # With nothing at all, the convention is looked up once and remembered, so an agent that
-      # has a view beside it never says so and an agent that has none costs one `File.exist?`.
+      # The default lookup runs once and is memoized.
       def view(path = nil, template: nil)
         unless path.nil? && template.nil?
           @view = template ? View.inline(template, "#{name} (inline view)") : View.file(beside_this_file(path))
@@ -56,7 +50,6 @@ module Pinecall
         @view = view_of_this_class || (superclass.respond_to?(:view) ? superclass.view : nil)
       end
 
-      # `views/<slug>.erb` beside the file the class was written in.
       def view_of_this_class
         here = source_file
         return nil if here.nil?
@@ -65,7 +58,7 @@ module Pinecall
         File.exist?(path) ? View.file(path) : nil
       end
 
-      # A path a class wrote is read from where that class lives, not from where a process ran.
+      # Relative paths resolve against the class's file, not the working directory.
       def beside_this_file(path)
         here = source_file
         return path if here.nil? || path.start_with?("/")
@@ -81,7 +74,6 @@ module Pinecall
 
     module_function
 
-    # The whole prompt of this agent right now, block by block, in send order.
     def render(agent, resumed: false, remembered: [], line: nil)
       reading = reading_for(agent, resumed:, remembered:, line:)
       blocks = FRAMEWORK.map do |spec|
@@ -90,49 +82,43 @@ module Pinecall
       Blocks.new(blocks:, history: history(agent))
     end
 
-    # The class docstring and the framework's own words: who the agent is, in every call.
+    # The class docstring plus the framework's rules and protocols.
     def identity(agent)
       words = Lang.words_for(agent.class)
       [agent.doc, tagged("rules", words[:rules]), tagged("protocols", words[:protocols])]
         .compact.reject { |part| part.strip.empty? }.join("\n\n")
     end
 
-    # Every tool the class declares, visible right now or not: the model reads the docstring, and
-    # the schema is what the wire carries.
+    # Every declared tool's docstring, visible or not; schemas travel separately on the wire.
     def tools(agent)
       docs = agent.tools.map { |spec| "- #{spec[:name]}: #{spec[:description]}" }.join("\n")
       tagged("tools", docs)
     end
 
-    # The runtime owns the turns, so the framework contributes only what it knows about them: the
-    # summaries a `collapse` left where a stretch of the call used to be.
+    # The runtime owns the turns; the framework adds only the summaries left by `collapse`.
     def history(agent)
       agent.changes.select { |change| change.field == "@summary" }
            .map { |change| "#{collapsed(change.seq)}\n#{change.next}" }
            .join("\n\n")
     end
 
-    # Where a stretch of the call used to be. The one line this package writes that is not prose.
+    # Marker for a collapsed stretch of the call.
     def collapsed(seq) = "<!-- collapsed: #{JSON.generate({ seq: })} -->"
 
-    # The view: what the template says about now, and nothing else.
     def view(agent, reading)
       view = agent.class.view
       view.nil? ? "" : view.render(reading)
     end
 
-    # What a view is called with: the state and its derived fields, what surrounds the call, and
-    # what the agent already knows about this caller — which it may ask about, never print.
+    # The view's scope: state, call context, and remembered facts (queryable, never printed).
     def reading_for(agent, resumed: false, remembered: [], line: nil)
       Reading.new(agent.snapshot.merge(resumed:, call: line || { channel: "web" }), remembered)
     end
 
-    # The header a section of the printed page carries. One definition, so every page is ruled
-    # the same way and `pinecall prompt` looks like `pinecall run --show-prompt`.
+    # Shared by `pinecall prompt` and `pinecall run --show-prompt` so both print alike.
     def header_for(section, region = nil) = "── #{[section, region && "(#{region})"].compact.join(" ")} ──"
 
-    # The prompt as one page, a section per block under its header, the history between the two
-    # regions: what `pinecall prompt` prints. The headers say at a glance what is cached.
+    # The prompt as one page, as `pinecall prompt` prints it.
     def show(agent, **context)
       rendered = render(agent, **context)
       sections = rendered.static.map { |block| [header_for(block.name, block.region), block.text] }
@@ -141,13 +127,10 @@ module Pinecall
       sections.map { |header, text| "#{header}\n#{text}".rstrip }.join("\n\n")
     end
 
-    # The text of one block, by what that block is.
     def text_of(agent, called, reading)
       case called
       when "identity" then identity(agent)
-      # What the agent knows by heart is a page the world keeps in the agent's settings
-      # (`pinecall agent knowledge edit`). The gateway writes it into this block, once per call, in
-      # the cached prefix; the app sends nothing for it — the class carries no business.
+      # Filled by the gateway from the agent's settings (`pinecall agent knowledge edit`).
       when "knowledge" then ""
       when "tools" then tools(agent)
       when "view" then view(agent, reading)

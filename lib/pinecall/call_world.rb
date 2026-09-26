@@ -1,26 +1,23 @@
 # frozen_string_literal: true
 
 module Pinecall
-  # One person in the room, as the room's own entries described them.
+  # A room participant, as reported by the room's entries.
   Participant = Struct.new(:identity, :kind, :name, :joined_at, :speaking, keyword_init: true)
 
-  # One finished turn of the conversation.
+  # A finished conversation turn.
   Turn = Data.define(:who, :text, :speech_id, :interrupted, :at)
 
-  # The call as the class holds it: the line, the room, the conversation, and the six things it
-  # may do to any of them.
+  # The call as an agent sees it: room, turns, and the commands it can send.
   #
-  # Everything readable here was reduced from entries the client already receives, and every verb
-  # is one command on the wire. There is no LiveKit in this file and no escape hatch to it: a need
-  # the room cannot express is a new command with a name, not an SDK somebody reaches around it.
+  # State is reduced from received entries; each verb is one wire command. No LiveKit access by
+  # design: a missing capability should become a new protocol command.
   class CallWorld
-    # How long `say` waits for the turn it lands as before answering false. A turn that never
-    # arrives is a call that already ended, and a tool must not wait on one forever.
+    # Seconds `say`/`reply` wait for their turn before returning false (the call may have ended).
     LANDS_WITHIN_S = 30
 
     attr_reader :id, :contact, :from, :channel, :room, :turns
 
-    # `send` puts one command on the wire for this call. The bridge is what gives it.
+    # `send` puts one command on the wire for this call; supplied by the bridge.
     def initialize(id:, contact: nil, from: nil, channel: nil, &send)
       @id = id
       @contact = contact
@@ -34,57 +31,57 @@ module Pinecall
       @events = 0
     end
 
-    # The day the call opened, YYYY-MM-DD in this process's timezone: what a prompt means by today.
+    # The call's start date, YYYY-MM-DD in the process timezone.
     def today = @today ||= Time.now.strftime("%Y-%m-%d")
 
-    # What is running right now, when a write is happening because an outside fact arrived.
+    # The external event being handled, if any; logged as the cause of state changes.
     attr_accessor :cause
 
-    # The place of the next outside fact in THIS call's stream of them — not in the wire's.
+    # Next per-call event sequence number (not the wire's seq).
     def numbered = @events += 1
 
-    # ── the six verbs ────────────────────────────────────────────────────────
+    # ── commands ─────────────────────────────────────────────────────────────
 
-    # Say this, word for word, now. True when the turn it lands as arrived, false after 30s.
+    # Speak `text` verbatim now. Returns true once the turn arrives, false after `LANDS_WITHIN_S`.
     def say(text, **options)
       lands { @send.call("agent.say", { text: }.merge(options)) }
     end
 
-    # Make the model speak now, guided by an instruction the caller never hears.
+    # Make the model speak now, guided by instructions the caller does not hear.
     def reply(instructions, **options)
       lands { @send.call("agent.reply", { instructions: }.merge(options)) }
     end
 
-    # Send a payload to a browser in the room. The log keeps its size, never the payload.
+    # Send a payload to browsers in the room. The log records its size, not its content.
     def send_to(topic, data, to: nil)
       payload = { topic:, data: }
       payload[:to] = Array(to) unless to.nil?
       @send.call("room.send", payload)
     end
 
-    # One participant, by the identity the room knows them as.
+    # A participant handle by identity.
     def participant(identity) = Seat.new(identity, @send)
 
-    # A second SIP leg, or a seat for a person.
+    # Invite a second SIP leg or a person.
     def invite(to, kind: nil)
       wanted = { to: }
       wanted[:kind] = kind.to_s unless kind.nil?
       @send.call("room.invite", wanted)
     end
 
-    # Write a line of the app's own into the call's log.
+    # Append an application entry to the call's log.
     def log(name, data = {})
       @send.call("call.log", { name: name.to_s, data: data.is_a?(Hash) ? data : { value: data } })
     end
 
-    # End the call from the app's side. `call.ended` follows with reason agent_hung_up.
+    # End the call; `call.ended` follows with reason `agent_hung_up`.
     def hangup(reason = nil)
       @send.call("call.hangup", reason.nil? ? {} : { reason: })
     end
 
-    # ── what the call learns ─────────────────────────────────────────────────
+    # ── entries ──────────────────────────────────────────────────────────────
 
-    # Fold one entry of this call's log into what the class can see.
+    # Apply one log entry to the room and turn state.
     def take(type, data, at)
       case type
       when "participant.joined" then joined(data, at)
@@ -95,13 +92,11 @@ module Pinecall
       end
     end
 
-    # Everybody in the room right now.
     def participants = @room[:participants].dup
 
-    # The caller's own seat, when there is one.
+    # The caller's participant, or nil.
     def caller_seat = @room[:participants].find { |one| one.kind == "caller" }
 
-    # The last turn either side took.
     def last_turn = @turns.last
 
     private
@@ -124,8 +119,7 @@ module Pinecall
       turn
     end
 
-    # Whoever is waiting on a `say` is waiting for the next agent turn: that is what "it landed"
-    # means, and there is no id on the wire to match a say to its own turn.
+    # The wire has no id linking a `say` to its turn, so the oldest waiter takes the next agent turn.
     def settle(turn)
       waiting = @waiting.shift
       waiting&.push(turn)
@@ -141,7 +135,7 @@ module Pinecall
       @waiting.delete(waiting)
     end
 
-    # One participant, and the two things anybody may do to them. Removing the caller ends the call.
+    # A participant handle. Removing the caller ends the call.
     class Seat
       def initialize(identity, send)
         @identity = identity

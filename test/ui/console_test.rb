@@ -2,8 +2,7 @@
 
 require "test_helper"
 
-# The vendored console: that it is here, that it is whole, and that it is the one thing in this
-# gem which is generated.
+# The vendored console build is present and complete.
 class ConsoleTest < Minitest::Test
   FILES = Pinecall::UI::FILES
 
@@ -30,8 +29,7 @@ class ConsoleTest < Minitest::Test
   def test_the_page_addresses_its_assets_from_the_base_and_not_from_the_root
     page = File.read(File.join(FILES, "index.html"))
 
-    # The console is served under a nonce and its screens are routed at any depth, so an asset
-    # addressed from `/` would be looked for outside the nonce and answered with the page itself.
+    # Root-absolute asset paths would miss the nonce prefix and get index.html back.
     refute_match(%r{(?:src|href)="/assets/}, page)
   end
 

@@ -2,8 +2,7 @@
 
 require "socket"
 
-# A gateway that answers the REST doors with what the test told it to: one answer per
-# `"METHOD /path"`, and every request kept — method, path, headers and the parsed body.
+# Fake REST gateway: one canned answer per `"METHOD /path"`; records every request.
 class RestGateway
   Asked = Data.define(:method, :path, :headers, :body)
 

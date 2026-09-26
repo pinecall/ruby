@@ -2,14 +2,9 @@
 
 require "test_helper"
 
-# The socket, against a gateway that is really listening: the key at the door, the two
-# declarations answered, and one command going up.
-#
-# It is a real TCP server and a real WebSocket handshake, because the half of a client that is
-# worth testing is the half a fake never exercises.
+# The client socket against a real TCP/WebSocket server: auth, register/configure, commands.
 class SocketTest < Minitest::Test
-  # The smallest gateway that answers this protocol: it registers an agent, configures it, and
-  # keeps every frame it was sent so the test can say what the client did.
+  # Minimal gateway: answers register/configure and records every frame.
   class Gateway
     attr_reader :frames, :authorization
 
@@ -69,8 +64,7 @@ class SocketTest < Minitest::Test
                                   ephemeral: false, data: }))
     end
 
-    # websocket-driver writes through whatever answers `write`; a socket answers it already, but
-    # the driver also asks for a url on the client side, so the two sides share one shape.
+    # websocket-driver needs an object with `write` and `url`.
     Writer = Struct.new(:socket) do
       def write(bytes) = socket.write(bytes)
     end

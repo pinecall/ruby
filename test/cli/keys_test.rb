@@ -4,11 +4,8 @@ require "test_helper"
 require "tmpdir"
 require_relative "rest_gateway"
 
-# `pinecall keys`: the org's own key for a vendor sent once and printed back never, the vendors
-# read by name, and the gateway's own refusal said as it wrote it.
 class CLIKeysTest < Minitest::Test
-  # The thing that must never come back out. Every assertion below asks whether it appears
-  # anywhere a person, a scrollback or a log would see it.
+  # Must never appear in any output.
   THE_ORGS_OWN = "sk-the-clinic-brought-its-own-elevenlabs-key"
 
   def setup
@@ -30,7 +27,7 @@ class CLIKeysTest < Minitest::Test
     @gateway
   end
 
-  # The key arrives the way a script gives it: one line of a stdin that is no terminal.
+  # Pipes the key on non-TTY stdin.
   def run_cli(*argv, typed: "")
     out = StringIO.new
     err = StringIO.new

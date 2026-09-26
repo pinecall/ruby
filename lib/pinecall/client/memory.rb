@@ -2,20 +2,18 @@
 
 module Pinecall
   class Client
-    # The org's memory as a whole, in the two goldens it is held to: the one `recall` answers and
-    # the one `memory.remember` answers. `client.memory`. What is remembered about ONE contact is
-    # `client.memory_of(contact)`, because that door names a contact and neither of these does.
+    # Org-wide memory evaluation (`client.memory`): the recall and extraction goldens. For one
+    # contact's memory use `client.memory_of(contact)`.
     class Memory
       def initialize(url:, api_key:)
         @url = url
         @api_key = api_key
       end
 
-      # Every question of a golden asked of `recall`. Each question brings the facts of its own
-      # contact — `{ holds:, asks:, expects: }` — so no contact of this org is read or written:
-      # the gateway writes them to a scratch contact, recalls, and deletes them again. Answers the
-      # two figures the ranking is judged by, `recall_at_k` and `ndcg_at_10`, computed by code with
-      # no model, and every question it did not answer whole.
+      # Score `recall` against golden questions, each `{ holds:, asks:, expects: }`. Facts go to
+      # a scratch contact that is deleted afterwards; real contacts are untouched.
+      #
+      # @return [Hash] `recall_at_k`, `ndcg_at_10` (computed without a model) and the misses
       def eval(questions, k: nil)
         asked = { questions: }
         asked[:k] = k unless k.nil?
@@ -24,11 +22,10 @@ module Pinecall
         Protocol::Validate.call!("MemoryScore", answer, where: "memory score")
       end
 
-      # The other golden, the write side: a call already written down for both speakers and the
-      # facts already held, one hang-up extraction each on the org's own model and keys. The agent
-      # is named because its declaration is the vocabulary a case may use — the categories it says
-      # it keeps, and the tool names admission refuses a fact for. Answers which model made them,
-      # how many held, and every case with what memory would have kept beside what it refused.
+      # Run the hang-up extraction on each case (a transcript plus facts already held) with the
+      # org's model. `agent` supplies the categories and tool names a case may use.
+      #
+      # @return [Hash] the model used, the pass count, and kept vs. refused facts per case
       def extraction(agent, cases)
         body = Protocol::Validate.call!("ExtractionCases", { cases: }, where: "extraction cases")
         answer = Rest.post(Endpoints.extraction(@url, agent), body, api_key: @api_key)

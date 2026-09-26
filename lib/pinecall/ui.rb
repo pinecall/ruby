@@ -4,24 +4,18 @@ require_relative "ui/browser"
 require_relative "ui/server"
 
 module Pinecall
-  # `pinecall ui [agent]`: the console on 127.0.0.1 for the life of the command.
+  # `pinecall ui [agent]`: serve the console on 127.0.0.1 while the command runs.
   #
-  # The console is the same React program the TypeScript package builds — the same screens, the
-  # same stylesheet, the same bundle — served here instead. It is vendored into this gem already
-  # compiled, the way a Rails engine ships its assets, because a browser reads no TypeScript and a
-  # Ruby shop should not have to install Node to look at its own calls.
-  #
-  # What Ruby owns is everything around it: the loopback, the nonce, the key that never reaches
-  # the page, and the forwarding of `v1/*` to the gateway.
+  # The console bundle is vendored pre-built so Ruby users need no Node. This side provides the
+  # loopback server, the URL nonce, and `v1/*` forwarding signed with a key the page never sees.
   module UI
-    # Where the compiled console lives inside the gem.
     FILES = File.expand_path("../../console", __dir__)
 
     NOT_VENDORED = "the console is not in this gem: run `rake console:build` in a checkout"
 
     module_function
 
-    # Serve, open, wait, close. The org key is read once and spent only by the server.
+    # Serve, open the browser, and block until Ctrl-C. Only the server uses the key.
     def run(argv, out: $stdout, err: $stderr, files: FILES, open: nil, env: ENV)
       return usage(out) if argv.first.to_s.start_with?("-")
 
@@ -45,8 +39,6 @@ module Pinecall
       served = Server.open(door: pointed, files:)
       where = agent.nil? ? served.url : served.at("a/#{agent}")
       err.puts("pinecall: #{pointed.notice}") if pointed.notice
-      # Which gateway and where the key came from: the one line that answers "why is it talking to
-      # that box" before anybody has to grep for an exported name.
       out.puts("gateway: #{pointed.url} · key: #{CLI.said(pointed)}")
       out.puts("#{agent || "console"} · #{where}")
       (open || Browser.method(:open)).call(where)
@@ -56,8 +48,7 @@ module Pinecall
       served&.close
     end
 
-    # Ctrl-C, and nothing else. The port closes with the command, which is the whole containment
-    # story: there is no console on this machine when this process is not running.
+    # The port closes with the command, so no console outlives it.
     def wait_for_the_person_to_stop_it
       sleep
     rescue Interrupt

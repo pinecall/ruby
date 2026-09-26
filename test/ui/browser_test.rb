@@ -2,8 +2,6 @@
 
 require "test_helper"
 
-# Whether this machine has a browser to hand a URL to. Both answers are said before anything is
-# served, because a console nobody can open is a port for nothing.
 class BrowserTest < Minitest::Test
   def headless(env, platform) = Pinecall::UI::Browser.headless(env:, platform:)
 

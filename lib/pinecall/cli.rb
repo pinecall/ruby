@@ -7,13 +7,9 @@ require_relative "cli/memory"
 require_relative "cli/remember"
 
 module Pinecall
-  # `pinecall <verb>`: what a person types, and nothing a program calls.
-  #
-  # The verbs this package has written, and what each one needs. `prompt` needs no gateway, no key
-  # and no network, which is why it is the one a person runs first.
+  # The `pinecall` command line.
   module CLI
-    # The verbs the design names and this tree has not written. Typing one says what it will be
-    # and exits 0; a verb leaves this table in the commit that writes it.
+    # Verbs not implemented yet; running one prints its description and exits 0.
     PLANNED = {
       "chat" => "the same agent in this terminal, and a written caller against it",
       "test" => "ring 1: the goldens, through the agent in this process, scored by the gateway",
@@ -23,7 +19,7 @@ module Pinecall
 
     module_function
 
-    # Run one verb. Returns the exit status, so a bin is one line and a test is one call.
+    # Run one verb and return its exit status.
     def run(argv, out: $stdout, err: $stderr, input: $stdin)
       verb, *rest = argv
       case verb
@@ -42,7 +38,7 @@ module Pinecall
       end
     end
 
-    # The exact prompt this agent would produce, in the state the flags describe. No gateway.
+    # `pinecall prompt`: print the prompt for the state given by flags, offline.
     def prompt(argv, out:, err:)
       file, options = parse(argv)
       agent = load_agent(file, err:) or return 2
@@ -52,7 +48,7 @@ module Pinecall
       0
     end
 
-    # The agent registered and answering: the process you deploy. Binds no port, serves no page.
+    # `pinecall run`: register the agent and serve calls until interrupted.
     def serve(argv, out:, err:)
       file, = parse(argv)
       agent = load_agent(file, err:) or return 2
@@ -67,7 +63,7 @@ module Pinecall
       0
     end
 
-    # Which gateway, and where this terminal's key came from. It never prints the key itself.
+    # `pinecall whoami`: the gateway and the key's source; never prints the key.
     def whoami(out:, err:)
       pointed = Env.pointed
       out.puts("gateway: #{pointed.url}")
@@ -92,8 +88,8 @@ module Pinecall
       2
     end
 
-    # The gateway this terminal is pointed at, as a client — or nothing, with the reason on stderr.
-    # Every verb that needs a gateway goes through here, so all of them resolve the key one way.
+    # A client for the configured gateway, or nil with the reason on stderr. Every verb that
+    # needs a gateway uses this, so key resolution is uniform.
     def door(err)
       pointed = Env.pointed
       if pointed.api_key.nil?
@@ -104,7 +100,7 @@ module Pinecall
       Client.new(url: pointed.url, api_key: pointed.api_key)
     end
 
-    # `agent.rb` in this directory when nobody said otherwise, as every example has it.
+    # Load `file` (default `agent.rb`) and return the last agent class it defines.
     def load_agent(file, err:)
       path = File.expand_path(file || "agent.rb")
       return err.puts("pinecall: there is no #{path}") && nil unless File.exist?(path)
@@ -115,7 +111,7 @@ module Pinecall
       rescue ScriptError, LoadError => e
         return err.puts("pinecall: #{path} did not load: #{e.message}") && nil
       end
-      # A file this process already loaded declares nothing new: its class is the one written there.
+      # `require` returns false for an already-loaded file; find its class by source path.
       written = loaded ? Agent.written - before : Agent.written.select { |klass| klass.source_file == path }
       written = written.select(&:name)
       return err.puts("pinecall: #{path} declares no Pinecall::Agent") && nil if written.empty?
@@ -136,7 +132,7 @@ module Pinecall
       [file, options]
     end
 
-    # `--state patient='{"name":"Marta"}'` — JSON when it parses as JSON, the word itself when not.
+    # `--state field=value`: the value is parsed as JSON, or kept as a string.
     def as_state(said)
       field, _, value = said.to_s.partition("=")
       { field.to_sym => (JSON.parse(value) rescue value) } # rubocop:disable Style/RescueModifier

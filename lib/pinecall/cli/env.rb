@@ -2,27 +2,23 @@
 
 module Pinecall
   module CLI
-    # Where this terminal is pointed and what opens the door. One resolution order, for every verb.
+    # Resolves the gateway URL and API key for every verb.
     #
-    # It reads the same two files the TypeScript CLI writes — `~/.pinecall/credentials` and
-    # `~/.pinecall/dev` — and writes neither: `pinecall login` belongs to that CLI, and one program
-    # keeping a key is enough. A Ruby app on the same laptop therefore finds the same gateway the
-    # person already logged in to, without being told twice.
+    # Reads `~/.pinecall/credentials` and `~/.pinecall/dev`, written by the TypeScript CLI's
+    # `pinecall login`; never writes them.
     module Env
       LOCAL = "http://localhost:8080"
-      # Every bit outside the owner's. A file that has one of them can be read by somebody else,
-      # and a key somebody else can read is not a key we are willing to send anywhere.
+      # Group/other permission bits; a key file with any of them set is ignored.
       OTHERS = 0o077
 
-      # Where the key came from, so `whoami` can say it and a person can stop guessing.
+      # The resolved gateway and key, with the key's source for `whoami`.
       Pointed = Data.define(:url, :api_key, :source, :notice)
 
       module_function
 
-      # The directory both files live in.
       def home = ENV["PINECALL_HOME"] || File.join(Dir.home, ".pinecall")
 
-      # Where this terminal is pointed, and what opens the door there.
+      # Resolve the gateway and key.
       def pointed
         dev = dev_gateway
         url = ENV["PINECALL_URL"] || dev&.dig("url") || the_only_gateway || LOCAL
@@ -32,9 +28,8 @@ module Pinecall
           Pointed.new(url:, api_key: nil, source: :nothing, notice: nil)
       end
 
-      # A local gateway on a dev key honours its own key and no other, so an exported
-      # PINECALL_API_KEY is ignored HERE — and said out loud, because a bare 403 with no sentence
-      # in it cost this project an afternoon twice.
+      # A local dev gateway accepts only its own key, so PINECALL_API_KEY is ignored here, with
+      # a notice.
       def dev_key(url, dev)
         notice = if ENV["PINECALL_API_KEY"]
                    "PINECALL_API_KEY is set and ignored: #{url} runs on a dev key and honours its own"
@@ -57,14 +52,13 @@ module Pinecall
         key && Pointed.new(url:, api_key: key, source: :dev_key, notice: nil)
       end
 
-      # The one gateway this person logged in to, when there is exactly one. Two is a choice, and
-      # a choice is PINECALL_URL's to make.
+      # The logged-in gateway when there is exactly one; otherwise PINECALL_URL must choose.
       def the_only_gateway
         urls = credentials["gateways"].keys
         urls.size == 1 ? urls.first : nil
       end
 
-      # What a local `pinecall-runtime gateway` on a dev key left behind: where it is and its key.
+      # URL and key written by a local `pinecall-runtime gateway` running on a dev key.
       def dev_gateway = readable(File.join(home, "dev"))
 
       def credentials
@@ -72,7 +66,7 @@ module Pinecall
         { "api_key" => read["api_key"], "gateways" => read["gateways"].is_a?(Hash) ? read["gateways"] : {} }
       end
 
-      # A missing file, an unreadable one, a broken one and one anybody could read are all nothing.
+      # nil for a missing, unreadable, invalid or group/world-readable file.
       def readable(path)
         return nil unless File.exist?(path)
         return nil unless (File.stat(path).mode & OTHERS).zero?

@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# The bin of a checkout: this package's own source, and the protocol gem from the repository
-# beside it. What a gem install puts on the PATH is exe/pinecall, which needs neither line.
+# Development entrypoint: loads lib/ and the sibling protocol checkout. Installed gems use
+# exe/pinecall.
 root = File.expand_path("..", __dir__)
 $LOAD_PATH.unshift(File.join(root, "lib"))
 sibling = File.expand_path("../protocol/ruby/lib", root)

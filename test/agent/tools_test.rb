@@ -2,7 +2,6 @@
 
 require "test_helper"
 
-# What a class declares as a verb, what the model is told about it, and what is refused at load.
 class ToolsTest < Minitest::Test
   # Una clínica que da horas.
   class Clinica < Pinecall::Agent

@@ -3,12 +3,10 @@
 require_relative "../pinecall"
 
 module Pinecall
-  # A gateway that is not there.
+  # An in-process fake gateway for offline (ring 0) tests.
   #
-  # Ring 0 is the ring an agent's own suite lives in: no network, no key, no model, no gateway.
-  # This is what it mounts against. It answers the two declarations, keeps every command the app
-  # sent, and lets the test say what happened next — a call started, the model called a tool, a
-  # fact arrived from the tenant's backend — in the words a person would use.
+  # Answers register/configure, records every command, and lets a test drive calls, tool calls
+  # and events.
   #
   #     pc = Pinecall::Testing::Gateway.new
   #     Pinecall.mount(ClinicaNorte, client: pc)
@@ -16,7 +14,7 @@ module Pinecall
   #     call.tool("find_patient", name: "Marta Ruiz", phone: "+34600123456")
   #     assert_includes call.prompt, "Marta Ruiz"
   module Testing
-    # One call the test is driving, and everything the app said during it.
+    # A call driven by a test.
     class Fake
       attr_reader :id, :gateway
 
@@ -25,14 +23,14 @@ module Pinecall
         @id = id
       end
 
-      # The model calls a tool. Returns the `tool.result` the app sent back.
+      # Simulate a tool call; returns the `tool.result` data.
       def tool(name, **arguments)
         call_id = "tc_#{@gateway.next_seq}"
         @gateway.deliver("tool.call", { call_id:, name: name.to_s, arguments: }, call: @id)
         @gateway.settled { |sent| sent.type == "tool.result" && sent.data[:call_id] == call_id }
       end
 
-      # A fact from the tenant's backend, or from a participant's browser.
+      # Deliver an external event from the backend (`from: "app"`) or a participant.
       def fact(name, data = {}, from: "app", identity: nil)
         payload = { name: name.to_s, data:, source: from.to_s }
         payload[:identity] = identity unless identity.nil?
@@ -40,35 +38,35 @@ module Pinecall
         @gateway.settle
       end
 
-      # The caller said something.
+      # Deliver a caller turn.
       def said(text)
         @gateway.deliver("turn.user", { text:, speech_id: "sp_#{@gateway.next_seq}" }, call: @id)
         @gateway.settle
       end
 
-      # The call is over.
+      # Deliver `call.ended`.
       def ended(reason: "caller_hung_up")
         @gateway.deliver("call.ended", { reason:, ended_by: "caller", ended_at: Time.now.to_f, duration_s: 1.0 },
                          call: @id)
         @gateway.settle
       end
 
-      # The view as the app last sent it: the last thing the model reads before it answers.
+      # The last `view` block sent.
       def prompt = block("view")
 
-      # One block of the prompt as the app last sent it, by name.
+      # The last text sent for a prompt block.
       def block(name) = last("prompt.set", name: name.to_s)&.dig(:text)
 
-      # The tools the model may call right now, by name.
+      # Names of the currently visible tools.
       def tools = (last("tools.set")&.dig(:tools) || []).map { |spec| spec[:name] }
 
-      # The app's state as it last said it.
+      # The last state sent.
       def state = last("state.set")&.dig(:state) || {}
 
-      # Everything said on this call, in order.
+      # Commands sent for this call, in order.
       def commands = @gateway.commands.select { |sent| sent.call == @id }
 
-      # The last command of this type, optionally matching some of its fields.
+      # Data of the last command of `type` whose fields match `matching`.
       def last(type, **matching)
         commands.reverse.find do |sent|
           sent.type == type && matching.all? { |field, value| sent.data[field] == value }
@@ -76,7 +74,7 @@ module Pinecall
       end
     end
 
-    # The gateway itself: what a mounted agent talks to when nothing is listening on a port.
+    # Stands in for `Pinecall::Client` in `Pinecall.mount`.
     class Gateway
       attr_reader :commands, :agents
 
@@ -87,15 +85,14 @@ module Pinecall
         @errors = []
       end
 
-      # What a client says it is. The wire's own field, so a log of a test looks like a log.
       def sdk = "pinecall-ruby-testing/#{VERSION}"
 
-      # The same door `Pinecall::Client` opens, and the reason a mount cannot tell the difference.
+      # Same signature as `Pinecall::Client#agent`.
       def agent(slug, **options)
         @agents[slug] = Client::Agent.new(slug, options, self)
       end
 
-      # Every command the app has sent, in order.
+      # Record a command and answer it if the gateway would.
       def send_command(type:, agent:, call:, data:, id: nil)
         frame = Protocol.command(type:, agent:, call:, data:, id:)
         @commands << frame
@@ -110,10 +107,10 @@ module Pinecall
         warn("pinecall testing: #{error.class}: #{error.message}")
       end
 
-      # Anything the app could not hand to anybody, for a test that wants to assert on it.
+      # Unhandled errors, for assertions.
       attr_reader :errors
 
-      # A call starts. Returns the handle a test drives it with.
+      # Start a call and return its `Fake` handle.
       def call_started(id: nil, channel: "web", from: "+34600000000", to: "+34910000000", caller: nil)
         id ||= "CA_#{next_seq}"
         deliver("call.started", { channel:, direction: "inbound", from:, to:, caller:,
@@ -122,7 +119,7 @@ module Pinecall
         Fake.new(self, id)
       end
 
-      # One entry, as the gateway would have written it, handed to whoever is holding the agent.
+      # Deliver an entry to the agent.
       def deliver(type, data, call: nil, agent: @agents.keys.first)
         entry = Protocol::Entry.new(seq: next_seq, ts: Time.now.to_f, call:, agent:, type:,
                                     ephemeral: Protocol::Codec.ephemeral?(type), data:)
@@ -130,8 +127,7 @@ module Pinecall
         entry
       end
 
-      # Everything a mount does happens on that call's own thread, in order. A test asks for the
-      # answer, so it waits for that thread to be idle rather than sleeping and hoping.
+      # Wait until the call threads are idle.
       def settle(within_s: 2)
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + within_s
         sleep(0.002) while Thread.list.count { |thread| thread.status == "run" } > 1 &&
@@ -140,7 +136,7 @@ module Pinecall
         nil
       end
 
-      # Wait for one command the app has not sent yet, and return its data.
+      # Wait for a command matching the block and return its data.
       def settled(within_s: 2)
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + within_s
         loop do
@@ -154,8 +150,7 @@ module Pinecall
 
       def next_seq = @seq += 1
 
-      # The two declarations are the only commands the gateway answers; everything else is fire
-      # and read the log, exactly as it is against a real one.
+      # Like the real gateway, only register/configure get a reply.
       def answer(frame)
         case frame.type
         when "agent.register"

@@ -1,12 +1,10 @@
 # frozen_string_literal: true
 
 module Pinecall
-  # The bridge: an agent class mounted on a client, one live instance per call.
-  #
-  # This is the only place the class and the socket know about each other. The class never learns
-  # what a websocket is; the client never learns what a tool is.
+  # Mounts an agent class on a client, with one instance per call. The only module that knows
+  # both the agent and the socket.
   module Bridge
-    # A mounted agent: what it registered as, and the instance serving each call right now.
+    # A mounted agent and its live instances.
     class Mounted
       attr_reader :slug, :agent, :options
 
@@ -17,12 +15,11 @@ module Pinecall
         @live = live
       end
 
-      # The instance serving one call, while the call lasts.
+      # The instance serving `call_id`, or nil.
       def serving(call_id) = @live[call_id]&.agent
     end
 
-    # One call being served: the instance, its call, what was last sent — every block by name,
-    # and the tools — and the one thread that runs this call's hooks in the order they arrived.
+    # One served call: its instance, what was last sent, and a thread running its jobs in order.
     class Live
       attr_reader :agent, :world, :sent, :stops
       attr_accessor :tools_shown
@@ -37,8 +34,7 @@ module Pinecall
         @thread = Thread.new { work }
       end
 
-      # Do this next, after everything already queued for this call and before anything after it.
-      # One at a time and in the order they arrived: that is what makes `call.cause` mean anything.
+      # Queue a job; jobs run one at a time in order, which keeps `world.cause` accurate.
       def later(&job) = @work << job
 
       def finish
@@ -63,22 +59,17 @@ module Pinecall
 
     module_function
 
-    # Mount a class on a client. It registers once, and from then on every call gets its own
-    # instance, its own state and its own rendered prompt. Nothing is sent until `connect`.
+    # Mount a class on a client; each call gets its own instance. Nothing is sent until `connect`.
     #
-    # @param last [Proc] where every instance reads `last(contact)` from. Per mount, never global.
-    # @param opening [Proc] the state a case opens a call in, applied after `on_call` and before
-    #   the first render — the only moment it can be: earlier and the hook writes over it, later
-    #   and the model reads a state the call was never in.
-    # @param takes_unclaimed [Boolean] false for a console: it serves the call it opens itself.
+    # @param last [Proc] source for `last(contact)`
+    # @param opening [Proc] initial state for a call, applied after `on_call` (so the hook cannot
+    #   overwrite it) and before the first render
+    # @param takes_unclaimed [Boolean] false for a console, which serves only calls it opens
     def mount(klass, client:, slug: nil, last: nil, opening: nil, takes_unclaimed: true)
       name = slug || klass.slug
       live = {}
-      # One instance to read the class with: its tools and everything it declares about itself are
-      # read off the same probe, which is then thrown away. Every call gets an instance of its own.
+      # Throwaway instance used only to read the class's declarations.
       probe = klass.new
-      # No doors: a number is a row the org keeps and points at an agent, and every agent can be
-      # talked to from a page. A class that still says `phone` is saying something nobody reads.
       options = klass.wire_config(tools: tools_for(probe, live)).merge(takes_unclaimed:)
       agent = client.agent(name, **options)
       agent.on("call.started") { |_data, call| start(klass, live, call, agent, last, opening) }
@@ -86,8 +77,7 @@ module Pinecall
       Mounted.new(slug: name, agent:, options:, live:)
     end
 
-    # Every tool the class declares, each carrying the code that runs it, routed to the instance
-    # that owns the call the model called it in.
+    # Tool specs with a `run` routed to the instance serving the calling call.
     def tools_for(probe, live)
       probe.tools.map do |spec|
         spec.merge(run: lambda do |arguments, call|
@@ -99,8 +89,8 @@ module Pinecall
       end
     end
 
-    # A call started: build the instance, let `on_call` write into it, send the whole prompt once,
-    # and only then start listening — so the opening send is one prompt and not one per field.
+    # Build the instance and run `on_call` before listening, so the first prompt is sent once
+    # rather than once per field.
     def start(klass, live, call, agent, last, opening)
       instance = klass.new.seal
       instance.reads_last_from(last) unless last.nil?
@@ -121,13 +111,12 @@ module Pinecall
       end
     end
 
-    # From here on the prompt follows the state, one send per field that actually moved.
+    # Re-sync the prompt on every state change.
     def listen(serving, call, agent)
       instance = serving.agent
       serving.stops[:state] = instance.on_change do |change|
         call.set_state(instance.snapshot, [change.field])
-        # `state.set` carries no cause on the wire, so the reason a field moved goes in the log
-        # next to it: one line naming the event, the field, and the fact's place in this call.
+        # `state.set` has no cause field on the wire, so log it separately.
         cause = serving.world.cause
         call.log("state.cause", { field: change.field.to_s, kind: "event" }.merge(cause)) unless cause.nil?
         sync(serving, call)
@@ -139,9 +128,8 @@ module Pinecall
       end
     end
 
-    # One outside fact. The pair (name, source) is checked against what the class declared: an
-    # event declared `from: [:app]` that arrives from a browser is somebody else's event with our
-    # name on it, and the hook never sees it.
+    # Drop events whose (name, source) the class did not declare: an `:app` event arriving from
+    # a browser could be spoofed.
     def received(serving, agent, fact)
       name = fact[:name].to_s
       allowed = agent_class(serving).declared_events[name]
@@ -158,9 +146,7 @@ module Pinecall
       end
     end
 
-    # The call is over: nothing may render a prompt for it any more, and nothing may fold another
-    # entry into it. The log stays open one hook longer, because a farewell line — what the call
-    # was worth, what to remember — is exactly what `on_end` is for, and it is written after.
+    # Stop rendering and reading entries; the log stays open until `on_end` has run.
     def finish(live, call)
       serving = live.delete(call.id)
       return if serving.nil?
@@ -173,10 +159,8 @@ module Pinecall
       serving.finish
     end
 
-    # The one rule this file exists for: render, compare with what THIS call was last sent, and
-    # send only the blocks whose text is different. Re-sending identical text is a cache miss for
-    # nothing, and the cache is most of what a voice turn costs. A block never sent counts as
-    # empty, so an empty one costs no command until it has something to say.
+    # Send only blocks whose text changed since this call's last send: identical re-sends waste
+    # the provider's prompt cache. Unsent blocks count as empty.
     def sync(serving, call)
       rendered = Prompt.render(serving.agent, line: { channel: call.channel || "web", from: call.from })
       rendered.blocks.each do |block|
@@ -194,8 +178,7 @@ module Pinecall
 
     def agent_class(serving) = serving.agent.class
 
-    # `call.log` carries an object; a tool that logged a number still deserves a line, so a value
-    # that is not an object travels under `value` rather than being dropped at the door.
+    # `call.log` data must be an object; wrap scalars under `value`.
     def as_object(data)
       return {} if data.nil?
 

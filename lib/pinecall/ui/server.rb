@@ -4,33 +4,25 @@ require "securerandom"
 
 module Pinecall
   module UI
-    # The local server behind `pinecall ui`: the console's files and the gateway's doors, under one
-    # nonce on 127.0.0.1.
+    # Local server for `pinecall ui`: serves the console files and proxies the gateway's `v1/*`.
     #
-    # Everything about it is a containment decision. Loopback only, so nothing on the network can
-    # reach it. The kernel picks the port, so two consoles on one laptop do not fight over a
-    # number. Everything answers under a random path, so a process that scans the loopback finds a
-    # 404 and nothing behind it. And the org key is a field of this object, written into exactly
-    # one place: the authorization header of a request THIS process makes. The browser holds none.
+    # Security: binds loopback only, on a kernel-chosen port; everything lives under a random
+    # nonce path (anything else is 404); the API key is only added to outgoing proxy requests and
+    # never reaches the browser.
     #
-    # It speaks HTTP/1.1 over a plain socket rather than through a web server, for one reason: the
-    # console reads a live log over SSE, and a proxy that streams has to own the write side. Every
-    # answer closes its connection, which is what lets a body end at EOF without a length — on the
-    # loopback, for one person, a connection per request costs nothing and the framing is exact.
+    # Plain-socket HTTP/1.1 so SSE can stream straight through. Every response closes its
+    # connection, so bodies can end at EOF without a length.
     class Server
       LOOPBACK = "127.0.0.1"
       NONCE_BYTES = 16
 
-      # The gateway's doors, as the console asks for them relative to its base. Everything else
-      # under the nonce is a file of the console, or a screen the console routes itself.
+      # Paths under the nonce with this prefix are proxied; everything else is a console file or route.
       DOORS = "v1/"
 
-      # The headers a browser's request carries that the gateway needs to see. Everything else —
-      # the cookies, the origin, the user agent — is the browser's business and stops here.
+      # Request headers forwarded to the gateway; cookies, origin etc. are dropped.
       FORWARDED = %w[content-type accept last-event-id range].freeze
 
-      # A recording is served in byte ranges so a player can seek; those three are the range's own
-      # and travel back with it.
+      # Response headers relayed back, so recordings can be seeked with range requests.
       RELAYED = %w[content-range accept-ranges content-length].freeze
 
       TYPES = {
@@ -47,7 +39,6 @@ module Pinecall
 
       attr_reader :url
 
-      # Bind the loopback on a free port and serve the console in `files` for this door.
       def self.open(door:, files:)
         new(door:, files:).tap(&:listen)
       end
@@ -59,7 +50,7 @@ module Pinecall
         @open = []
       end
 
-      # Bind, and answer from a thread of its own until `close`.
+      # Bind and serve on a background thread until `close`.
       def listen
         @server = TCPServer.new(LOOPBACK, 0)
         @url = "http://#{LOOPBACK}:#{@server.addr[1]}/#{@nonce}/"
@@ -67,10 +58,9 @@ module Pinecall
         self
       end
 
-      # Where one screen of the console is, by the path the console routes.
+      # URL for a console route.
       def at(path) = "#{@url}#{path.to_s.delete_prefix("/")}"
 
-      # Close every socket and the port. After this, nothing answers at `url`.
       def close
         @closed = true
         @server&.close
@@ -116,9 +106,7 @@ module Pinecall
         socket.write("not here\n")
       end
 
-      # The one place the key is spent. The answer streams back as it arrives, which is what a log
-      # over SSE needs; a browser that navigates away breaks the pipe and the door behind it is
-      # let go with it.
+      # The only place the API key is used. Streams the response through, for SSE.
       def forward(socket, asked, path)
         where = URI.join(@door.url, path)
         request = Net::HTTP.const_get(asked.method.capitalize).new(where)
@@ -145,15 +133,15 @@ module Pinecall
           end
         end
       rescue Errno::EPIPE, Errno::ECONNRESET, IOError
-        # The browser left mid-stream. It is the one way a stream is expected to end.
+        # The browser left mid-stream: the normal end of an SSE stream.
         nil
       rescue StandardError => e
         write_head(socket, 502, { "content-type" => "text/plain; charset=utf-8" })
         socket.write("the gateway did not answer: #{e.message}\n")
       end
 
-      # A path that names a file of the console is that file; every other path is a screen the
-      # console routes itself, so it gets the page. Nothing above the console's directory is read.
+      # Serve a console file, or `index.html` for client-side routes. Paths outside `@files` are
+      # never read.
       def file(socket, path)
         found = File.expand_path(File.join(@files, path))
         return page(socket) unless found.start_with?("#{@files}#{File::SEPARATOR}") && File.file?(found)
@@ -164,9 +152,8 @@ module Pinecall
         socket.write(body)
       end
 
-      # Read on every request and not once: a console rebuilt while `ui` runs names new assets in
-      # a new page. The page is served for every screen the console routes itself, at any depth,
-      # so its assets are addressed from the base and not from wherever the address bar stands.
+      # Re-read per request so a rebuilt console is picked up. `<base>` makes asset paths resolve
+      # from the nonce root at any route depth.
       def page(socket)
         body = File.read(File.join(@files, "index.html"))
                    .sub("<head>", %(<head><base href="/#{@nonce}/">))
@@ -175,8 +162,7 @@ module Pinecall
         socket.write(body)
       end
 
-      # Every answer says `connection: close`, so a body with no length ends at EOF and a stream
-      # needs no chunked framing of its own.
+      # Always `connection: close`, so length-less bodies end at EOF and no chunked framing is needed.
       def write_head(socket, status, headers)
         lines = ["HTTP/1.1 #{status} #{REASONS.fetch(status, "OK")}", "connection: close"]
         headers.each { |name, value| lines << "#{name}: #{value}" }
@@ -186,8 +172,7 @@ module Pinecall
       REASONS = { 200 => "OK", 206 => "Partial Content", 404 => "Not Found", 405 => "Method Not Allowed",
                   500 => "Internal Server Error", 502 => "Bad Gateway" }.freeze
 
-      # One request off the socket: the line, the headers, and the body when it says it has one.
-      # A console sends one JSON document at a time, never a stream, so a body is read whole.
+      # A parsed request. Bodies are read whole by `content-length`; the console never streams uploads.
       Request = Data.define(:method, :path, :query, :headers, :body) do
         def self.read(socket)
           line = socket.gets

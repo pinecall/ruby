@@ -2,13 +2,8 @@
 
 module Pinecall
   class Client
-    # One JSON request at a REST door: the key at the door, the answer parsed, and a refusal
-    # carrying the gateway's own sentence.
-    #
-    # The socket carries the conversation. These doors carry what is pushed and read outside one —
-    # a knowledge base, a contact's memory — and a refusal comes back as `Refused` with the
-    # sentence the gateway wrote, because a bare status with no sentence in it cost this project
-    # two afternoons.
+    # Authenticated JSON requests to the gateway's REST endpoints. Non-2xx responses raise
+    # `Refused` with the gateway's message, never a bare status.
     module Rest
       module_function
 
@@ -30,7 +25,7 @@ module Pinecall
 
       def delete(url, api_key:) = ask(Net::HTTP::Delete.new(URI.parse(url)), api_key:)
 
-      # The answer's body as a Hash with symbol keys — nil when it has none — or `Refused`.
+      # Returns the body with symbol keys (nil if empty); raises `Refused` on failure.
       def ask(request, api_key:)
         request["authorization"] = "Bearer #{api_key}"
         request["accept"] = "application/json"
@@ -52,7 +47,7 @@ module Pinecall
         nil
       end
 
-      # The gateway's refusals say `detail`; anything else is passed on as it came.
+      # Gateway refusals use `detail`; otherwise pass the body through.
       def sentence(body, answer)
         (body.is_a?(Hash) && (body[:detail] || body[:message])) || answer.body.to_s.strip
       end

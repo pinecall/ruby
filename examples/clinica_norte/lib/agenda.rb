@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
-# La agenda de la clínica, de mentira: lo que en producción sería el ERP del centro.
-#
-# Está aquí para que el ejemplo se pueda correr sin nada instalado. Lo único que importa de este
-# archivo es su forma: métodos que devuelven datos, sin saber nada de Pinecall.
+# Agenda falsa en memoria, en lugar del ERP de la clínica, para correr el ejemplo sin dependencias.
 module Agenda
   Paciente = Data.define(:nombre, :telefono, :cita, :doctor)
   Hueco = Data.define(:cuando, :doctor)
@@ -19,7 +16,7 @@ module Agenda
     "miércoles" => [Hueco.new(cuando: "el miércoles a las nueve", doctor: "el doctor Ferrán")]
   }.freeze
 
-  # Una hora que ya está cogida por otro. Se lanza desde la tool y el modelo la lee como respuesta.
+  # Se lanza desde la tool; el modelo recibe el mensaje como resultado.
   class YaNoEstaLibre < StandardError; end
 
   module_function

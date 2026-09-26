@@ -4,10 +4,8 @@ require "test_helper"
 require "tmpdir"
 require "net/http"
 
-# The console's server: the nonce, the files, and the one place the org key is spent.
 class UIServerTest < Minitest::Test
-  # The smallest gateway that answers what the console asks: it keeps the authorization header it
-  # was given, answers JSON at one door and a stream at another.
+  # Minimal gateway: records headers, answers JSON on one path and SSE on another.
   class Gateway
     attr_reader :authorization, :asked
 
@@ -115,8 +113,7 @@ class UIServerTest < Minitest::Test
     assert_includes answer["content-type"], "text/javascript"
   end
 
-  # Asked through a raw socket, because a client normalises `..` away before it ever leaves and
-  # the whole point is what this server does with one that did not.
+  # Raw socket: HTTP clients normalise `..` before sending.
   def test_nothing_above_the_console_s_directory_is_ever_read
     where = URI.parse(@served.url)
     socket = TCPSocket.new(where.host, where.port)
@@ -148,7 +145,6 @@ class UIServerTest < Minitest::Test
 
     assert_equal "application/json", sent["accept"]
     assert_nil sent["cookie"]
-    # Whatever reaches the gateway as a user agent is this process's own, never the browser's.
     refute_equal "a browser", sent["user-agent"]
   end
 

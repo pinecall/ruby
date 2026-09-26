@@ -2,20 +2,15 @@
 
 module Pinecall
   module CLI
-    # `pinecall remember [PATHS]`: the goldens `memory.remember` is held to — what a call teaches,
-    # and what it must never keep.
+    # `pinecall remember [PATHS]`: run the memory extraction goldens.
     #
-    # A case is one call already held, written down for BOTH speakers, so nothing here is re-run:
-    # it is handed to the hang-up's one model call exactly as a real call would hand it over. Every
-    # answer is judged by code — a category is the policy's own word, a value is a literal, a
-    # supersession is an id — because two ways of writing one fact are one fact.
+    # Each case is a full transcript passed to the hang-up extraction as a real call would.
+    # Results are checked by code (category names, literal values, superseded ids), not by a model.
     module Remember
       HELD = "✓"
       BROKEN = "✗"
 
-      # Where the extraction goldens live, beside the agent file. `test/goldens` is the
-      # conversation ring and its files are a different shape, so these get a directory of
-      # their own rather than a key inside a crowded one.
+      # Relative to `agent.rb`; separate from `test/goldens`, whose files have another shape.
       DEFAULT_CASES = "test/memory"
 
       module_function
@@ -29,15 +24,11 @@ module Pinecall
         held_to_the_goldens(agent, cases, out:, err:)
       end
 
-      # The class is mounted HERE, exactly as a run mounts it, because the tool names admission
-      # refuses a fact for are the class's OWN declaration: the gateway reads it off the socket
-      # this process opens. The categories a case may name are the world's memory policy
-      # (`pinecall memory policy`). The extraction itself runs there, on
-      # the org's model and the org's provider keys and never this terminal's.
+      # Mount the class so the gateway reads its tool names from this socket. Categories come
+      # from the memory policy; extraction runs on the gateway with the org's model and keys.
       def held_to_the_goldens(agent, cases, out:, err:)
         client = CLI.door(err) or return 2
-        # takes_unclaimed: false for the reason a suite has it: this process holds the agent so the
-        # run reaches THIS class, and a real call must not ring in a terminal running a suite.
+        # Do not take real calls in a terminal running a suite.
         mounted = Pinecall.mount(agent, client:, takes_unclaimed: false)
         client.connect
         answer = client.memory.extraction(mounted.slug, cases)
@@ -51,7 +42,7 @@ module Pinecall
         client&.close
       end
 
-      # The run as a person reads it: one line, then the evidence under the cases that did not hold.
+      # A summary line, then details for failed cases.
       def lines_of(answer)
         counted = "#{answer[:cases]} case#{"s" unless answer[:cases] == 1}"
         first = "#{answer[:agent]} · #{answer[:model]} · #{counted} · " \
@@ -70,10 +61,8 @@ module Pinecall
          *(result[:refused] || []).map { |refused| "      refused   #{refused}" }]
       end
 
-      # Every case under those paths, or under `test/memory` beside the agent file when nobody
-      # narrowed the run. A file holds one case or a list of them, and a case that named itself
-      # keeps that name — the file's own basename is what the rest are called, numbered when there
-      # are several, so a report names something a person can grep for in their own directory.
+      # Load cases from PATHS (default `test/memory`). A file holds one case or an array; unnamed
+      # cases take the file's basename, numbered when there are several.
       def cases_in(paths, agent, grep, err:)
         where = paths.empty? ? [beside(agent)] : paths
         found = where.flat_map { |path| files_under(path).flat_map { |file| cases_of(file) } }

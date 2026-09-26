@@ -20,22 +20,17 @@ require_relative "client/memory"
 require_relative "client/provider_keys"
 
 module Pinecall
-  # One application's connection to Pinecall: one socket, the agents on it, a door to any log the
-  # key can read, and the org's knowledge bases and contact memories over the same key.
-  #
-  # This is the smaller of the two doors. It knows the protocol and a websocket and nothing else —
-  # no agent class, no view, no CLI — and it is what an application with its own way of deciding
-  # what to answer wants. `Pinecall::Agent` is built on it, not beside it.
+  # A connection to the Pinecall gateway: one socket, its agents, log reads, and the org's
+  # knowledge bases and contact memory. `Pinecall::Agent` is built on top of it.
   #
   #     pc = Pinecall::Client.new                 # PINECALL_URL and PINECALL_API_KEY
   #     agent = pc.agent("clinica-norte", routes: [{ channel: "web", number: nil }], tools: [])
   #     agent.on("turn.user") { |data, call| call.say("Le he oído: #{data[:text]}") }
   #     pc.connect
   #
-  # `PINECALL_URL` and `PINECALL_API_KEY` are the two things it needs and it will not guess
-  # either: a client pointed at a host nobody named fails later, somewhere the app cannot read.
+  # `PINECALL_URL` and `PINECALL_API_KEY` are required; there are no defaults.
   class Client
-    # Who is registering, in the wire's own field. The gateway logs it and a console shows it.
+    # The `sdk` field sent on register.
     def sdk = "pinecall-ruby/#{VERSION}"
 
     attr_reader :url, :api_key
@@ -62,68 +57,67 @@ module Pinecall
       )
     end
 
-    # Declare an agent this app speaks for. Nothing is sent until `connect`.
+    # Declare an agent. Nothing is sent until `connect`.
     def agent(slug, **options)
       @agents[slug] = Agent.new(slug, options, self)
     end
 
-    # The agents this client holds, by slug.
+    # Declared agents by slug.
     def agents = @agents.dup
 
-    # Open the socket, claim every agent's slug and doors, and send every declaration.
+    # Open the socket and register every agent.
     def connect
       @connection.start
       self
     end
 
-    # Close the socket and stay closed. Every agent's slug is free the moment it shuts.
+    # Close the socket without reconnecting; agents are unregistered.
     def close = @connection.close
 
     # True while the socket is up.
     def connected? = @connection.open?
 
-    # Listen for one event type across every agent on this client.
+    # Listen for one event type across all agents.
     def on(type, &listener) = @listeners.on(type, &listener)
 
-    # Listen for every event across every agent.
+    # Listen for every event across all agents.
     def on_any(&listener) = @listeners.on_any(&listener)
 
-    # Hear what the client could not hand to anybody: a bad frame, a tool that raised, a lost
-    # socket. With nobody listening, it goes to stderr rather than nowhere.
+    # Listen for unhandled errors (bad frames, raising tools, socket loss). Without a listener
+    # they go to stderr. Returns a lambda that unsubscribes.
     def on_errors(&listener)
       @errors << listener
       -> { @errors.delete(listener) }
     end
 
-    # A log as it happens, folded by the protocol's reducer. `{ call: "CA_1" }` or `{ agent: … }`.
+    # Stream a log, reduced by the protocol reducer. `target` is `{ call: "CA_1" }` or `{ agent: … }`.
     def observe(target, **options, &block) = Observe.observe(target, url: @url, api_key: @api_key, **options, &block)
 
-    # A log as it stands, as one page, and what it folds to.
+    # Fetch one page of a log and its reduced state.
     def history(target, **options) = Observe.history(target, url: @url, api_key: @api_key, **options)
 
-    # The org's knowledge bases: push one from a folder, list them, drop one.
+    # The org's knowledge bases.
     def knowledge = Knowledge.new(url: @url, api_key: @api_key)
 
-    # What is remembered about one contact, and the right to be forgotten.
+    # Memory about one contact, including erasure.
     def memory_of(contact) = ContactMemory.new(contact, url: @url, api_key: @api_key)
 
-    # The golden recall is held to; it names no contact, because every question brings its own.
+    # The org's memory recall golden.
     def memory = Memory.new(url: @url, api_key: @api_key)
 
-    # The provider keys this org brought of its own: added, taken back, and read back by name.
+    # The org's own provider (BYOK) keys.
     def provider_keys = ProviderKeys.new(url: @url, api_key: @api_key)
 
-    # ── what the agents send through ─────────────────────────────────────────
+    # ── used by agents ───────────────────────────────────────────────────────
 
-    # One command frame up the socket, checked against its schema before it leaves.
+    # Send one command, validated against its schema.
     def send_command(type:, agent:, call:, data:, id: nil)
       @connection.send_frame(Protocol.command(type:, agent:, call:, data:, id:))
     end
 
-    # One event an agent has finished with, for the listeners registered across every agent.
+    # Forward an event to client-wide listeners.
     def seen(event, call) = @listeners.emit(event, call)
 
-    # Something failed where nobody was waiting.
     def on_error(error)
       return warn("pinecall: #{error.class}: #{error.message}") if @errors.empty?
 
@@ -134,7 +128,7 @@ module Pinecall
 
     def took(entry)
       agent = @agents[entry.agent]
-      # An entry for an agent this client never declared: the socket is shared, the app is not.
+      # The socket may carry entries for agents this client did not declare.
       return if agent.nil?
 
       guarded { agent.take(entry) }

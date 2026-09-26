@@ -4,7 +4,6 @@ require "test_helper"
 require "tmpdir"
 require_relative "rest_gateway"
 
-# `pinecall knowledge`: a folder becomes a base, by name, through the org's key.
 class CLIKnowledgeTest < Minitest::Test
   EXAMPLE = File.expand_path("../../examples/clinica_norte", __dir__)
 
@@ -102,8 +101,6 @@ class CLIKnowledgeTest < Minitest::Test
     assert_equal 2, status
     assert_includes err, "no key for"
   end
-  # A golden is the only thing that says the index missed a BETTER passage: the judge that runs on
-  # every call can only weigh what the model was given. runtime/docs/retrieval/spec.md.
   def test_eval_prints_the_two_figures_and_the_embedder_that_wrote_the_vectors
     gateway("POST /v1/knowledge/clinica/eval" => [200, {
               base: "clinica", model: "BAAI/bge-m3", questions: 1, k: 4,
@@ -135,7 +132,6 @@ class CLIKnowledgeTest < Minitest::Test
     assert_includes err, "there is no /nope/golden.json"
   end
 
-  # One question, on disk, as a person writes it beside their own documents.
   def a_golden
     path = File.join(Dir.mktmpdir("pinecall-golden"), "golden.json")
     File.write(path, JSON.generate([{ asks: "¿cuánto cuesta?", expects: "tarifas.md" }]))

@@ -2,16 +2,15 @@
 
 module Pinecall
   class Client
-    # Reading a log: the same URL as a JSON page and as a stream, folded by the protocol's reducer.
+    # Reads a log as a JSON page or an SSE stream, reduced by the protocol reducer.
     #
-    # The cursor is the whole protocol. A stream that drops is the same URL again with a fresher
-    # `Last-Event-ID`, and the platform answers a reader that fell behind with `log.gap` — carrying
-    # a snapshot when it has one — then `log.caught_up` when what follows is live.
+    # Reconnects resume with `Last-Event-ID`. A reader that fell behind gets `log.gap` (with a
+    # snapshot when available), then `log.caught_up` once the stream is live.
     module Observe
-      # One page of a log: the entries after the cursor, what they fold to, and where to go next.
+      # One page of entries after the cursor, their reduced state, and the next cursor.
       Page = Data.define(:entries, :state, :live, :next)
 
-      # One entry, what it means, and the state the log has folded to including it.
+      # One entry, its decoded event, and the reduced state including it.
       Observation = Data.define(:entry, :event, :state)
 
       RETRY_S = 1.0
@@ -19,9 +18,8 @@ module Pinecall
 
       module_function
 
-      # The log as it stands: one page after the cursor, what it folds to, and whether more
-      # follows. The page says where to go next itself, because an empty page of a live log still
-      # has a next and a reader must not have to infer one from the last entry it happened to get.
+      # Fetch one page after `after`. Use the page's `next`, not the last entry's seq: an empty
+      # page of a live log still has one.
       def history(target, url:, api_key:, after: 0)
         answer = get(target, url:, api_key:, after:, accept: "application/json")
         page = JSON.parse(answer.body, symbolize_names: true)
@@ -32,8 +30,8 @@ module Pinecall
                  next: page[:next].is_a?(Integer) ? page[:next] : nil)
       end
 
-      # A log as it happens: every entry after the cursor, then everything that follows, forever.
-      # Yields an Observation per entry. Returns when the block breaks or `stop` is called.
+      # Stream entries after `after`, reconnecting as needed. Yields an Observation per entry;
+      # returns when the block breaks or `stop` returns true.
       def observe(target, url:, api_key:, after: 0, stop: nil)
         state = Protocol.initial_state
         attempt = 0
@@ -48,9 +46,7 @@ module Pinecall
               yield Observation.new(entry:, event: Protocol.event_of(entry), state:)
             end
           rescue StandardError
-            # A stream that never opened is a misconfiguration — a wrong key, a call nobody has —
-            # and the reader hears it now. One that dropped after it worked is what the cursor is
-            # for, and coming back is not news.
+            # Failing before the first entry means misconfiguration: raise. Later drops resume.
             raise unless opened
           end
           attempt += 1
@@ -58,7 +54,6 @@ module Pinecall
         end
       end
 
-      # One connection's worth of entries, until the server closes it.
       def stream(target, url:, api_key:, after:)
         get(target, url:, api_key:, after:, accept: "text/event-stream") do |answer|
           buffered = +""
@@ -73,7 +68,7 @@ module Pinecall
         end
       end
 
-      # One SSE block as an entry, or nil for a comment or a keep-alive that carries no data.
+      # Parse one SSE block; nil for comments and keep-alives.
       def entry_in(block)
         data = block.lines.filter_map { |line| line.delete_prefix("data:").lstrip.chomp if line.start_with?("data:") }
         return nil if data.empty?

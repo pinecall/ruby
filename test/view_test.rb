@@ -2,7 +2,6 @@
 
 require "test_helper"
 
-# The view: the tenant's own words, rendered against the state, and nothing of the framework in it.
 class ViewTest < Minitest::Test
   def rendered(template, state = {}, remembered = [])
     Pinecall::View.inline(template).render(Pinecall::Reading.new(state, remembered))
@@ -17,7 +16,6 @@ class ViewTest < Minitest::Test
     assert_raises(NameError) { rendered("<%= paciente %>") }
   end
 
-  # A fact never travels through the prompt; what a view may do with one is branch on it.
   def test_what_the_agent_remembers_about_this_caller_decides_a_sentence_and_is_never_printed
     text = rendered(%(<% if remembers?("médico habitual") -%>\nOfrece sus horas.\n<% end -%>),
                     {}, ["su médico habitual es la doctora Vidal"])
@@ -36,7 +34,6 @@ class ViewTest < Minitest::Test
     assert_equal "Hola.\n\n  Adiós.", text
   end
 
-  # The two helpers a template has beside the state: the reading whole, and a list read out loud.
   def test_a_template_can_take_the_whole_state_and_lay_a_list_out_one_per_line
     assert_equal "el martes\nel jueves",
                  rendered("<%= each_line(state[:slots]) %>", { slots: ["el martes ", " el jueves"] })

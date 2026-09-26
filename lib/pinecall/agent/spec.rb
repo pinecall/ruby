@@ -2,22 +2,18 @@
 
 module Pinecall
   class Agent
-    # One tool, as the gateway receives it. The declaration is refused here or nowhere.
+    # Builds and validates a tool's wire spec.
     #
-    # A model reads the docstring and fills a JSON object by NAME, so a tool takes keyword
-    # arguments and nothing else: positional ones would be filled by position, which is a thing
-    # only a human can get right. The parameter names come from the method itself — Ruby keeps
-    # them — and their types from `params:`, because a Ruby signature carries none.
+    # A model fills arguments by name, so tools take keyword arguments only. Names come from the
+    # method signature, types from `params:`.
     module Spec
       A_NAME_A_MODEL_CAN_CALL = /\A[A-Za-z][A-Za-z0-9_]*\z/
 
-      # What a bare name means when nobody said otherwise. A model filling a slot in a phone
-      # conversation is writing words; anything that is not text says so in `params:`.
+      # Schema for a parameter with no declared type.
       TEXT = { type: "string" }.freeze
 
       class << self
-        # `stage: :book` is sugar over `when`, lowered here, at declaration time, so that from
-        # here on there is one kind of visibility and the framework asks it one way.
+        # Rewrite `stage:` as a `when`, so visibility has a single form.
         def lower(klass, name, options)
           wanted = options[:stage]
           return options if wanted.nil?
@@ -29,7 +25,7 @@ module Pinecall
           options.merge(when: in_stage)
         end
 
-        # Build the wire spec for one declared method, refusing what the gateway would refuse.
+        # Build the wire spec, refusing what the gateway would refuse.
         def build(klass, name, options)
           refuse_a_name_no_model_can_call(name)
           method = klass.instance_method(name)
@@ -46,7 +42,7 @@ module Pinecall
           spec.freeze
         end
 
-        # The JSON Schema a model must satisfy: the method's own keyword names, and their types.
+        # JSON Schema from the method's keyword names and declared types.
         def parameters(method, declared)
           properties = {}
           required = []
@@ -60,8 +56,7 @@ module Pinecall
           { type: "object", properties:, required:, additionalProperties: false }
         end
 
-        # `params: { day: String, how_many: Integer, slot: { type: "object" } }` — a class, a list
-        # holding one class, or the JSON Schema written out when the shape is worth saying.
+        # Accepts a class, a one-element array of a class, or a raw JSON Schema hash.
         def schema_of(declared)
           case declared
           when nil then TEXT
@@ -83,7 +78,7 @@ module Pinecall
           end
         end
 
-        # ── what a declaration is refused for ──────────────────────────────────
+        # ── validation ─────────────────────────────────────────────────────────
 
         def description!(klass, name, options)
           said = options[:doc] || Doc.for_method(klass, name)

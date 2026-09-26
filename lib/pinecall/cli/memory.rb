@@ -2,14 +2,13 @@
 
 module Pinecall
   module CLI
-    # `pinecall memory CONTACT`, `pinecall memory forget CONTACT` and `pinecall memory eval`:
-    # what is remembered about one contact, the right to be forgotten, and the golden `recall`
-    # is held to.
+    # `pinecall memory CONTACT | forget CONTACT | eval`: read or erase a contact's memory, and
+    # score recall against a golden.
     module Memory
       DIM = "\e[2m"
       PLAIN = "\e[0m"
 
-      # The golden beside the agent that answers with those facts, when nobody says otherwise.
+      # Relative to `agent.rb`.
       DEFAULT_GOLDEN = "memory/golden.json"
 
       module_function
@@ -24,7 +23,7 @@ module Pinecall
         end
       end
 
-      # The history, current first; a fact that was superseded is dimmed and dated.
+      # Current facts first; superseded ones are dimmed on a TTY.
       def history(contact, out:, err:)
         Knowledge.at_the_gateway(err) do |client|
           facts = client.memory_of(contact).history
@@ -35,7 +34,7 @@ module Pinecall
         end
       end
 
-      # Asked once, on a terminal; a script that pipes the answer is not asked.
+      # Confirms on a TTY only.
       def forget(contact, input:, out:, err:)
         return err.puts("pinecall: memory forget takes the contact to forget") || 2 if contact.nil?
 
@@ -49,11 +48,8 @@ module Pinecall
         end
       end
 
-      # Every question of the golden asked of `recall`, each bringing the facts of its own contact.
-      # A golden is run when somebody changed the words a fact is written in, the embedder or a
-      # knob — never on a caller's clock. Exit 1 on a question memory did not answer whole, so
-      # recall can be held to its golden in CI. The line is the knowledge verbs' own
-      # `[GOLDEN] [--k N]`, parsed where it is written once.
+      # Score recall against the golden; exits 1 on any miss, for CI. Arguments are parsed by
+      # `Knowledge.parse`.
       def evaluate(argv, out:, err:)
         file, _base, k = Knowledge.parse(argv, with_k: true)
         if file.nil?
@@ -76,8 +72,7 @@ module Pinecall
         2
       end
 
-      # The two figures on one line, with the embedder that wrote the vectors on both sides of the
-      # recall: two scores are comparable only under one model.
+      # Includes the embedding model: scores are only comparable under the same model.
       def score_line(score)
         "memory · #{score[:model]} · #{score[:questions]} questions · " \
           "recall@#{score[:k]} #{format("%.2f", score[:recall_at_k])} · " \
@@ -89,7 +84,7 @@ module Pinecall
           "got #{missed[:found].first || "nothing"}"
       end
 
-      # `- the fact  (category · since 2026-09-01)`, or `… · until 2026-09-08` once superseded.
+      # `- text  (category · since YYYY-MM-DD[ · until YYYY-MM-DD])`
       def line_for(fact)
         since = "since #{day(fact[:valid_from])}"
         until_ = fact[:invalidated_at] && "until #{day(fact[:invalidated_at])}"

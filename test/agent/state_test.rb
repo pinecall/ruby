@@ -2,7 +2,6 @@
 
 require "test_helper"
 
-# The state: who may write it, what a snapshot is, and what a restore leaves behind.
 class StateTest < Minitest::Test
   # Una tienda que recuerda un carrito.
   class Tienda < Pinecall::Agent

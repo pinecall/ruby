@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
 module Pinecall
-  # The framework's own words: the standing rules and the protocols, in the agent's language.
-  #
-  # These are identical for every agent and every turn of a call, which is exactly why they belong
-  # in the identity block, which is cached — and why they are a table and not a template.
+  # The framework's standing rules and protocols, per language. Constant, so they live in the
+  # cached identity block.
   module Lang
     WORDS = {
       "es" => {
@@ -33,20 +31,17 @@ module Pinecall
       }.freeze
     }.freeze
 
-    # The language an agent that named none is written in.
     DEFAULT = "es"
 
     module_function
 
-    # The framework's words for this class. A language we do not speak yet falls back to the
-    # default rather than leaving the model with no rules at all.
+    # Words for the class's language; unknown languages fall back to the default.
     def words_for(klass)
       said = klass.respond_to?(:language) ? klass.language : nil
       code = (said || DEFAULT).to_s.downcase.split(/[-_]/).first
       WORDS[code] || WORDS[DEFAULT]
     end
 
-    # The languages the framework has words for, for a test that wants to walk them all.
     def languages = WORDS.keys
   end
 end

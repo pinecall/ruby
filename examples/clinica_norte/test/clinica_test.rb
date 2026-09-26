@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-# Ring 0: la clase, en este proceso, sin red, sin clave, sin modelo y sin gateway.
-#
-# Es la suite que un cliente escribe en SU repo. Lo único que hace falta es `pinecall/testing`.
+# Ring 0: la clase en proceso, sin red, clave, modelo ni gateway; solo `pinecall/testing`.
 require "minitest/autorun"
 require "pinecall"
 require "pinecall/testing"
@@ -82,8 +80,6 @@ class ClinicaTest < Minitest::Test
     assert_operator enviados.count("view"), :>, 1
   end
 
-  # La voz, el modelo, el saludo, lo que sabe y lo que recuerda son del mundo: la declaración lleva
-  # el contrato y nada más.
   def test_la_declaracion_es_el_contrato_y_nada_del_mundo
     declared = @mounted.options
 
@@ -93,15 +89,13 @@ class ClinicaTest < Minitest::Test
     end
   end
 
-  # Lo que la memoria y la base devuelven llega como resultado de una herramienta, en el
-  # historial. Por el prompt no pasa: ni un hecho, ni un trozo, ni una línea del framework.
+  # Memoria y conocimiento llegan como resultados de herramienta, nunca por el prompt.
   def test_la_vista_es_solo_lo_que_escribe_la_clinica
     call = @gateway.call_started(from: "+34600123456")
 
     refute_includes call.prompt, "<!--"
   end
 
-  # Lo que ya sabemos del paciente decide una frase nuestra; el hecho en sí no se imprime.
   def test_lo_que_ya_sabemos_del_paciente_decide_una_frase_pero_no_se_lee_en_la_vista
     call = @gateway.call_started(from: "+34600123456")
     vista = Pinecall.render(@mounted.serving(call.id),

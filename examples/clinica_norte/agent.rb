@@ -9,27 +9,20 @@ require_relative "lib/agenda"
 class ClinicaNorte < Pinecall::Agent
   language :es
 
-  # Y nada más de configuración: la voz, el modelo, el saludo, cuándo colgar, las palabras
-  # (`pinecall lexicon`), lo que recuerda (`pinecall memory policy`), lo que se sabe de memoria
-  # (Settings ▸ Knowledge) y la base que busca por turno (`pinecall docs push`, `pinecall docs
-  # attach`) son del MUNDO — por mundo, por rincón, versionados — y una clase que todavía los
-  # declara es rechazada al cargar nombrando el verbo. Tampoco las puertas: un número se apunta a
-  # un agente con `pinecall numbers import`. La clase es el contrato: el idioma, el estado, las
-  # herramientas y la vista.
+  # Voz, modelo, saludo, memoria y conocimiento se configuran en el mundo (`pinecall agent set`,
+  # etc.), no aquí: la clase declara idioma, estado, herramientas y vista.
 
-  # La fase es un campo del estado como cualquier otro, y es lo único que mueve las herramientas.
+  # La fase decide qué herramientas están visibles.
   stage :identify, :choose, :book, :done
 
   state :patient, visibility: :pii
   state :slots, []
-  # La hora que está sobre la mesa esperando el sí, y la que ya quedó reservada: son dos momentos
-  # distintos de la conversación, y el prompt tiene que poder decir en cuál va.
+  # Hora propuesta pendiente del sí, y reserva ya hecha.
   state :proposed
   state :booking
   state(:identified) { !patient.nil? }
 
-  # La vista es views/clinica-norte.erb, al lado de este archivo: la convención, así que no hace
-  # falta nombrarla. Todo lo que dice lo escribe la clínica y nada más entra ahí.
+  # Vista: views/clinica-norte.erb (ubicación por defecto).
 
   def on_call(call)
     self.patient = Agenda.por_telefono(call.from.to_s)
@@ -63,8 +56,7 @@ class ClinicaNorte < Pinecall::Agent
   tool stage: %i[choose book], preview: 2, params: { day: String }
   def free_slots(day:)
     self.slots = Agenda.libres(day)
-    # Mirar otro día retira lo que hubiera sobre la mesa: la hora propuesta era de la lista
-    # anterior y ya no está entre las que se pueden reservar.
+    # La hora propuesta era de la lista anterior.
     self.proposed = nil
     self.stage = slots.any? ? :book : :choose
     slots
@@ -84,8 +76,7 @@ class ClinicaNorte < Pinecall::Agent
        confirm: "Le reservo {{proposed.cuando}} con {{proposed.doctor}}. ¿Lo confirmo?"
   def book(chosen:)
     hueco = offered(chosen)
-    # La agenda escribe primero y el estado después: si el hueco se ocupó entre mirar y reservar,
-    # el paciente no puede quedarse con una hora suya en el estado ni en el prompt.
+    # Reservar en la agenda antes de tocar el estado: si el hueco ya se ocupó, el estado no cambia.
     self.booking = Agenda.reservar(patient, hueco)
     self.stage = :done
     booking
@@ -93,8 +84,7 @@ class ClinicaNorte < Pinecall::Agent
 
   private
 
-  # El modelo elige diciendo la hora, no rellenando una ficha: se resuelve contra las que están
-  # sobre la mesa, que es la regla que el prefijo estático dice con palabras.
+  # Resuelve la hora dicha por el modelo contra las horas ofrecidas.
   def offered(chosen)
     dicho = chosen.to_s.downcase
     hueco = slots.find { |uno| dicho.include?(uno.cuando.downcase) || uno.cuando.downcase.include?(dicho) }

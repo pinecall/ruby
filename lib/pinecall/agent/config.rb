@@ -2,31 +2,17 @@
 
 module Pinecall
   class Agent
-    # What configures the agent, as against what it remembers — and what is no longer the class's
-    # to say at all.
+    # Class-level configuration (state lives on the instance).
     #
-    # The TypeScript side keeps a list of the field names it must skip on every assignment, because
-    # there config and state both live on the instance. Ruby needs no list: config is declared on
-    # the CLASS, state on the instance, so "config is not state" is not a rule anybody has to
-    # remember — it is where the words are written.
-    #
-    # A class declares the contract: its tools, its state, its view, its language. Everything it
-    # RUNS ON — a voice, the models, an opening, what it remembers, what it reads — is the world's:
-    # per world, per corner, versioned, set by the org without a deploy. A class that still says one
-    # of those is refused at load, with the verb that sets it now.
-    #
-    # | declared                   | becomes                                                    |
-    # |----------------------------|------------------------------------------------------------|
-    # | `language`                 | which of the framework's two word-sets `identity` carries  |
-    # | `phone`, `whatsapp`, `web` | nothing: accepted, read by nobody. A door is the org's row |
+    # A class declares its contract: tools, state, view, language. Runtime settings (voice,
+    # models, greeting, memory, knowledge) belong to the world and are refused at load with the
+    # CLI command that sets them.
     module Config
-      # The four a class may still write. The doors are kept so an old class still loads; nothing
-      # reads them — a number is pointed at an agent by whoever answers the telephone
-      # (`pinecall numbers import`), and every agent can be talked to from a page.
+      # `phone`, `whatsapp` and `web` are accepted for compatibility but ignored.
       AS_WRITTEN = %i[phone whatsapp web language].freeze
 
-      # The world's fields, and the verb that sets each. The TypeScript package's `THE_WORLDS`,
-      # word for word, because it is the same refusal.
+      # Settings that moved to the world, and the command that sets each. Must match the
+      # TypeScript package's `THE_WORLDS`.
       THE_WORLDS = {
         voice: "pinecall agent set --voice <name>",
         llm: "pinecall agent set --llm <vendor/model>",
@@ -43,15 +29,12 @@ module Pinecall
 
       NOTHING = Object.new.freeze
 
-      # The sentence a class carrying a field of the world's is refused with.
       def self.moved_to_the_world(field)
         "`#{field}` is the world's now, not the class's: #{THE_WORLDS.fetch(field)} — remove it from the class"
       end
 
-      # The macros a class configures itself with.
       module Declaring
-        # Each one reads with no argument and declares with one, so a subclass can ask what its
-        # parent said before deciding to change it.
+        # Called with no argument, each reads the (possibly inherited) value.
         AS_WRITTEN.each do |field|
           define_method(field) do |value = NOTHING|
             return config[field] if value.equal?(NOTHING)
@@ -60,23 +43,22 @@ module Pinecall
           end
         end
 
-        # A field of the world's, written in a class body, is refused right there — at load,
-        # before a prompt is printed or a gateway is knocked at — naming the verb that sets it.
+        # World settings raise at load, naming the command that sets them.
         THE_WORLDS.each_key do |field|
           define_method(field) do |*_said, **_options|
             raise DeclarationRefused, Config.moved_to_the_world(field)
           end
         end
 
-        # The class docstring said out loud, for a class with no source file to read it from.
+        # Set the class docstring explicitly, for classes with no source file.
         def doc(text = NOTHING)
           return Doc.for_class(self) if text.equal?(NOTHING)
 
           @pinecall_doc = text
         end
 
-        # An outside fact this class takes, and from whom — `:app` is the tenant's own backend,
-        # `:participant` a browser. A pair nobody declared never reaches the hook.
+        # Accept an external event from `:app` (the application's backend) or `:participant`
+        # (a browser). Undeclared events never reach `on_event`.
         def accepts(name, from:)
           declared_events[name.to_s] = Array(from).map(&:to_s)
         end
@@ -85,20 +67,19 @@ module Pinecall
           @declared_events ||= superclass.respond_to?(:declared_events) ? superclass.declared_events.dup : {}
         end
 
-        # Everything this class declared about itself, its parent's included.
+        # Declared config, including inherited values.
         def config
           @config ||= superclass.respond_to?(:config) ? superclass.config.dup : {}
         end
 
-        # The slug this agent registers under: what `slug` said, or the class name in kebab-case.
+        # Registration slug; defaults to the class name in kebab-case.
         def slug(name = NOTHING)
           return (@slug || default_slug) if name.equal?(NOTHING)
 
           @slug = name
         end
 
-        # Everything the class says about itself, as the AgentConfig the gateway is sent: the
-        # contract, and nothing of the environment.
+        # The AgentConfig sent to the gateway.
         def wire_config(tools: nil)
           {
             prompt: Prompt::FRAMEWORK,

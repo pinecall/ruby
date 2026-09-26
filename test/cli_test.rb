@@ -3,8 +3,7 @@
 require "test_helper"
 require "tmpdir"
 
-# What a person types, and the one question every verb has to answer the same way: which gateway,
-# and which key. The order below is the order that cost this project two afternoons.
+# CLI verbs, and gateway/key resolution order.
 class CLITest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("pinecall-home")
