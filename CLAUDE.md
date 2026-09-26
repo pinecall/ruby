@@ -98,5 +98,4 @@ When a doc and the code disagree, the code is what happened and the doc is the b
 
 ## Commits
 
-`Bernardo Castro <me@bernardocastro.dev>`. No `Co-Authored-By`, no generated-with trailers.
 Versions and tags are the human's call — never pick a number, never tag.
