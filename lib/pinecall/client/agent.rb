@@ -62,7 +62,7 @@ module Pinecall
 
       # Apply an entry to its call and notify listeners.
       def take(entry)
-        event = Protocol.event_of(entry)
+        event = Wire.event_of(entry)
         call = entry.call.nil? ? nil : @calls.of(entry.call, entry.ts)
         settle(event)
         call&.take(event)

@@ -1,8 +1,7 @@
 # Architecture — `pinecall`, the Ruby package a tenant writes an agent in
 
 What this repository is, file by file, what each piece corresponds to in the TypeScript package it
-was brought over from, and where it meets the other two repositories: the wire
-(`pinecall/protocol`) and the runtime (`pinecall/runtime`).
+was brought over from, and where it meets the runtime (`pinecall/runtime`), whose wire it speaks.
 
 **The thesis.** An agent is an object. Fields are state. Methods are capabilities. Docstrings are
 prompts. Types are contracts. The prompt is `render(state)`. Tools are the only thing that changes
@@ -10,12 +9,11 @@ state. The log is the truth.
 
 ---
 
-## 1. Four repositories, one product
+## 1. Three repositories, one product
 
 | repository | language | what it owns |
 |---|---|---|
-| `pinecall/protocol` | JSON Schema → Python · TypeScript · **Ruby** | the wire: envelope, events, commands, verbs, metrics, state, the reducer, the goldens |
-| `pinecall/runtime` | Python, on livekit-agents | the real time: LiveKit rooms and SIP, STT/LLM/TTS, the gateway's doors, the log, the judges |
+| `pinecall/runtime` | Python, on livekit-agents | the wire and its golden log; the real time: LiveKit rooms and SIP, STT/LLM/TTS, the gateway's doors, the log, the judges |
 | `pinecall/agents` | TypeScript, Node ≥ 24 | the same class, for a team that writes TypeScript, plus the CLI and the console |
 | **`pinecall/ruby`** (this one) | Ruby ≥ 3.2 | the same class, for a team that writes Ruby |
 
@@ -74,7 +72,7 @@ lib/pinecall/
   testing.rb                 a gateway that is not there — what ring 0 mounts against
 console/                     the compiled React console, vendored. The one generated thing here
 exe/pinecall                 what a gem install puts on the PATH
-bin/pinecall                 the bin of a checkout: this source and the sibling protocol repo
+bin/pinecall                 the bin of a checkout: this source
 sig/                         the public surface as RBS. `rake rbs` is part of the gate
 examples/clinica_norte/      a whole agent, its view, and its own ring-0 suite
 test/                        mirrors lib/
@@ -146,7 +144,7 @@ def book(chosen:)                                       ← method_added catches
 1. `tool` stashes the options; `method_added` fires for the next `def` and declares it.
 2. `Spec.lower` turns `stage:` into a `when`, refusing a stage the class never declared.
 3. `Spec.build` reads the docstring, the keyword names and `params:`, and builds the wire's
-   `ToolSpec` — then checks it against the protocol's own shape, at load.
+   `ToolSpec` — then checks it against the wire's own shape, at load.
 4. `mount` sends every spec; `sync` sends the **visible** subset on every state change.
 
 What a declaration is refused for, before a model ever sees it (`DeclarationRefused`): no
@@ -220,7 +218,7 @@ command on the wire. There is no LiveKit in this repository at all.
 ## 9. `Pinecall::Client` — the socket alone
 
 A second, smaller door for an app with its own way of deciding what to answer: no class, no view,
-no CLI. It knows `pinecall-protocol` and `websocket-driver`.
+no CLI. It knows the wire (`lib/pinecall/wire/`) and `websocket-driver`.
 
 - **Registration is memory, not a database.** `open` runs again on every reconnect. Many sockets
   may hold one agent at once; a call that named no app goes to the newest registration that takes
@@ -299,15 +297,16 @@ on the loopback, for one person, a connection per request costs nothing.
 
 ## 13. The wire
 
-`pinecall-protocol` is generated from JSON Schema in `pinecall/protocol` and committed there;
-nothing here runs a generator. This package imports the frames (`Entry`, `Command`, `Event`), the
-registries, the validator and the reducer. `Gemfile` names `../protocol/ruby` as a path — a path
-today because nothing is published, a version range the day it is.
+The wire is the runtime's, and `lib/pinecall/wire/` (`Pinecall::Wire`) keeps what this gem speaks
+of it: the frames (`Entry`, `Command`, `Event`), the registries, the shapes the validator walks
+(split by family: parts, the agent's config, metrics, the events, the commands, the doors), the
+validator and the reducer. No gem of the runtime's is read. `test/wire/golden/` is the runtime's
+golden call log, and `test/wire/reduce_test.rb` holds the reducer to the state it folds to.
 
 ## 14. Packaging
 
 - **One gem, two bins.** `exe/pinecall` is what a gem install puts on the PATH; `bin/pinecall` is
-  the bin of a checkout, and the only place a sibling repository's path is written.
+  the bin of a checkout.
 - **`sig/` ships with the gem.** Ruby's type story is RBS, and `rake rbs` is part of the gate.
 - **`rake check`** is the console's staleness gate, the tests, the example's own suite, then the
   signatures. Ruby has nothing to compile: the only build step in this repository belongs to the

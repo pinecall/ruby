@@ -51,7 +51,7 @@ module Pinecall
         @lock.synchronize do
           raise NotConnected, "#{command.type}: the gateway is not connected" unless @open
 
-          @driver.text(Protocol.encode(command))
+          @driver.text(Wire.encode(command))
         end
       end
 
@@ -139,7 +139,7 @@ module Pinecall
       end
 
       def took(raw)
-        @handlers.on_entry.call(Protocol.decode_entry(JSON.parse(raw, symbolize_names: true)))
+        @handlers.on_entry.call(Wire.decode_entry(JSON.parse(raw, symbolize_names: true)))
       rescue StandardError => e
         @handlers.on_error.call(e)
       end

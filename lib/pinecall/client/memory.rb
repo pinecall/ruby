@@ -17,9 +17,9 @@ module Pinecall
       def eval(questions, k: nil)
         asked = { questions: }
         asked[:k] = k unless k.nil?
-        body = Protocol::Validate.call!("MemoryGolden", asked, where: "memory golden")
+        body = Wire::Validate.call!("MemoryGolden", asked, where: "memory golden")
         answer = Rest.post(Endpoints.memory_eval(@url), body, api_key: @api_key)
-        Protocol::Validate.call!("MemoryScore", answer, where: "memory score")
+        Wire::Validate.call!("MemoryScore", answer, where: "memory score")
       end
 
       # Run the hang-up extraction on each case (a transcript plus facts already held) with the
@@ -27,9 +27,9 @@ module Pinecall
       #
       # @return [Hash] the model used, the pass count, and kept vs. refused facts per case
       def extraction(agent, cases)
-        body = Protocol::Validate.call!("ExtractionCases", { cases: }, where: "extraction cases")
+        body = Wire::Validate.call!("ExtractionCases", { cases: }, where: "extraction cases")
         answer = Rest.post(Endpoints.extraction(@url, agent), body, api_key: @api_key)
-        Protocol::Validate.call!("ExtractionRun", answer, where: "extraction run")
+        Wire::Validate.call!("ExtractionRun", answer, where: "extraction run")
       end
     end
   end

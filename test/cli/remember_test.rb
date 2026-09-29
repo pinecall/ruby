@@ -162,7 +162,7 @@ class CLIRememberTest < Minitest::Test
   def test_a_transcript_line_of_one_thing_is_refused_before_a_model_is_paid_for
     client = Pinecall::Client.new(url: "http://127.0.0.1:1", api_key: "pk_org")
 
-    refusal = assert_raises(Pinecall::Protocol::ProtocolError) do
+    refusal = assert_raises(Pinecall::Wire::WireError) do
       client.memory.extraction("clinica-norte", [{ name: "media línea", said: [["caller"]] }])
     end
 

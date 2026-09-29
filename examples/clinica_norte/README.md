@@ -17,7 +17,7 @@ bin/pinecall prompt examples/clinica_norte/agent.rb
 bin/pinecall prompt examples/clinica_norte/agent.rb --stage book
 
 # la suite del cliente, como la corre él
-ruby -Ilib -I../protocol/ruby/lib examples/clinica_norte/test/clinica_test.rb
+ruby -Ilib examples/clinica_norte/test/clinica_test.rb
 
 # el proceso que se despliega
 bin/pinecall run examples/clinica_norte/agent.rb

@@ -38,7 +38,7 @@ module Pinecall
           spec[:confirm] = options[:confirm] if options[:confirm]
           spec[:pii] = pii!(options, spec) if options[:pii]
           spec[:timeout_s] = options[:timeout].to_f if options[:timeout]
-          Protocol::Validate.call!("ToolSpec", spec, where: "tool #{name}")
+          Wire::Validate.call!("ToolSpec", spec, where: "tool #{name}")
           spec.freeze
         end
 

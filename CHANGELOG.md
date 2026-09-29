@@ -7,6 +7,10 @@ version number is the human's call.
 ## [Unreleased]
 
 ### Changed
+- **No `pinecall-protocol` dependency.** The gem keeps the runtime's wire it speaks in
+  `lib/pinecall/wire/` (`Pinecall::Wire`: the shapes, the validator, the codec, the reducer), held
+  to the runtime's golden call log; `Pinecall::Protocol` is `Pinecall::Wire` and `ProtocolError` is
+  `WireError`.
 - **Breaking: the class is code, the world is environment.** A class declares the contract — its
   `language`, `state` and `stage`, its `tool`s, `accepts`, its view — and nothing it runs on.
   `voice`, `llm`, `stt`, `greeting`, `hangup`, `says`, `hears`, `memory`, `record`, `knowledge`

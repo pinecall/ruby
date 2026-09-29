@@ -25,7 +25,7 @@ class ConfigTest < Minitest::Test
   end
 
   def test_the_whole_configuration_is_what_the_wire_declares
-    Pinecall::Protocol::Validate.call!("AgentConfig", Clinica.wire_config(tools: []), where: "configure")
+    Pinecall::Wire::Validate.call!("AgentConfig", Clinica.wire_config(tools: []), where: "configure")
   end
 
   def test_a_field_of_the_world_s_is_refused_at_load_with_the_verb_that_sets_it

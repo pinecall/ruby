@@ -33,7 +33,6 @@ Gem::Specification.new do |spec|
   spec.executables = ["pinecall"]
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "pinecall-protocol"
   # The protocol driver ActionCable runs on: the handshake and the framing, no transport and no
   # event loop, so this gem opens its own socket and owns its own threads.
   spec.add_dependency "websocket-driver", "~> 0.7"

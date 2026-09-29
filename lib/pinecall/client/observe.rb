@@ -2,7 +2,7 @@
 
 module Pinecall
   class Client
-    # Reads a log as a JSON page or an SSE stream, reduced by the protocol reducer.
+    # Reads a log as a JSON page or an SSE stream, reduced by the wire's reducer.
     #
     # Reconnects resume with `Last-Event-ID`. A reader that fell behind gets `log.gap` (with a
     # snapshot when available), then `log.caught_up` once the stream is live.
@@ -25,15 +25,15 @@ module Pinecall
         page = JSON.parse(answer.body, symbolize_names: true)
         raise Error, "the log page is not { entries, live, next }" unless page.is_a?(Hash) && page[:entries].is_a?(Array)
 
-        entries = page[:entries].map { |raw| Protocol.decode_entry(raw) }
-        Page.new(entries:, state: Protocol.reduce(entries), live: page[:live] == true,
+        entries = page[:entries].map { |raw| Wire.decode_entry(raw) }
+        Page.new(entries:, state: Wire.reduce(entries), live: page[:live] == true,
                  next: page[:next].is_a?(Integer) ? page[:next] : nil)
       end
 
       # Stream entries after `after`, reconnecting as needed. Yields an Observation per entry;
       # returns when the block breaks or `stop` returns true.
       def observe(target, url:, api_key:, after: 0, stop: nil)
-        state = Protocol.initial_state
+        state = Wire.initial_state
         attempt = 0
         opened = false
         until stop&.call
@@ -42,8 +42,8 @@ module Pinecall
               attempt = 0
               opened = true
               after = entry.seq
-              state = Protocol.apply(state, entry)
-              yield Observation.new(entry:, event: Protocol.event_of(entry), state:)
+              state = Wire.apply(state, entry)
+              yield Observation.new(entry:, event: Wire.event_of(entry), state:)
             end
           rescue StandardError
             # Failing before the first entry means misconfiguration: raise. Later drops resume.
@@ -73,7 +73,7 @@ module Pinecall
         data = block.lines.filter_map { |line| line.delete_prefix("data:").lstrip.chomp if line.start_with?("data:") }
         return nil if data.empty?
 
-        Protocol.decode_entry(JSON.parse(data.join("\n"), symbolize_names: true))
+        Wire.decode_entry(JSON.parse(data.join("\n"), symbolize_names: true))
       end
 
       def get(target, url:, api_key:, after:, accept:, &block)

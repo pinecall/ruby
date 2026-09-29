@@ -25,7 +25,7 @@ rake console:build   # rebuild the vendored console from ../agents. Needs pnpm, 
 rake console:check    # is what is in console/ what that source would produce
 ```
 
-`bin/pinecall` is the bin of a checkout: it adds `lib/` and the sibling `../protocol/ruby/lib`.
+`bin/pinecall` is the bin of a checkout: it adds `lib/`.
 `exe/pinecall` is what a gem install puts on the PATH and must never mention a sibling.
 
 ## Structure
@@ -70,8 +70,9 @@ When a doc and the code disagree, the code is what happened and the doc is the b
   vite build, vendored. Never edit a file under it; edit `../agents/src/cli/ui/console` and run
   `rake console:build`. `rake console:check` fails when what is committed is not what that source
   would produce, and `rake check` runs it.
-- **The wire is never hand-written.** Every shape comes from `pinecall-protocol`, which is
-  generated. A field this package needs is a schema change in `pinecall/protocol` first.
+- **The wire is the runtime's, kept in `lib/pinecall/wire/`**: the shapes this gem uses and no
+  more, held to the runtime's golden log by `test/wire/reduce_test.rb`. A field this package needs
+  lands in the runtime's wire first, then here by hand.
 
 ## What a review comes back to
 

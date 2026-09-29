@@ -90,7 +90,7 @@ module Pinecall
       -> { @errors.delete(listener) }
     end
 
-    # Stream a log, reduced by the protocol reducer. `target` is `{ call: "CA_1" }` or `{ agent: … }`.
+    # Stream a log, reduced by the wire's reducer. `target` is `{ call: "CA_1" }` or `{ agent: … }`.
     def observe(target, **options, &block) = Observe.observe(target, url: @url, api_key: @api_key, **options, &block)
 
     # Fetch one page of a log and its reduced state.
@@ -112,7 +112,7 @@ module Pinecall
 
     # Send one command, validated against its schema.
     def send_command(type:, agent:, call:, data:, id: nil)
-      @connection.send_frame(Protocol.command(type:, agent:, call:, data:, id:))
+      @connection.send_frame(Wire.command(type:, agent:, call:, data:, id:))
     end
 
     # Forward an event to client-wide listeners.

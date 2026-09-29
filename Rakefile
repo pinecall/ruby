@@ -12,7 +12,7 @@ end
 
 desc "The example's own ring-0 suite, run the way a customer runs theirs"
 task :examples do
-  ruby "-Ilib -I../protocol/ruby/lib examples/clinica_norte/test/clinica_test.rb"
+  ruby "-Ilib examples/clinica_norte/test/clinica_test.rb"
 end
 
 # The console is the one thing in this gem that is generated, and the only thing that needs Node.

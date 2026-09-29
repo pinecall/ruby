@@ -10,7 +10,7 @@ module Pinecall
   # The call as an agent sees it: room, turns, and the commands it can send.
   #
   # State is reduced from received entries; each verb is one wire command. No LiveKit access by
-  # design: a missing capability should become a new protocol command.
+  # design: a missing capability should become a new command of the wire.
   class CallWorld
     # Seconds `say`/`reply` wait for their turn before returning false (the call may have ended).
     LANDS_WITHIN_S = 30

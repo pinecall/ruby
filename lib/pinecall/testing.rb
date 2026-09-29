@@ -94,7 +94,7 @@ module Pinecall
 
       # Record a command and answer it if the gateway would.
       def send_command(type:, agent:, call:, data:, id: nil)
-        frame = Protocol.command(type:, agent:, call:, data:, id:)
+        frame = Wire.command(type:, agent:, call:, data:, id:)
         @commands << frame
         answer(frame)
         frame
@@ -121,8 +121,8 @@ module Pinecall
 
       # Deliver an entry to the agent.
       def deliver(type, data, call: nil, agent: @agents.keys.first)
-        entry = Protocol::Entry.new(seq: next_seq, ts: Time.now.to_f, call:, agent:, type:,
-                                    ephemeral: Protocol::Codec.ephemeral?(type), data:)
+        entry = Wire::Entry.new(seq: next_seq, ts: Time.now.to_f, call:, agent:, type:,
+                                    ephemeral: Wire::Codec.ephemeral?(type), data:)
         @agents[agent]&.take(entry)
         entry
       end

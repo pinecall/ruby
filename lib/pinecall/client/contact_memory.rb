@@ -19,7 +19,7 @@ module Pinecall
       #   `{ id, text, category, source, valid_from, invalidated_at }`
       def history
         answer = Rest.get(Endpoints.contact_memory(@url, @contact), api_key: @api_key)
-        Protocol::Validate.call!("ContactMemory", answer, where: "memory of #{@contact}")[:facts]
+        Wire::Validate.call!("ContactMemory", answer, where: "memory of #{@contact}")[:facts]
       end
 
       # Delete every fact about the contact.
@@ -27,7 +27,7 @@ module Pinecall
       # @return [Integer] the number of facts deleted
       def forget
         answer = Rest.delete(Endpoints.contact_memory(@url, @contact), api_key: @api_key)
-        Protocol::Validate.call!("Forgotten", answer, where: "forget #{@contact}")[:forgotten]
+        Wire::Validate.call!("Forgotten", answer, where: "forget #{@contact}")[:forgotten]
       end
     end
   end

@@ -110,12 +110,12 @@ class SocketTest < Minitest::Test
     assert_equal "es", configured[:data][:config][:language]
   end
 
-  def test_a_command_the_protocol_refuses_never_reaches_the_socket
+  def test_a_command_the_wire_refuses_never_reaches_the_socket
     agent = @client.agent("clinica-norte", tools: [])
     @client.connect
     @gateway.frames.pop(timeout: 5)
 
-    assert_raises(Pinecall::Protocol::ProtocolError) { agent.command("agent.say", "CA_1", { shout: true }) }
+    assert_raises(Pinecall::Wire::WireError) { agent.command("agent.say", "CA_1", { shout: true }) }
   end
 
   def test_a_command_goes_up_as_the_wire_carries_it

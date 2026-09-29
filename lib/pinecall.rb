@@ -6,7 +6,7 @@
 # for applications that decide their own answers.
 
 require "json"
-require "pinecall/protocol"
+require "pinecall/wire"
 
 require_relative "pinecall/version"
 require_relative "pinecall/errors"

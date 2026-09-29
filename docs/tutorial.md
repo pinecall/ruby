@@ -9,7 +9,7 @@ printed; where a number is a measurement it says so.
 You need a runtime — the two processes that own the conversation — and an app, which is your class.
 The runtime is `pinecall` on PyPI and its repository; the app is this gem. They meet over a socket,
 and your code never imports LiveKit. Nothing is published yet, so the `pinecall` below is a
-checkout's `bin/pinecall`, with its `lib/` and the sibling protocol gem's on `RUBYLIB`.
+checkout's `bin/pinecall`, with its `lib/` on `RUBYLIB`.
 
 ## 1. The runtime, on your laptop
 

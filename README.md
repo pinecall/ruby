@@ -87,9 +87,8 @@ the browser: this process signs and forwards each request.
 ## Architecture
 
 This gem is the application side. It never talks to a model vendor or handles audio: it sends
-commands and reads log entries over one WebSocket, using types generated from the
-[`pinecall/protocol`](https://github.com/pinecall/protocol) JSON Schema, the same schema the
-Python runtime and the TypeScript package use. Tools are the only code that may change state.
+commands and reads log entries over one WebSocket, in the runtime's own wire (`lib/pinecall/wire/`),
+held to the runtime's golden call log. Tools are the only code that may change state.
 
 | you want | you use |
 |---|---|
@@ -133,7 +132,7 @@ assert_equal %w[propose], call.tools
 | the CLI, verb by verb | [docs/the-cli.md](docs/the-cli.md) |
 | the console, and how it is vendored | [docs/the-console.md](docs/the-console.md) |
 | a complete example agent | [examples/clinica_norte](examples/clinica_norte) |
-| the wire itself | `pinecall-protocol`, generated in the `pinecall/protocol` repository |
+| the wire itself | `lib/pinecall/wire/`, the runtime's shapes this gem speaks |
 
 ## Requirements
 

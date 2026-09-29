@@ -63,7 +63,7 @@ module Pinecall
       # Append an application entry to the call's log, as a `custom` entry.
       def log(name, data = {}) = command("call.log", { name: name.to_s, data: })
 
-      # Send any call-scoped protocol command.
+      # Send any call-scoped command of the wire.
       def command(type, data) = @agent.command(type, @id, data)
 
       # ── entries ────────────────────────────────────────────────────────────

@@ -14,15 +14,15 @@ module Pinecall
       #
       # @return [Hash] `{ base, chunks, took_ms }`
       def push(base, files)
-        body = Protocol::Validate.call!("KnowledgePush", { files: }, where: "knowledge push")
+        body = Wire::Validate.call!("KnowledgePush", { files: }, where: "knowledge push")
         answer = Rest.put(Endpoints.knowledge(@url, base), body, api_key: @api_key)
-        Protocol::Validate.call!("KnowledgePushed", answer, where: "knowledge pushed")
+        Wire::Validate.call!("KnowledgePushed", answer, where: "knowledge pushed")
       end
 
       # @return [Array<Hash>] `{ base, chunks, pushed_at }` per base
       def bases
         answer = Rest.get(Endpoints.knowledge_bases(@url), api_key: @api_key)
-        Protocol::Validate.call!("KnowledgeList", answer, where: "knowledge list")[:bases]
+        Wire::Validate.call!("KnowledgeList", answer, where: "knowledge list")[:bases]
       end
 
       # Score the base against a golden set of questions.
@@ -31,9 +31,9 @@ module Pinecall
       def eval(base, questions, k: nil)
         asked = { questions: }
         asked[:k] = k unless k.nil?
-        body = Protocol::Validate.call!("KnowledgeGolden", asked, where: "knowledge golden")
+        body = Wire::Validate.call!("KnowledgeGolden", asked, where: "knowledge golden")
         answer = Rest.post(Endpoints.knowledge_eval(@url, base), body, api_key: @api_key)
-        Protocol::Validate.call!("KnowledgeScore", answer, where: "knowledge score")
+        Wire::Validate.call!("KnowledgeScore", answer, where: "knowledge score")
       end
 
       # Delete a base. Agents attached to it retrieve nothing until it is pushed again.

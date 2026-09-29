@@ -23,11 +23,12 @@ the code disagree, the code is what happened and the doc is the bug.
 - Tests read as sentences too, and assert on behaviour a person would notice.
 - No new runtime dependency without a paragraph in the pull request saying what it replaces.
 
-## The wire is generated
+## The wire is the runtime's
 
-Nothing under `lib/pinecall/protocol` exists in this repository: the shapes come from the
-`pinecall/protocol` gem, generated from JSON Schema. If a change needs a new field on the wire, it
-starts there, with the same field arriving in Python and TypeScript in the same commit.
+`lib/pinecall/wire/` holds the runtime's shapes this gem reads and writes, the validator and the
+reducer, and nothing it does not use. `test/wire/golden/` is the runtime's golden call log and the
+state it folds to, copied from its `tests/wire/golden/`, and `test/wire/reduce_test.rb` holds the
+reducer to them. A change of the runtime's wire moves both here by hand, in the same change.
 
 ## Versions
 
