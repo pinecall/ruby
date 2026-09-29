@@ -26,13 +26,12 @@ module Pinecall
         value
       end
 
-      # One field: absent only when optional, otherwise validated by its kind.
+      # One field. An optional one may be absent or null, as TypeScript's nullish reads it: the
+      # runtime writes null for a field it set to nothing.
       def field_of!(shape:, spec:, value:, field:, where:)
-        unless value.key?(field)
-          raise WireError, "#{where}.#{field}: #{shape} requires it" if spec[:required]
+        return if !spec[:required] && value[field].nil?
+        raise WireError, "#{where}.#{field}: #{shape} requires it" unless value.key?(field)
 
-          return
-        end
         field!(spec, value[field], "#{where}.#{field}")
       end
 
