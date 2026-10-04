@@ -41,10 +41,10 @@ class CLITest < Minitest::Test
   end
 
   def test_the_url_the_person_exported_wins_over_everything
-    ENV["PINECALL_URL"] = "https://box.pinecall.io"
+    ENV["PINECALL_URL"] = "https://cloud.pinecall.io"
     ENV["PINECALL_API_KEY"] = "pk_exported"
 
-    assert_equal "https://box.pinecall.io", Pinecall::CLI::Env.pointed.url
+    assert_equal "https://cloud.pinecall.io", Pinecall::CLI::Env.pointed.url
     assert_equal :environment, Pinecall::CLI::Env.pointed.source
   end
 
@@ -59,10 +59,10 @@ class CLITest < Minitest::Test
   end
 
   def test_the_one_gateway_a_login_kept_is_used_when_there_is_exactly_one
-    write("credentials", { "gateways" => { "https://box.pinecall.io" => { "api_key" => "pk_kept" } } })
+    write("credentials", { "gateways" => { "https://cloud.pinecall.io" => { "api_key" => "pk_kept" } } })
     pointed = Pinecall::CLI::Env.pointed
 
-    assert_equal "https://box.pinecall.io", pointed.url
+    assert_equal "https://cloud.pinecall.io", pointed.url
     assert_equal "pk_kept", pointed.api_key
   end
 
@@ -80,7 +80,7 @@ class CLITest < Minitest::Test
   end
 
   def test_whoami_says_where_the_key_came_from_and_never_the_key
-    ENV["PINECALL_URL"] = "https://box.pinecall.io"
+    ENV["PINECALL_URL"] = "https://cloud.pinecall.io"
     ENV["PINECALL_API_KEY"] = "pk_secret_value"
     status, out, = run_cli("whoami")
 
