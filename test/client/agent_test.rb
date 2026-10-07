@@ -48,6 +48,17 @@ class AgentTest < Minitest::Test
     assert_equal ["agent.configured", "tienda-sur", { changed: %w[tools] }], [entry.type, entry.agent, entry.data]
   end
 
+  def test_a_vendor_that_switches_mid_call_is_read_and_the_socket_keeps_answering
+    errors = Thread::Queue.new
+    @client.on_errors { |error| errors << error }
+    @gateway.send_entry("clinica-norte", "vendor.switched", { stage: "tts", vendor: "elevenlabs", model: "eleven_flash_v2_5",
+                                                              available: false, serving: "cartesia", serving_model: "sonic-2" }, call: "CA_1")
+    @gateway.send_entry("clinica-norte", "dev.request", { id: "dev_2", verb: "view.render", data: {} })
+
+    refute_nil @gateway.next_frame("dev.answer")
+    assert_nil errors.pop(timeout: 0.2)
+  end
+
   def test_a_stop_from_the_org_is_said_once_and_the_socket_closes_for_good
     why = Thread::Queue.new
     @client.on_stopped { |said| why << said }

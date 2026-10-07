@@ -6,6 +6,12 @@ version number is the human's call.
 
 ## [Unreleased]
 
+### Fixed
+- **A voice call whose vendor fails over no longer stops the agent.** The runtime writes
+  `vendor.switched` when a stage's fallback switches vendor, and the gem did not know the type: the
+  socket raised `unknown event type` mid-call. `vendor.switched` and `spend.unusual` are in the
+  wire now, both left to `call.on` and `client.on_any`.
+
 ### Changed
 - **Breaking: no CLI, no console, no executable.** The verbs are the one `pinecall` CLI's (npm),
   the same for a Ruby project as for a TypeScript one, in the same layout

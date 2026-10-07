@@ -283,6 +283,13 @@ module Pinecall
           hash: { kind: :str, required: true },
           chars: { kind: :int, required: true }
         }.freeze,
+        "SpendUnusual" => {
+          org: { kind: :str, required: true },
+          day: { kind: :str, required: true },
+          today_usd: { kind: :float, required: true },
+          usual_usd: { kind: :float, required: true },
+          multiple: { kind: :float, required: true }
+        }.freeze,
         "StateChanged" => {
           state: { kind: :json, required: true },
           changed: { kind: :list, items: { kind: :str }, required: true },
@@ -336,6 +343,14 @@ module Pinecall
           final: { kind: :bool, required: true },
           language: { kind: :str },
           confidence: { kind: :float }
+        }.freeze,
+        "VendorSwitched" => {
+          stage: { kind: :enum, values: %w[llm stt tts], required: true },
+          vendor: { kind: :str, required: true },
+          model: { kind: :str, required: true },
+          available: { kind: :bool, required: true },
+          serving: { kind: :str, required: true },
+          serving_model: { kind: :str, required: true }
         }.freeze
       }.freeze
     end
