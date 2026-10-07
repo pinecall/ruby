@@ -7,6 +7,10 @@ version number is the human's call.
 ## [Unreleased]
 
 ### Changed
+- **Breaking: a call opens in the state its `call.started` carries.** `Pinecall.mount` takes no
+  `opening:`: the state a golden, a persona or a chat's `?state=` asked for rides the call, and the
+  bridge applies it after `on_call` and before the first render. `Testing::Gateway#call_started`
+  takes `state:`.
 - **No `pinecall-protocol` dependency.** The gem keeps the runtime's wire it speaks in
   `lib/pinecall/wire/` (`Pinecall::Wire`: the shapes, the validator, the codec, the reducer), held
   to the runtime's golden call log; `Pinecall::Protocol` is `Pinecall::Wire` and `ProtocolError` is

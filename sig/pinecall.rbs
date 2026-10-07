@@ -356,8 +356,7 @@ module Pinecall
   end
 
   module Bridge
-    def self?.mount: (Class, client: untyped, ?slug: String?, ?last: untyped, ?opening: untyped,
-                      ?takes_unclaimed: bool) -> Mounted
+    def self?.mount: (Class, client: untyped, ?slug: String?, ?last: untyped, ?takes_unclaimed: bool) -> Mounted
 
     class Mounted
       attr_reader slug: String

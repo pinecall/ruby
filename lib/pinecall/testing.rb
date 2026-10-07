@@ -127,11 +127,11 @@ module Pinecall
       # Unhandled errors, for assertions.
       attr_reader :errors
 
-      # Start a call and return its `Fake` handle.
-      def call_started(id: nil, channel: "web", from: "+34600000000", to: "+34910000000", caller: nil)
+      # Start a call and return its `Fake` handle; `state:` is the state its opener asked for.
+      def call_started(id: nil, channel: "web", from: "+34600000000", to: "+34910000000", caller: nil, state: nil)
         id ||= "CA_#{next_seq}"
-        deliver("call.started", { channel:, direction: "inbound", from:, to:, caller:,
-                                  started_at: Time.now.to_f }, call: id)
+        started = { channel:, direction: "inbound", from:, to:, caller:, started_at: Time.now.to_f }
+        deliver("call.started", state.nil? ? started : started.merge(state:), call: id)
         settle
         Fake.new(self, id)
       end

@@ -64,17 +64,15 @@ module Pinecall
     # Mount a class on a client; each call gets its own instance. Nothing is sent until `connect`.
     #
     # @param last [Proc] source for `last(contact)`
-    # @param opening [Proc] initial state for a call, applied after `on_call` (so the hook cannot
-    #   overwrite it) and before the first render
     # @param takes_unclaimed [Boolean] false for a console, which serves only calls it opens
-    def mount(klass, client:, slug: nil, last: nil, opening: nil, takes_unclaimed: true)
+    def mount(klass, client:, slug: nil, last: nil, takes_unclaimed: true)
       name = slug || klass.slug
       live = {}
       # Throwaway instance used only to read the class's declarations.
       probe = klass.new
       options = klass.wire_config(tools: tools_for(probe, live)).merge(takes_unclaimed:)
       agent = client.agent(name, **options)
-      agent.on("call.started") { |_data, call| start(klass, live, call, client, last, opening) }
+      agent.on("call.started") { |started, call| start(klass, live, call, client, last, started[:state]) }
       agent.on("call.ended") { |_data, call| finish(live, call) }
       Mounted.new(slug: name, agent:, options:, live:)
     end
@@ -92,8 +90,9 @@ module Pinecall
     end
 
     # Build the instance and run `on_call` before listening, so the first prompt is sent once
-    # rather than once per field.
-    def start(klass, live, call, client, last, opening)
+    # rather than once per field. The state the opener asked for (`call.started.state`) is applied
+    # after the hook, which would overwrite it, and before the first render.
+    def start(klass, live, call, client, last, opened_in)
       instance = klass.new.seal
       instance.reads_last_from(last) unless last.nil?
       searching = ->(query, k) { client.search(call.id, query, k:) }
@@ -106,8 +105,7 @@ module Pinecall
       live[call.id] = serving
       serving.later do
         instance.run_hook(:on_call, world)
-        wanted = opening&.call(call)
-        instance.start_in(wanted) unless wanted.nil?
+        instance.start_in(opened_in) unless opened_in.nil?
         call.set_state(instance.snapshot)
         sync(serving, call)
         listen(serving, call)

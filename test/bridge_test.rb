@@ -187,6 +187,21 @@ class BridgeTest < Minitest::Test
     assert_equal "Marta Ruiz", @mounted.serving("CA_second").patient
   end
 
+  # A golden, a persona or `?state=` asked for this state: it is the call's from the first render.
+  def test_a_call_opens_in_the_state_its_call_started_carries_after_the_hook_and_before_the_first_render
+    call = @gateway.call_started(from: "+34600123456", state: { patient: "Ana Pérez" })
+
+    assert_equal 1, call.commands.count { |sent| sent.type == "state.set" }
+    assert_equal "Ana Pérez", call.state[:patient]
+    assert_includes call.prompt, "Hablas con Ana Pérez."
+  end
+
+  def test_a_call_nobody_seeded_opens_in_the_state_its_hook_wrote
+    call = @gateway.call_started(from: "+34600123456")
+
+    assert_equal "Marta Ruiz", call.state[:patient]
+  end
+
   # Busca en la base de conocimiento.
   class Buscadora < Pinecall::Agent
     web true

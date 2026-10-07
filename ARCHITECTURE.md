@@ -105,6 +105,7 @@ gives that TypeScript does not, or what it takes away.
 | `searching.ts`: the source parsed with oxc for a `this.knowledge` member expression | `Searching`: Ripper's tokens for `knowledge . search` or `call . search` | Ripper is in the stdlib and a string or a comment is one token of another kind, so a word in prose never counts. No dependency, the same answer as an AST walk. |
 | a `Promise` per waiting verb, settled by the entry that answers it | a `Thread::Queue` per waiting verb (`CallWorld::Waiting`), popped with a ceiling | The tool that asked runs on its own thread, so blocking it is the honest shape: `transfer` returns when the log says how it went, or at 90 s. |
 | `searching(query, k)` handed by the bridge, `pc.search` over `POST /v1/calls/{id}/lookup` | the same lambda, `Client#search` over the same door | The search is the gateway's for the call in hand; the class only asks. |
+| `call.started.state` applied by `connect.ts` between `onCall` and the first render | the same, in `Bridge.start` | The state a call opens in is the wire's: whoever opened the call asked for it, and both SDKs apply it at the same moment. |
 | `this.remembers("médico habitual")` inside `render()` | `remembers?("médico habitual")` in the template | The same question, asked of the runtime's answer, in each language's own punctuation. Neither prints the fact: a fact reaches the model as a `recall` tool result, in the history, and the view only branches on it. |
 | `pinecall knowledge push`, `pinecall memory` in `src/cli`, on the login path | the same verbs on `Client::Rest`, with the key `cli/env.rb` resolves for every verb | One resolution order for the socket and the REST doors; a refusal is printed as the gateway wrote it. |
 | `Blocks = { blocks }`; the layout is `Block[]` in send order | `Blocks = Data.define(:blocks, :history)`, `Block = Data.define(:name, :region, :text)` | Ruby keeps the history on the same value, because `pinecall prompt` prints it between the regions and a `collapse` is the one thing the app knows about the turns. |
@@ -210,13 +211,14 @@ The call ending answers every verb still waiting (`the call ended before it was 
 
 ## 8. The bridge, step by step
 
-`Pinecall.mount(Class, client:, last:, opening:, takes_unclaimed:)`.
+`Pinecall.mount(Class, client:, last:, takes_unclaimed:)`.
 
 1. **At mount** — one **probe** instance is built, read for its tools and its config, and thrown
    away. `client.agent(slug, options)` declares it. Nothing is sent until `connect`.
 2. **`call.started`** → a fresh instance, `seal`ed, given its `CallWorld`; `on_call` runs;
-   `opening` applies the state a golden asked for — after the hook so it is not overwritten,
-   before the first render so the model never reads a state the call was not in.
+   `call.started.state` — the state a golden, a persona or `?state=` asked for — is applied after
+   the hook so it is not overwritten, before the first render so the model never reads a state
+   the call was not in.
 3. **The opening send** — `state.set`, then `sync`. Only then does the bridge start listening, so
    a hook writing five fields is one prompt and not five.
 4. **On every change** — `state.set` with the field that moved; when the write came from an

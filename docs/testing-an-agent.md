@@ -31,7 +31,7 @@ every command the agent sent, and lets the test say what happened next.
 
 | you write | what happens |
 |---|---|
-| `gateway.call_started(from:, channel:, id:)` | a call opens, `on_call` runs, the first prompt goes out. Returns the handle |
+| `gateway.call_started(from:, channel:, id:, state:)` | a call opens, `on_call` runs, then `state:` (what `call.started` carries when a golden or a persona opened it) is written over the hook's, and the first prompt goes out. Returns the handle |
 | `call.tool("free_slots", day: "martes")` | the model calls a tool. Returns the `tool.result` the agent sent back |
 | `call.said("el martes me viene bien")` | the caller said something |
 | `call.fact("agenda.changed", { slots: [] })` | a fact from the tenant's backend. `from: "participant"` for a browser |
