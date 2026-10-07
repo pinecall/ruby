@@ -15,6 +15,7 @@ that ignores it is a change that makes the two drift. How to build an agent is `
 rake              # what CI runs: the tests, the example's own suite, then the signatures
 rake test
 rake examples     # the ring-0 suite a customer writes, run the way they run it
+rake ring1        # the example's goldens through the one CLI and the gateway; needs the CLI and a key
 rake rbs
 
 ruby -Ilib -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agent.rb --slug x   # what the CLI runs

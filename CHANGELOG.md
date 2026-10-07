@@ -55,6 +55,10 @@ version number is the human's call.
   or died) the agent opens in the state the gateway kept, with no `on_call`; one this process
   already serves sends its whole prompt again. A call knows the code it claimed (`call.claimed`)
   and the eval run that opened it. `Testing::Gateway#call_attached(state:)`.
+- **`examples/clinica_norte` is the TypeScript example's agent, in Ruby**, in the one CLI's layout
+  (`agents/clinica-norte/`, `docs/clinica-norte/`, `test/clinica-norte/`): the same agenda —
+  specialties, slots booked by id, a day resolved to a date — the same documents, the same three
+  extraction cases and the same eleven goldens. `rake ring1` runs them through the CLI.
 - A stage restored from JSON — a golden's, `call.started.state` — is the declared stage it names.
 - **The whole call.** `call.transfer(to, mode:)` and `call.attention(reason, wait_s:)` block until
   the log answers (a `Transferred`, an `Attended`); `call.hold`, `unhold`, `dtmf(digits)`,

@@ -1,0 +1,18 @@
+{
+  "state": {
+    "stage": "identify"
+  },
+  "input": [
+    "Buenos días, quería cambiar mi cita",
+    "Ana García, mi teléfono es el 6 0 0 0 0 0 0 0 1"
+  ],
+  "expect": {
+    "tools": [
+      "find_patient"
+    ],
+    "register": "usted",
+    "says": [
+      "jueves"
+    ]
+  }
+}

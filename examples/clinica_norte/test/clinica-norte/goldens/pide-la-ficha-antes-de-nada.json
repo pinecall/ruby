@@ -1,0 +1,14 @@
+{
+  "state": {
+    "stage": "identify"
+  },
+  "input": [
+    "Hola, ¿me puedes cambiar la cita?"
+  ],
+  "expect": {
+    "says": [
+      "nombre"
+    ],
+    "register": "usted"
+  }
+}

@@ -66,7 +66,8 @@ lib/pinecall/
   client/endpoints.rb        one base URL, its four doors: the apps' socket, two logs, a call's lookup
   testing.rb                 a gateway that is not there — what ring 0 mounts against
 sig/                         the public surface as RBS. `rake rbs` is part of the gate
-examples/clinica_norte/      a whole agent, its view, and its own ring-0 suite
+examples/clinica_norte/      the TypeScript example's agent in Ruby, in the CLI's layout: its agenda, its
+                             view, its ring-0 suite, and the same eleven goldens (`rake ring1`)
 test/                        mirrors lib/; `conformance_test.rb` holds the SDK to its wire: every
                              command sent by one method or said to be nobody's, every event folded
                              or ignored with a reason
@@ -280,7 +281,7 @@ ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agents/x/
 | ring | what it asks | where it runs |
 |---|---|---|
 | 0 | does the class behave? | `minitest`, in the tenant's own repo. No network, no key, no model — `pinecall/testing` is the gateway that is not there |
-| 1 | does the agent hold its goldens? | `pinecall test`: the one CLI, this gem's serve entry holding the class |
+| 1 | does the agent hold its goldens? | `pinecall test`: the one CLI, this gem's serve entry holding the class. `rake ring1` runs the example's, the same eleven the TypeScript example holds, and the agents repository's nightly runs it |
 | 2 | does it hold on a real line? | `pinecall test --voice` and `pinecall simulate --voice`, the same way |
 | 3 | what does one real call score? | `pinecall eval <call-id>` |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up |
