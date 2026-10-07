@@ -293,6 +293,8 @@ module Pinecall
 
     class Call
       attr_reader id: String
+      attr_reader claimed: String?
+      attr_reader run: String?
       attr_reader today: String
       attr_accessor status: String
       attr_accessor channel: String?

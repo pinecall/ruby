@@ -73,6 +73,7 @@ module Pinecall
       options = klass.wire_config(tools: tools_for(probe, live)).merge(takes_unclaimed:)
       agent = client.agent(name, **options)
       agent.on("call.started") { |started, call| start(klass, live, call, client, last, started[:state]) }
+      agent.on("call.attached") { |_data, call| attached(klass, live, call, client, last) }
       agent.on("call.ended") { |_data, call| finish(live, call) }
       Mounted.new(slug: name, agent:, options:, live:)
     end
@@ -89,17 +90,44 @@ module Pinecall
       end
     end
 
+    # A call handed to this process mid-conversation: no `on_call`, the state the gateway kept
+    # instead. One served here already (the gateway restarted) keeps its instance, and its whole
+    # prompt is sent again, which the gateway may have lost.
+    def attached(klass, live, call, client, last)
+      held = live[call.id]
+      return held.later { resend(held, call) } unless held.nil?
+
+      instance = klass.new.seal
+      instance.reads_last_from(last) unless last.nil?
+      serving = Live.new(instance, world_for(call, client))
+      instance.serving(serving.world)
+      live[call.id] = serving
+      serving.later do
+        instance.restore(call.state)
+        sync(serving, call)
+        listen(serving, call)
+      end
+    end
+
+    def resend(serving, call)
+      serving.sent.clear
+      serving.tools_shown = nil
+      sync(serving, call)
+    end
+
+    def world_for(call, client)
+      searching = ->(query, k) { client.search(call.id, query, k:) }
+      CallWorld.new(id: call.id, contact: call.contact&.dig(:id) || call.from, from: call.from, channel: call.channel,
+                    today: call.today, claimed: call.claimed, searching:) { |type, data| call.command(type, data) }
+    end
+
     # Build the instance and run `on_call` before listening, so the first prompt is sent once
     # rather than once per field. The state the opener asked for (`call.started.state`) is applied
     # after the hook, which would overwrite it, and before the first render.
     def start(klass, live, call, client, last, opened_in)
       instance = klass.new.seal
       instance.reads_last_from(last) unless last.nil?
-      searching = ->(query, k) { client.search(call.id, query, k:) }
-      world = CallWorld.new(id: call.id, contact: call.contact&.dig(:id) || call.from, from: call.from,
-                            channel: call.channel, today: call.today, searching:) do |type, data|
-        call.command(type, data)
-      end
+      world = world_for(call, client)
       instance.serving(world)
       serving = Live.new(instance, world)
       live[call.id] = serving

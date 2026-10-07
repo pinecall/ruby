@@ -202,6 +202,24 @@ class BridgeTest < Minitest::Test
     assert_equal "Marta Ruiz", call.state[:patient]
   end
 
+  # Another process drained or died: this one takes the call where it was, with no on_call.
+  def test_a_call_handed_over_mid_conversation_is_served_in_the_state_the_gateway_kept
+    call = @gateway.call_attached(state: { stage: "book", patient: "Ana Pérez", slots: [] }, from: "+34600999999")
+
+    assert_includes call.prompt, "Hablas con Ana Pérez."
+    refute_includes call.tools, "find_patient"
+    assert_equal "Ana Pérez", @mounted.serving(call.id).snapshot[:patient]
+  end
+
+  def test_a_call_handed_back_to_the_process_serving_it_sends_its_whole_prompt_again
+    call = @gateway.call_started(from: "+34600123456")
+    before = call.commands.count { |sent| sent.type == "prompt.set" }
+
+    @gateway.call_attached(id: call.id, state: call.state, from: "+34600123456")
+
+    assert_operator call.commands.count { |sent| sent.type == "prompt.set" }, :>, before
+  end
+
   # Busca en la base de conocimiento.
   class Buscadora < Pinecall::Agent
     web true

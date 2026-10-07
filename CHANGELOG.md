@@ -48,6 +48,10 @@ version number is the human's call.
   env:)` holds one inside your own Ruby process. The client gains `drain`, `on_entries`,
   `on_stopped` and the `pinecall-env` header, registers its machine as `host`, and answers a
   console's ask with `a Ruby agent draws no panel`. `docs/production.md` says how a server runs it.
+- **A call handed over mid-conversation is served.** On `call.attached` (another process drained
+  or died) the agent opens in the state the gateway kept, with no `on_call`; one this process
+  already serves sends its whole prompt again. A call knows the code it claimed (`call.claimed`)
+  and the eval run that opened it. `Testing::Gateway#call_attached(state:)`.
 - A stage restored from JSON — a golden's, `call.started.state` — is the declared stage it names.
 - **The whole call.** `call.transfer(to, mode:)` and `call.attention(reason, wait_s:)` block until
   the log answers (a `Transferred`, an `Attended`); `call.hold`, `unhold`, `dtmf(digits)`,

@@ -136,6 +136,15 @@ module Pinecall
         Fake.new(self, id)
       end
 
+      # Hand this process a call mid-conversation, in `state`; returns its `Fake` handle.
+      def call_attached(state:, id: nil, from: "+34600000000", claimed: nil)
+        id ||= "CA_#{next_seq}"
+        started = { channel: "web", direction: "inbound", from:, to: "+34910000000", caller: nil, started_at: Time.now.to_f }
+        deliver("call.attached", { app: "app_test", started:, state:, seq: next_seq, claimed: }, call: id)
+        settle
+        Fake.new(self, id)
+      end
+
       # Deliver an entry to the agent.
       def deliver(type, data, call: nil, agent: @agents.keys.first)
         entry = Wire::Entry.new(seq: next_seq, ts: Time.now.to_f, call:, agent:, type:,

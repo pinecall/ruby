@@ -6,7 +6,7 @@ module Pinecall
     #
     # Commands are not awaited; their effects arrive later as log entries.
     class Call
-      attr_reader :id, :today
+      attr_reader :id, :today, :claimed, :run
       attr_accessor :status, :channel, :from, :to, :contact, :state
 
       def initialize(id, agent, opened_at)
@@ -18,6 +18,8 @@ module Pinecall
         @from = nil
         @to = nil
         @contact = nil
+        @claimed = nil
+        @run = nil
         @state = {}
         @listeners = Listeners.new { |error| agent.on_error(error) }
       end
@@ -81,9 +83,20 @@ module Pinecall
         when "call.ringing" then the_line(event.data, "ringing")
         when "call.dialing" then the_line(event.data, "dialing")
         when "call.started" then the_line(event.data, "active")
+        when "call.attached" then attached(event.data)
         when "call.ended" then @status = "ended"
         when "state.changed" then @state = event.data[:state].dup
+        when "call.claimed" then @claimed = event.data[:code]
         end
+      end
+
+      # Handed over mid-conversation: the call's own start, the state it is in, the code it claimed.
+      def attached(data)
+        started = data[:started]
+        the_line(started, "active")
+        @state = data[:state].dup
+        @today = Time.at(started[:started_at]).strftime("%Y-%m-%d")
+        @claimed = data[:claimed]
       end
 
       def the_line(line, status)
@@ -92,6 +105,7 @@ module Pinecall
         @from = line[:from]
         @to = line[:to]
         @contact = line[:caller]
+        @run = line[:run]
       end
     end
 

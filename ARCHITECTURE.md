@@ -84,7 +84,7 @@ sig/                         the public surface as RBS. `rake rbs` is part of th
 examples/clinica_norte/      a whole agent, its view, and its own ring-0 suite
 test/                        mirrors lib/; `conformance_test.rb` holds the SDK to its wire: every
                              command sent by one method or said to be nobody's, every event folded
-                             or ignored with a reason, today's gaps skipped by name
+                             or ignored with a reason
 ```
 
 ## 3. What came from where: the TypeScript package, line by line
@@ -243,6 +243,10 @@ The call ending answers every verb still waiting (`the call ended before it was 
    what `remembers?` answers from: none of them is a state change, so nothing else would render.
 8. **`call.ended`** → nothing may render for this call any more; `on_end` runs, and the log stays
    open one hook longer so a farewell line still lands.
+9. **`call.attached`** → a call handed to this process mid-conversation (another process drained
+   or died, or the gateway restarted): a sealed instance is `restore`d to the state the gateway
+   kept, no `on_call` runs, and the whole prompt and the tools are sent. A call this process
+   already serves keeps its instance and sends its whole prompt again.
 
 ## 9. `Pinecall::Client` — the socket alone
 

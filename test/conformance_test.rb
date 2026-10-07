@@ -134,9 +134,6 @@ class ConformanceTest < Minitest::Test
     client_agent: ["client/agent.rb"]
   }.freeze
 
-  # What the SDK does not do yet: each row is a skip, saying so, until the commit that does it.
-  MISSING_TODAY = %w[event:call.claimed event:call.attached].freeze
-
   def test_every_command_is_sent_by_the_sdk_or_said_to_be_nobodys_here
     strays = Pinecall::Wire::Registry::COMMANDS.keys - COMMANDS.keys - NOT_THE_SDKS.keys
     assert_empty strays, "a command with no owner and no reason: #{strays.join(", ")}"
@@ -146,12 +143,11 @@ class ConformanceTest < Minitest::Test
   end
 
   def test_every_command_owned_is_a_method_that_exists
-    missing = COMMANDS.reject { |command, _| MISSING_TODAY.include?(command) }.reject do |_, owner|
+    missing = COMMANDS.reject do |_, owner|
       klass, method = owner.split("#")
       Object.const_get(klass).method_defined?(method.to_sym)
     end
     assert_empty missing.keys, "owned by a method that does not exist: #{missing.values.join(", ")}"
-    skip("not sent by the SDK yet: #{(MISSING_TODAY & COMMANDS.keys).join(", ")}") if (MISSING_TODAY & COMMANDS.keys).any?
   end
 
   def test_every_event_is_folded_by_a_part_of_the_sdk_or_ignored_with_a_reason
@@ -163,12 +159,10 @@ class ConformanceTest < Minitest::Test
   end
 
   def test_every_event_folded_is_read_by_name_in_the_files_that_fold_it
-    unread = FOLDED.reject { |event, _| MISSING_TODAY.include?("event:#{event}") }.flat_map do |event, owners|
+    unread = FOLDED.flat_map do |event, owners|
       owners.reject { |owner| source_of(owner).include?("\"#{event}\"") }.map { |owner| "#{event} in #{owner}" }
     end
     assert_empty unread, "folded by a part that never reads it: #{unread.join(", ")}"
-    gaps = MISSING_TODAY.filter_map { |row| row.delete_prefix("event:") if row.start_with?("event:") }
-    skip("not folded by the SDK yet: #{gaps.join(", ")}") if gaps.any?
   end
 
   private
