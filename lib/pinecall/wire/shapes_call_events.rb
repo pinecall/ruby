@@ -95,6 +95,7 @@ module Pinecall
           caller: { kind: :ref, null: true, ref: "Contact", required: true },
           started_at: { kind: :float, required: true },
           env: { kind: :ref, ref: "Env" },
+          worker: { kind: :str, null: true },
           state: { kind: :json }
         }.freeze,
         "CallSummary" => {

@@ -21,6 +21,12 @@ class ValidateTest < Minitest::Test
     assert_equal opened, Pinecall::Wire::Validate.call!("CallStarted", opened, where: "call.started")
   end
 
+  def test_a_spoken_call_started_names_the_worker_that_runs_it
+    started = { channel: "phone", direction: "inbound", from: "+34600", to: "+34910", caller: nil,
+                started_at: 1.5, env: "production", worker: "pinecall-runtime-a" }
+    assert_equal started, Pinecall::Wire::Validate.call!("CallStarted", started, where: "call.started")
+  end
+
   def test_a_register_may_say_it_answers_the_console
     register = { routes: [], takes_unclaimed: false, answers_dev: true }
     assert_equal register, Pinecall::Wire::Validate.call!("AgentRegister", register, where: "agent.register")
