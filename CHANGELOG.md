@@ -13,6 +13,14 @@ version number is the human's call.
   wire now, both left to `call.on` and `client.on_any`.
 
 ### Changed
+- **Breaking: the language is the world's, and the prompt says how to write for the channel** — as
+  the TypeScript package's 0.9.19. `language :es` is refused at load (`pinecall agent set
+  --language es`); the rules and protocols are English for every agent and tell the model to answer
+  in the caller's language; the `identity` block gains `<channel>`: speech, a website's Markdown, or
+  WhatsApp's formatting, by the call's channel and `medium`. `channel_rules false` leaves it out.
+  `call.started.medium` is in the wire (the runtime sends it from this release on, and a gem without
+  it refuses every call), on `CallWorld#medium` and `Client::Call#medium`; serve's `prompt` takes
+  `--medium`. `language` is no longer in `agent.configure`.
 - **Breaking: no CLI, no console, no executable.** The verbs are the one `pinecall` CLI's (npm),
   the same for a Ruby project as for a TypeScript one, in the same layout
   (`agents/<slug>/agent.rb`): for `prompt`, `chat`, `test` and `start` it runs `Pinecall::Serve`.

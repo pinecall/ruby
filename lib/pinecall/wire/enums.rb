@@ -10,6 +10,8 @@ module Pinecall
       CHANNEL = %w[phone web whatsapp].freeze
       # Inbound: the public reached the agent. Outbound: the agent reached out (a dial).
       DIRECTION = %w[inbound outbound].freeze
+      # How a call is had: spoken in a room, or written. A web call can be either.
+      MEDIUM = %w[voice text].freeze
       # Which of the two worlds a key opens, and so which world an agent is held in and a call ran
       # in. A key is issued into one; an agent registered on it and every call it takes carry that
       # one; a door claimed in one is refused to a key of the other. `sandbox` is where things are
@@ -78,6 +80,7 @@ module Pinecall
       ALL = {
         "Channel" => CHANNEL,
         "Direction" => DIRECTION,
+        "Medium" => MEDIUM,
         "Env" => ENV,
         "DevVerb" => DEV_VERB,
         "EndReason" => END_REASON,

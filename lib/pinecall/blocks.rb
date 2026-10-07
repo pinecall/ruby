@@ -82,11 +82,19 @@ module Pinecall
       Blocks.new(blocks:, history: history(agent))
     end
 
-    # The class docstring plus the framework's rules and protocols.
+    # The class docstring, the framework's rules and protocols, and the channel's. Reads no state.
     def identity(agent)
-      words = Lang.words_for(agent.class)
-      [agent.doc, tagged("rules", words[:rules]), tagged("protocols", words[:protocols])]
+      [agent.doc, tagged("rules", Rules::RULES), tagged("protocols", Rules::PROTOCOLS), channel(agent)]
         .compact.reject { |part| part.strip.empty? }.join("\n\n")
+    end
+
+    # Static because a call never changes its channel or medium. With no call (an offline prompt), a
+    # phone call's.
+    def channel(agent)
+      return nil if agent.class.channel_rules == false
+
+      call = agent.call? ? agent.call : nil
+      tagged("channel", Rules.channel_rules_for(call&.channel || "phone", call&.medium || "voice"))
     end
 
     # Every declared tool's docstring, visible or not; schemas travel separately on the wire.

@@ -46,7 +46,7 @@ lib/pinecall/
   agent/spec.rb              one tool as the gateway receives it, and what is refused at load
   agent/config.rb            the four a class may still declare, and the world's eleven, refused at load by name
   view.rb                    the ERB template and what it is rendered in
-  lang.rb                    the framework's own words: the rules and the protocols, es · en
+  rules.rb                   the framework's own words: the rules, the protocols, and the channel's
   blocks.rb                  the prompt as four named blocks in two regions: the layout, `render`, `show`
   agent/knowledge.rb         `knowledge.search`: the bases attached, searched for the call in hand
   agent/searching.rb         whether a class searches at all, read off its source with Ripper's tokens
@@ -118,9 +118,9 @@ diffed, and no view renders it. The class is the contract; what it runs on is th
 
 | declared | becomes |
 |---|---|
-| `language` | which of `lang.rb`'s two word-sets the `identity` block carries, and `language` in `agent.configure` |
+| `channel_rules false` | the `identity` block without its `<channel>` part: how to write for a voice, a website's chat, or WhatsApp |
 | `phone`, `whatsapp`, `web` | nothing: accepted, so an old class still loads, and read by nobody. A door is a row the org keeps (`pinecall numbers import`) |
-| `voice`, `llm`, `stt`, `greeting`, `hangup`, `says`, `hears`, `memory`, `record`, `knowledge`, `docs` | refused at load, `` `voice` is the world's now, not the class's: pinecall agent set --voice <name> — remove it from the class``, each with the verb that sets it. None of them is sent: the runtime reads them off the world's settings |
+| `voice`, `llm`, `stt`, `language`, `greeting`, `hangup`, `says`, `hears`, `memory`, `record`, `knowledge`, `docs` | refused at load, `` `voice` is the world's now, not the class's: pinecall agent set --voice <name> — remove it from the class``, each with the verb that sets it. None of them is sent: the runtime reads them off the world's settings |
 
 **State** is declared with `state`, and the rules are enforced in code:
 
@@ -155,7 +155,7 @@ does not have, `stage:` on a class that declares no stage, a stage that is not o
 
 | block | region | what is in it | when it changes |
 |---|---|---|---|
-| `identity` | static | the class docstring · `<rules>` and `<protocols>` | never during a call |
+| `identity` | static | the class docstring · `<rules>` and `<protocols>`, English for every agent · `<channel>`, by the call's channel and medium (`call.started.medium`; a gateway that does not say gets it from the channel) | never during a call |
 | `knowledge` | static | the page the agent knows by heart, from the world's settings, written by the gateway — the class sends nothing | never during a call |
 | `tools` | static | every tool's name and docstring, visible or not | never during a call |
 | *the history* | — | the turns and the lookups (the runtime's) and the `<!-- collapsed: … -->` summaries a `collapse` left | when the app collapses |
@@ -261,7 +261,7 @@ The one CLI (npm `pinecall`) starts this gem's entry for the two verbs that need
 
 ```
 ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- start --file agents/x/agent.rb --slug x [--console] [--events] [--prod]
-ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agents/x/agent.rb --slug x [--state field=json]… [--channel c] [--show-machine]
+ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agents/x/agent.rb --slug x [--state field=json]… [--channel c] [--medium voice|text] [--show-machine]
 ```
 
 - **The door is the environment's, and nothing else:** `PINECALL_URL`, `PINECALL_KEY`,

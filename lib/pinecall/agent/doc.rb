@@ -49,8 +49,14 @@ module Pinecall
             block.unshift(said[2].rstrip)
             at -= 1
           end
-          text = block.join("\n").strip
-          text.empty? ? nil : text
+          one_line(block)
+        end
+
+        # A comment as the model reads it: one line, its blank lines dropped, ending at the first
+        # tag line (`@param`). Word for word what the TypeScript package does to a JSDoc.
+        def one_line(block)
+          said = block.map(&:strip).take_while { |line| !line.start_with?("@") }.reject(&:empty?)
+          said.empty? ? nil : said.join(" ")
         end
 
         # Cached per process so a running agent never reads the disk between turns.

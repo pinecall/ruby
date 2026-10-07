@@ -34,9 +34,14 @@ class ToolsTest < Minitest::Test
 
   def spec_of(name) = @agent.tools.find { |spec| spec[:name] == name.to_s }
 
-  def test_the_comment_above_the_declaration_is_what_the_model_reads
-    assert_equal "Busca al paciente por nombre y teléfono.\nPide los dos antes de llamarla.",
+  def test_the_comment_above_the_declaration_is_what_the_model_reads_on_one_line
+    assert_equal "Busca al paciente por nombre y teléfono. Pide los dos antes de llamarla.",
                  spec_of(:find_patient)[:description]
+  end
+
+  def test_a_comment_ends_at_its_first_tag_and_drops_its_blank_lines
+    assert_equal "Una frase. Otra, tras una línea vacía.",
+                 Pinecall::Agent::Doc.one_line(["Una frase.", "", "Otra, tras una línea vacía.", "@param x nada"])
   end
 
   def test_the_parameters_are_the_method_s_own_keywords

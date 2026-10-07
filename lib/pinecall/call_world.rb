@@ -9,16 +9,18 @@ module Pinecall
   # State is reduced from received entries; each verb is one wire command. No LiveKit access by
   # design: a missing capability should become a new command of the wire.
   class CallWorld
-    attr_reader :id, :contact, :from, :channel, :room, :turns, :today, :claimed
+    attr_reader :id, :contact, :from, :channel, :medium, :room, :turns, :today, :claimed
 
     # `send` puts one command on the wire for this call; `searching` asks the gateway to search for
-    # it. Both are supplied by the bridge. `today` is the day the call opened, YYYY-MM-DD.
-    def initialize(id:, contact: nil, from: nil, channel: nil, today: Time.now.strftime("%Y-%m-%d"), claimed: nil,
-                   searching: nil, &send)
+    # it. Both are supplied by the bridge. `today` is the day the call opened, YYYY-MM-DD. `medium` is
+    # spoken (`voice`) or written (`text`); a gateway that does not say gets it from the channel.
+    def initialize(id:, contact: nil, from: nil, channel: nil, medium: nil, today: Time.now.strftime("%Y-%m-%d"),
+                   claimed: nil, searching: nil, &send)
       @id = id
       @contact = contact
       @from = from
       @channel = channel
+      @medium = (medium || (channel.to_s == "whatsapp" ? "text" : "voice")).to_s
       @today = today
       @claimed = claimed
       @searching = searching

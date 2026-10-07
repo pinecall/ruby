@@ -7,7 +7,6 @@ class BridgeTest < Minitest::Test
   # Eres la recepción de Clínica Norte.
   class Clinica < Pinecall::Agent
     web true
-    language :es
 
     stage :identify, :book
     state :patient
@@ -58,7 +57,7 @@ class BridgeTest < Minitest::Test
   def test_the_declaration_is_what_the_class_says_about_itself
     assert_equal "clinica", @mounted.slug
     refute @mounted.options.key?(:routes)
-    assert_equal "es", @mounted.options[:language]
+    refute @mounted.options.key?(:language)
     assert_equal %w[find_patient stop], @mounted.options[:tools].map { |spec| spec[:name] }
     assert_equal [{ name: "agenda.changed", from: %w[app] }], @mounted.options[:events]
     assert_equal %w[identity knowledge tools view], @mounted.options[:prompt].map { |spec| spec[:name] }
@@ -223,7 +222,6 @@ class BridgeTest < Minitest::Test
   # Busca en la base de conocimiento.
   class Buscadora < Pinecall::Agent
     web true
-    language :es
     state :said, ""
     view template: <<~ERB
       <% if remembers?("alergia") -%>

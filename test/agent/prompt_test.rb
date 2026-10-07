@@ -6,8 +6,6 @@ class PromptTest < Minitest::Test
   # Eres la recepción de Clínica Norte.
   # Todo lo que dices se lee en voz alta.
   class Clinica < Pinecall::Agent
-    language :es
-
     stage :identify, :book
     state :patient
     state :slots, []
@@ -58,11 +56,11 @@ class PromptTest < Minitest::Test
   end
 
   def test_the_static_blocks_joined_are_one_text_the_docstring_the_words_the_tools
-    words = Pinecall::Lang.words_for(Clinica)
     whole = [
       @agent.doc,
-      "<rules>\n#{words[:rules]}\n</rules>",
-      "<protocols>\n#{words[:protocols]}\n</protocols>",
+      "<rules>\n#{Pinecall::Rules::RULES}\n</rules>",
+      "<protocols>\n#{Pinecall::Rules::PROTOCOLS}\n</protocols>",
+      "<channel>\n#{Pinecall::Rules::SPOKEN}\n</channel>",
       "<tools>\n- find_patient: Busca al paciente.\n</tools>"
     ].join("\n\n")
 
@@ -145,15 +143,6 @@ class PromptTest < Minitest::Test
     assert_equal ["── identity (static) ──", "── knowledge (static) ──", "── tools (static) ──",
                   "── history ──", "── view (dynamic) ──"],
                  page.lines.map(&:chomp).select { |line| line.start_with?("── ") }
-  end
-
-  def test_the_framework_speaks_the_language_the_class_named
-    english = Class.new(Pinecall::Agent) do
-      doc "A shop."
-      language :en
-    end
-
-    assert_includes Pinecall.render(english.new.seal)[:identity], "One question per turn"
   end
 
   def test_a_class_with_no_view_beside_it_has_an_empty_dynamic_block

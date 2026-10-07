@@ -32,8 +32,6 @@ require "pinecall"
 
 # Eres la recepción de Clínica Norte. Hablas de usted, con frases cortas.
 class ClinicaNorte < Pinecall::Agent
-  language :es
-
   stage :identify, :resolve
   state :patient, visibility: :pii
 

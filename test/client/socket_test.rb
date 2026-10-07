@@ -36,13 +36,13 @@ class SocketTest < Minitest::Test
   end
 
   def test_the_declaration_follows_the_registration_without_being_asked
-    @client.agent("clinica-norte", tools: [], language: "es")
+    @client.agent("clinica-norte", tools: [], uses_knowledge: true)
     @client.connect
     @gateway.frames.pop(timeout: 5)
     configured = @gateway.frames.pop(timeout: 5)
 
     assert_equal "agent.configure", configured[:type]
-    assert_equal "es", configured[:data][:config][:language]
+    assert_equal true, configured[:data][:config][:uses_knowledge]
   end
 
   def test_a_command_the_wire_refuses_never_reaches_the_socket

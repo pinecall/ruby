@@ -11,14 +11,15 @@ module Pinecall
     Served = Data.define(:file, :slug)
 
     # The flags of one verb, as the CLI passes them.
-    Flags = Data.define(:served, :console, :events, :prod, :state, :channel, :show_machine)
+    Flags = Data.define(:served, :console, :events, :prod, :state, :channel, :medium, :show_machine)
 
     module Loading
       module_function
 
       # `--file` and `--slug` paired by place; the rest by name. A flag nobody declared is refused.
       def parse(argv)
-        found = { files: [], slugs: [], console: false, events: false, prod: false, state: {}, channel: "phone", show_machine: false }
+        found = { files: [], slugs: [], console: false, events: false, prod: false, state: {}, channel: "phone", medium: nil,
+                  show_machine: false }
         words = argv.dup
         until words.empty?
           word = words.shift
@@ -29,7 +30,7 @@ module Pinecall
           when "--channel" then found[:channel] = value_of(word, words)
           when "--console", "--events", "--prod" then found[word.delete_prefix("--").to_sym] = true
           when "--show-machine" then found[:show_machine] = true
-          when "--medium" then raise CannotServe, "--medium: a Ruby agent's prompt is the same spoken or written"
+          when "--medium" then found[:medium] = value_of(word, words)
           else raise CannotServe, "serve has no flag #{word}"
           end
         end
@@ -88,10 +89,13 @@ module Pinecall
         if files.empty? || files.length != slugs.length
           raise CannotServe, "serve takes one --slug for each --file, and at least one of each"
         end
+        unless Wire::Enums::CHANNEL.include?(found[:channel]) && [nil, *Wire::Enums::MEDIUM].include?(found[:medium])
+          raise CannotServe, "--channel is phone, web or whatsapp, and --medium is voice or text"
+        end
 
         Flags.new(served: files.zip(slugs).map { |file, slug| Served.new(file:, slug:) },
                   console: found[:console], events: found[:events], prod: found[:prod], state: found[:state],
-                  channel: found[:channel], show_machine: found[:show_machine])
+                  channel: found[:channel], medium: found[:medium], show_machine: found[:show_machine])
       end
     end
   end

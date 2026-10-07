@@ -118,7 +118,9 @@ module Pinecall
     def world_for(call, client)
       searching = ->(query, k) { client.search(call.id, query, k:) }
       CallWorld.new(id: call.id, contact: call.contact&.dig(:id) || call.from, from: call.from, channel: call.channel,
-                    today: call.today, claimed: call.claimed, searching:) { |type, data| call.command(type, data) }
+                    medium: call.medium, today: call.today, claimed: call.claimed, searching:) do |type, data|
+        call.command(type, data)
+      end
     end
 
     # Build the instance and run `on_call` before listening, so the first prompt is sent once

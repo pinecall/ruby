@@ -6,7 +6,7 @@ module Pinecall
     #
     # Commands are not awaited; their effects arrive later as log entries.
     class Call
-      attr_reader :id, :today, :claimed, :run
+      attr_reader :id, :today, :claimed, :run, :medium
       attr_accessor :status, :channel, :from, :to, :contact, :state
 
       def initialize(id, agent, opened_at)
@@ -15,6 +15,8 @@ module Pinecall
         @today = Time.at(opened_at).strftime("%Y-%m-%d")
         @status = "ringing"
         @channel = nil
+        # Spoken or written, as `call.started` says; nil before it, and from a gateway that does not say.
+        @medium = nil
         @from = nil
         @to = nil
         @contact = nil
@@ -82,7 +84,7 @@ module Pinecall
         case event.type
         when "call.ringing" then the_line(event.data, "ringing")
         when "call.dialing" then the_line(event.data, "dialing")
-        when "call.started" then the_line(event.data, "active")
+        when "call.started" then started(event.data)
         when "call.attached" then attached(event.data)
         when "call.ended" then @status = "ended"
         when "state.changed" then @state = event.data[:state].dup
@@ -92,11 +94,16 @@ module Pinecall
 
       # Handed over mid-conversation: the call's own start, the state it is in, the code it claimed.
       def attached(data)
-        started = data[:started]
-        the_line(started, "active")
+        line = data[:started]
+        started(line)
         @state = data[:state].dup
-        @today = Time.at(started[:started_at]).strftime("%Y-%m-%d")
+        @today = Time.at(line[:started_at]).strftime("%Y-%m-%d")
         @claimed = data[:claimed]
+      end
+
+      def started(line)
+        the_line(line, "active")
+        @medium = line[:medium]
       end
 
       def the_line(line, status)

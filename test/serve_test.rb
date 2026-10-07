@@ -100,6 +100,16 @@ class ServeTest < Minitest::Test
     assert_includes @out.string, "── tools ── stage: book"
   end
 
+  def test_a_prompt_writes_for_the_channel_and_medium_it_is_asked_for
+    code = Pinecall::Serve.main(["prompt", "--file", AGENT, "--slug", SLUG, "--channel", "web", "--medium", "text"],
+                                out: @out, err: @err, env: {})
+
+    assert_equal 0, code
+    assert_includes @out.string, "<channel>\n#{Pinecall::Rules::ON_A_WEBSITE}\n</channel>"
+    assert_equal 2, Pinecall::Serve.main(["prompt", "--file", AGENT, "--slug", SLUG, "--medium", "fax"], out: @out, err: @err)
+    assert_includes @err.string, "--medium is voice or text"
+  end
+
   def test_a_file_with_no_agent_and_a_verb_nobody_wrote_are_refused
     assert_equal 2, Pinecall::Serve.main(["prompt", "--file", "nowhere.rb", "--slug", SLUG], out: @out, err: @err)
     assert_includes @err.string, "no agent at"

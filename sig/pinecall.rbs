@@ -72,7 +72,7 @@ module Pinecall
     def self.phone: (?String) -> untyped
     def self.whatsapp: (?String) -> untyped
     def self.web: (?bool) -> untyped
-    def self.language: (?String | Symbol) -> untyped
+    def self.channel_rules: (?bool) -> untyped
 
     # the world's, refused at load with the verb that sets each
     def self.voice: (*untyped, **untyped) -> bot
@@ -149,6 +149,7 @@ module Pinecall
       def self.for_class: (Class) -> String?
       def self.for_method: (Class, Symbol) -> String?
       def self.above: (String, Integer) -> String?
+      def self.one_line: (Array[String]) -> String?
       def self.forget: () -> untyped
     end
   end
@@ -206,10 +207,11 @@ module Pinecall
     attr_reader contact: String?
     attr_reader from: String?
     attr_reader channel: String?
+    attr_reader medium: String
     attr_reader today: String
     attr_reader claimed: String?
     attr_accessor cause: Hash[Symbol, untyped]?
-    def initialize: (id: String, ?contact: String?, ?from: String?, ?channel: String?, ?today: String, ?claimed: String?,
+    def initialize: (id: String, ?contact: String?, ?from: String?, ?channel: String?, ?medium: String?, ?today: String, ?claimed: String?,
                      ?searching: (^(String, Integer?) -> Array[Hash[Symbol, untyped]])?) { (String, Hash[Symbol, untyped]) -> untyped } -> void
     def numbered: () -> Integer
     def say: (String, **untyped) -> bool
@@ -291,6 +293,7 @@ module Pinecall
       attr_reader id: String
       attr_reader claimed: String?
       attr_reader run: String?
+      attr_reader medium: String?
       attr_reader today: String
       attr_accessor status: String
       attr_accessor channel: String?
@@ -382,10 +385,13 @@ module Pinecall
     end
   end
 
-  module Lang
-    DEFAULT: String
-    def self?.words_for: (Class) -> Hash[Symbol, String]
-    def self?.languages: () -> Array[String]
+  module Rules
+    RULES: String
+    PROTOCOLS: String
+    SPOKEN: String
+    ON_A_WEBSITE: String
+    ON_WHATSAPP: String
+    def self?.channel_rules_for: (String | Symbol, String | Symbol) -> String
   end
 
   def self.mount: (Class, client: untyped, **untyped) -> Bridge::Mounted

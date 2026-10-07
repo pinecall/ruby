@@ -17,7 +17,6 @@ module Pinecall
         }.freeze,
         "AgentConfig" => {
           prompt: { kind: :list, items: { kind: :ref, ref: "PromptBlockSpec" } },
-          language: { kind: :str },
           greeting: { kind: :ref, ref: "GreetingConfig" },
           voice: { kind: :ref, ref: "VoiceConfig" },
           llm: { kind: :ref, ref: "ModelConfig" },

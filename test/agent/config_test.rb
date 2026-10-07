@@ -8,14 +8,19 @@ class ConfigTest < Minitest::Test
   class Clinica < Pinecall::Agent
     phone "+34910000000"
     web true
-    language :es
   end
 
   def test_the_declaration_is_the_contract_and_nothing_of_the_environment
     sent = Clinica.wire_config(tools: [])
 
-    assert_equal %i[prompt language tools], sent.keys
-    assert_equal "es", sent[:language]
+    assert_equal %i[prompt tools], sent.keys
+  end
+
+  def test_a_class_that_names_its_language_is_refused_with_the_verb_that_sets_it
+    error = assert_raises(Pinecall::DeclarationRefused) { Class.new(Pinecall::Agent) { language :es } }
+
+    assert_equal "`language` is the world's now, not the class's: pinecall agent set --language <tag> — remove it from the class",
+                 error.message
   end
 
   def test_the_doors_are_accepted_and_read_by_nobody
@@ -39,7 +44,7 @@ class ConfigTest < Minitest::Test
 
   def test_every_field_of_the_world_s_is_refused_whatever_it_was_written_with
     written = {
-      voice: ["carolina"], llm: ["haiku"], stt: ["deepgram"], greeting: ["Buenos días."],
+      voice: ["carolina"], llm: ["haiku"], stt: ["deepgram"], language: [:es], greeting: ["Buenos días."],
       hangup: [], says: [{ DKV: "de ka uve" }], hears: [["Clínica Norte"]], record: [true],
       knowledge: ["./knowledge/clinica.md"], docs: ["clinica-norte"], memory: [{ remember: ["alergias"] }]
     }

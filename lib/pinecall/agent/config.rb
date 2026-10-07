@@ -4,12 +4,13 @@ module Pinecall
   class Agent
     # Class-level configuration (state lives on the instance).
     #
-    # A class declares its contract: tools, state, view, language. Runtime settings (voice,
-    # models, greeting, memory, knowledge) belong to the world and are refused at load with the
+    # A class declares its contract: tools, state, view. Runtime settings (voice, models,
+    # language, greeting, memory, knowledge) belong to the world and are refused at load with the
     # CLI command that sets them.
     module Config
-      # `phone`, `whatsapp` and `web` are accepted for compatibility but ignored.
-      AS_WRITTEN = %i[phone whatsapp web language].freeze
+      # `phone`, `whatsapp` and `web` are accepted for compatibility but ignored. `channel_rules
+      # false` leaves the `<channel>` block out of the prompt.
+      AS_WRITTEN = %i[phone whatsapp web channel_rules].freeze
 
       # Settings that moved to the world, and the command that sets each. Must match the
       # TypeScript package's `THE_WORLDS`.
@@ -17,6 +18,7 @@ module Pinecall
         voice: "pinecall agent set --voice <name>",
         llm: "pinecall agent set --llm <vendor/model>",
         stt: "pinecall agent set --stt <vendor>",
+        language: "pinecall agent set --language <tag>",
         greeting: "pinecall agent set --greeting '…' (or --reply '…')",
         hangup: "pinecall agent set --hangup '…'",
         says: "pinecall lexicon add <word> --say '…'",
@@ -86,7 +88,6 @@ module Pinecall
         def wire_config(tools: nil)
           {
             prompt: Prompt::FRAMEWORK,
-            language: config[:language]&.to_s,
             tools:,
             state_fields: state_field_specs,
             events: event_specs,

@@ -56,6 +56,8 @@ module Pinecall
     def prompt(flags, out:)
       klass = Loading.load_served(flags.served.first)
       instance = klass.new.seal
+      # A call of its own, so the channel's block is the one this channel and medium get.
+      instance.serving(CallWorld.new(id: "", contact: "", channel: flags.channel, medium: flags.medium) { |*| nil })
       instance.start_in(flags.state) unless flags.state.empty?
       out.puts(Pinecall.show_prompt(instance, line: { channel: flags.channel }))
       out.puts("\n#{machine(instance)}") if flags.show_machine
@@ -69,8 +71,24 @@ module Pinecall
       header = "#{Prompt.header_for("tools")}#{stage}"
       return "#{header}\n\n  this agent declares no tools" if instance.tools.empty?
 
-      lines = instance.tools.map { |spec| "  #{shown.include?(spec[:name]) ? "●" : "○"} #{spec[:name]}" }
+      declared = instance.class.declared_tools.values
+      width = declared.map { |one| one.name.length }.max
+      lines = declared.map do |one|
+        visible = shown.include?(one.name.to_s)
+        "  #{visible ? "●" : "○"} #{one.name.to_s.ljust(width)}  #{gated_by(instance, one.options, visible)}"
+      end
       [header, "", *lines].join("\n")
+    end
+
+    # What gates a tool: its stages, its `when`, or nothing. A tool hidden in its own stage is always
+    # its `when`'s doing, and says so.
+    def gated_by(instance, options, visible)
+      stages = options[:stage] && Array(options[:stage]).map(&:to_sym)
+      return options[:when].nil? ? "always" : "when(state)" if stages.nil?
+
+      here = instance.respond_to?(:stage) ? instance.stage : nil
+      named = stages.join(" · ")
+      !visible && !here.nil? && stages.include?(here) ? "#{named} · when(state) says no" : named
     end
 
     # Where the calls went, and what became of the tools running: one line on stderr.

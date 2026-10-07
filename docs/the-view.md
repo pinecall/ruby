@@ -4,7 +4,7 @@ The prompt is a list of named **blocks** in two regions, in this order, always:
 
 | region | when it changes | the blocks |
 |---|---|---|
-| `static` — before the history, cached by the provider | never during a call | `identity` (the class comment · the framework's rules and protocols) · `knowledge` (the page the agent knows by heart, written by the gateway from its settings) · `tools` (every tool's name and comment) |
+| `static` — before the history, cached by the provider | never during a call | `identity` (the class comment · the framework's rules and protocols · how to write on the call's channel and medium) · `knowledge` (the page the agent knows by heart, written by the gateway from its settings) · `tools` (every tool's name and comment) |
 | the history — the turns, the lookups, and the summaries a `collapse` left | the runtime writes it; the app never does | |
 | `dynamic` — after the history, replaced every turn | on every state change | `view` — the last thing the model reads |
 

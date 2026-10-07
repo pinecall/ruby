@@ -25,8 +25,12 @@ Declared on the class, because it is not something the agent remembers. It never
 call and no view renders it. There is one word left:
 
 ```ruby
-language :es              # which of the framework's two word-sets the prompt carries
+channel_rules false       # leave out the <channel> block: how to write for a voice, a website, WhatsApp
 ```
+
+The language is not here: it is the world's, `pinecall agent set --language es`, and a class that
+still writes `language :es` is refused at load with that sentence. The framework's rules are English
+and tell the model to answer in the caller's language.
 
 **The doors are not here.** A number is bought, pointed at an agent and moved by whoever answers
 the telephone, not by whoever deploys: it is a row the org keeps — `pinecall numbers import
