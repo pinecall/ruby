@@ -32,6 +32,7 @@ module Pinecall
     extend State::Declaring
     extend Tools::Declaring
     extend Prompt::Declaring
+    extend Panel::Declaring
     include State
     include Tools
 

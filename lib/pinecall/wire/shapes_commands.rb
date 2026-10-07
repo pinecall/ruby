@@ -54,6 +54,9 @@ module Pinecall
           reason: { kind: :str }
         }.freeze,
         "CallHold" => {}.freeze,
+        "CallOptOut" => {
+          note: { kind: :str, null: true }
+        }.freeze,
         "CallLog" => {
           name: { kind: :str, required: true },
           data: { kind: :json, required: true }

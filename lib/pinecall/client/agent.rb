@@ -11,9 +11,7 @@ module Pinecall
     class Agent
       ANSWERS_WITHIN_S = 10
 
-      # The one dev verb a Ruby process could answer is the panel, and a Ruby class draws none;
-      # every other verb is the CLI's companion's.
-      DRAWS_NO_PANEL = "a Ruby agent draws no panel"
+      NO_DEV_HANDLER = "this process answers no dev verbs: it is not a `pinecall start` in the agent's directory"
 
       attr_reader :slug, :calls, :config, :app
 
@@ -27,6 +25,7 @@ module Pinecall
         @config = options.reject { |key, _| %i[routes tools takes_unclaimed].include?(key) }
         @app = nil
         @running = []
+        @dev = nil
         @lock = Mutex.new
         declare(options[:tools] || [])
         @calls = CallBook.new(self)
@@ -38,6 +37,12 @@ module Pinecall
 
       # Listen for every event of this agent.
       def on_any(&listener) = @listeners.on_any(&listener)
+
+      # Answer the console's `dev.request` asks: the block takes the verb and its data and returns the
+      # answer, or raises `DevRefused` to refuse with a status. Without one every ask is a 501.
+      def on_dev(&handler)
+        @dev = handler
+      end
 
       # Replace the tools; sent with the next `configure`.
       #
@@ -75,7 +80,7 @@ module Pinecall
         call&.take(event)
         @listeners.emit(event, call)
         @client.seen(event, call)
-        return refuse_the_console(event.data) if event.type == "dev.request"
+        return answer_the_console(event.data) if event.type == "dev.request"
         return if call.nil?
 
         run_tool(event, call) if event.type == "tool.call"
@@ -127,9 +132,19 @@ module Pinecall
         @lock.synchronize { (@running << running).select!(&:alive?) }
       end
 
-      # Every ask needs one answer, or the console's request hangs until the gateway gives up.
-      def refuse_the_console(asked)
-        command("dev.answer", nil, { id: asked[:id], refused: { status: 404, detail: DRAWS_NO_PANEL } })
+      # Every ask needs one answer, or the console's request hangs until the gateway gives up. On a
+      # thread of its own: a panel reads the tenant's systems, and this is the socket's reader.
+      def answer_the_console(asked)
+        id, verb, data = asked.values_at(:id, :verb, :data)
+        Thread.new do
+          raise DevRefused.new(501, NO_DEV_HANDLER) if @dev.nil?
+
+          command("dev.answer", nil, { id:, result: @dev.call(verb, data || {}) })
+        rescue DevRefused => e
+          command("dev.answer", nil, { id:, refused: { status: e.status, detail: e.detail } })
+        rescue StandardError => e
+          command("dev.answer", nil, { id:, refused: { status: 500, detail: e.message } })
+        end
       end
 
       # Await the reply event, or an `error` carrying our id. Only register/configure are awaited;

@@ -25,11 +25,38 @@ class AgentTest < Minitest::Test
     assert_equal [0, 0, 0, 0], [drained.handed, drained.parked, drained.tools, drained.finished]
   end
 
-  def test_a_consoles_ask_is_answered_that_a_ruby_agent_draws_no_panel
+  def test_a_consoles_ask_with_nobody_to_answer_it_is_a_501_that_says_so
     @gateway.send_entry("clinica-norte", "dev.request", { id: "dev_1", verb: "view.render", data: {} })
 
     answer = @gateway.next_frame("dev.answer")
-    assert_equal({ id: "dev_1", refused: { status: 404, detail: "a Ruby agent draws no panel" } }, answer[:data])
+    assert_equal({ id: "dev_1", refused: { status: 501, detail: Pinecall::Client::Agent::NO_DEV_HANDLER } }, answer[:data])
+  end
+
+  def test_a_consoles_ask_is_answered_by_the_handler_or_refused_with_its_status
+    @client.agents["clinica-norte"].on_dev do |verb, data|
+      raise Pinecall::DevRefused.new(404, "no #{verb} here") unless verb == "view.render"
+
+      { name: "Ficha", nodes: [{ tag: "text", text: data[:contact] }] }
+    end
+    @gateway.send_entry("clinica-norte", "dev.request", { id: "dev_2", verb: "view.render", data: { contact: "+34600", call: "CA_1" } })
+    @gateway.send_entry("clinica-norte", "dev.request", { id: "dev_3", verb: "goldens.roster", data: {} })
+
+    answers = [@gateway.next_frame("dev.answer"), @gateway.next_frame("dev.answer")].map { |frame| frame[:data] }
+    assert_includes answers, { id: "dev_2", result: { name: "Ficha", nodes: [{ tag: "text", text: "+34600" }] } }
+    assert_includes answers, { id: "dev_3", refused: { status: 404, detail: "no goldens.roster here" } }
+  end
+
+  def test_connected_is_said_once_every_agent_on_the_socket_registered
+    connected = Thread::Queue.new
+    client = Pinecall::Client.new(url: @gateway.url, api_key: "pk_test", env: "production")
+    client.on_errors { |_error| nil }
+    client.agent("tienda-sur", tools: [])
+    client.on_connected { connected << client.agents["tienda-sur"].app }
+    client.connect
+
+    refute_nil connected.pop(timeout: 5)
+  ensure
+    client&.close
   end
 
   def test_the_socket_says_which_world_it_acts_in_and_where_it_runs

@@ -24,6 +24,12 @@ module Pinecall
   class DeclarationRefused < Error
   end
 
+  class DevRefused < Error
+    attr_reader status: Integer
+    attr_reader detail: String
+    def initialize: (Integer, String) -> void
+  end
+
   class ToolFailed < Error
   end
 
@@ -73,6 +79,10 @@ module Pinecall
     def self.whatsapp: (?String) -> untyped
     def self.web: (?bool) -> untyped
     def self.channel_rules: (?bool) -> untyped
+
+    # the console's panel, drawn by `view.render`
+    def self.panel: (?String) { (Panel::Who) -> void } -> Panel::Declared
+    def self.declared_panel: () -> Panel::Declared?
 
     # the world's, refused at load with the verb that sets each
     def self.voice: (*untyped, **untyped) -> bot
@@ -228,6 +238,7 @@ module Pinecall
     def participant: (String) -> untyped
     def invite: (String, ?kind: String?) -> untyped
     def log: (String | Symbol, ?Hash[Symbol, untyped]) -> untyped
+    def opt_out: (?String?) -> untyped
     def hangup: (?String?) -> untyped
     def take: (String, Hash[Symbol, untyped], Float) -> untyped
     def participants: () -> Array[untyped]
@@ -269,14 +280,17 @@ module Pinecall
     def send_command: (type: String, agent: String, call: String?, data: Hash[Symbol, untyped], ?id: String?) -> untyped
     def seen: (untyped, Client::Call?) -> void
     def on_error: (StandardError) -> void
+    def on_connected: () { () -> void } -> ^() -> void
 
     class Agent
+      NO_DEV_HANDLER: String
       attr_reader slug: String
       attr_reader calls: CallBook
       attr_reader config: Hash[Symbol, untyped]
       attr_reader app: String?
       def on: (String) { (Hash[Symbol, untyped], Client::Call?) -> void } -> ^() -> void
       def on_any: () { (untyped, Client::Call?) -> void } -> ^() -> void
+      def on_dev: () { (String, Hash[Symbol, untyped]) -> Hash[Symbol, untyped] } -> untyped
       def declare: (Array[Hash[Symbol, untyped]]) -> void
       def configure: (?Hash[Symbol, untyped]) -> Hash[Symbol, untyped]
       def open: () -> Agent
@@ -370,6 +384,12 @@ module Pinecall
       def join: () -> untyped
     end
 
+    module Viewing
+      ONLY_THE_VIEW: String
+      def self?.answer: (Class, String, String, untyped) -> Hash[Symbol, untyped]
+      def self?.a_conversation: (String, untyped) -> Panel::Who
+    end
+
     def self?.main: (Array[String], ?out: IO, ?err: IO, ?env: Hash[String, String], ?input: IO, ?signals: Thread::Queue?) -> Integer
     def self?.drain_line: (Client::Drained) -> String
   end
@@ -383,6 +403,38 @@ module Pinecall
       attr_reader options: Hash[Symbol, untyped]
       def serving: (String) -> Agent?
     end
+  end
+
+  module Panel
+    TONES: Array[String]
+
+    class Who
+      attr_reader agent: String
+      attr_reader contact: String
+      attr_reader call: String
+      def initialize: (agent: String, contact: String, call: String) -> void
+    end
+
+    class Declared
+      attr_reader name: String
+      attr_reader draw: Proc
+      def initialize: (name: String, draw: Proc) -> void
+    end
+
+    class Drawing
+      attr_reader nodes: Array[Hash[Symbol, untyped]]
+      def initialize: (Class) -> void
+      def panel: (?untyped) ?{ () -> void } -> nil
+      def rows: () ?{ () -> void } -> nil
+      def row: (untyped, ?untyped) -> nil
+      def stat: (untyped, untyped) -> nil
+      def table: (columns: Array[untyped], rows: Array[untyped]) -> nil
+      def badge: (untyped, ?tone: String | Symbol) -> nil
+      def text: (untyped) -> nil
+    end
+
+    def self.said: (untyped) -> String
+    def self.draw: (Class, Panel::Who) -> Hash[Symbol, untyped]
   end
 
   module Rules

@@ -44,10 +44,11 @@ lib/pinecall/
   agent/state.rb             the `state` and `stage` macros, the store, snapshot · restore · collapse
   agent/tools.rb             the `tool` macro, the registry, what this state shows
   agent/spec.rb              one tool as the gateway receives it, and what is refused at load
-  agent/config.rb            the four a class may still declare, and the world's eleven, refused at load by name
+  agent/config.rb            the four a class may still declare, and the world's twelve, refused at load by name
   view.rb                    the ERB template and what it is rendered in
   rules.rb                   the framework's own words: the rules, the protocols, and the channel's
   blocks.rb                  the prompt as four named blocks in two regions: the layout, `render`, `show`
+  panel.rb                   the console's panel beside a conversation: `panel`, its catalogue, the nodes it draws
   agent/knowledge.rb         `knowledge.search`: the bases attached, searched for the call in hand
   agent/searching.rb         whether a class searches at all, read off its source with Ripper's tokens
   call_world.rb              the live call as the class holds it: its verbs, and the entries folded in
@@ -57,6 +58,7 @@ lib/pinecall/
   serve.rb                   `Pinecall::Serve.main`: the entry the one CLI starts — `start`, `prompt` — and `Pinecall.serve`
   serve/loading.rb           its flags, the class in a file, a state field by field
   serve/held.rb              the agents a process holds, and leaving: a drain, then the socket, once
+  serve/viewing.rb           `view.render`, the one console verb an agent's own process answers
   client.rb                  `Pinecall::Client`: one socket, the agents on it, observe · history
   client/connection.rb       the WS: the key at the door, backoff on the way back, a ping
   client/agent.rb            one agent from the app's side: registration, tool calls, listeners
@@ -101,6 +103,8 @@ gives that TypeScript does not, or what it takes away.
 | `src/serve/` — `main(argv, io)`, `start` and `prompt`, spawned by the CLI | `Pinecall::Serve.main(argv, out:, err:, env:, input:, signals:)`, the same two verbs, spawned by the same CLI through `ruby -r pinecall -e` | One CLI for every language: it never loads a class, so each SDK ships the entry that does and no executable. |
 | `new Pinecall({ url, apiKey })` reads nothing | `Client.new(url:, api_key:, env:)` reads nothing | The environment is the entry's to read, once; a library that reads it picks the wrong key in a process that runs two. |
 | `pc.drain()`, `pc.onEntries`, `pc.onStopped` | `client.drain`, `client.on_entries`, `client.on_stopped` | The serve contract is the same in both: the wire entry on stdout, a drained leave, a stop said once. |
+| `pc.onConnected`, `agent.onDev` | `client.on_connected`, `agent.on_dev` | The same: after every agent on the socket registered, each time it comes up; a console's ask answered by a block that returns the answer or raises `DevRefused` |
+| `@view(CustomerCard)`, the `@pinecall/agents/panels` tags, JSX rendered to nodes | `panel "Cliente" do \|who\| … end`, the block drawing on a `Panel::Drawing` | Ruby has no JSX: the block calls the catalogue's seven methods (`panel`, `rows`, `row`, `stat`, `table`, `badge`, `text`). The nodes are the same JSON, so the console draws them with the same parts; serve's `start` answers `view.render` with them |
 | `Promise`, one event loop | one reader thread, one thread per call, one per tool call | The socket is never blocked by a hook or a tool. Everything belonging to one call is still serialised, which is what makes `call.cause` mean anything. |
 | `WeakMap` internals kept off the instance | plain ivars behind declared readers | Nothing enumerates a Ruby object's fields by accident, so nothing has to be hidden from a snapshot. |
 | `test/index.test.ts` pins the exports by name | `sig/pinecall.rbs` and `rake rbs` | Ruby's answer to a `.d.ts`: adding to the surface means editing the signature on purpose. |
@@ -195,6 +199,7 @@ command on the wire. There is no LiveKit in this repository at all.
 | `call.dtmf(digits)` | `call.dtmf` | tones on the line |
 | `call.claim(code)` | `call.claim` | `call.claimed` sets `call.claimed`; a code that is not four digits never leaves |
 | `call.callback(number, at:, note:)` | `call.callback` | `callback.requested`; `at:` is the wire's `when` |
+| `call.opt_out(note)` | `call.opt_out` | the caller's number joins the org's do-not-call list |
 | `knowledge.search(q, k:)` · `call.search` | `POST /v1/calls/{id}/lookup` | the chunks, as `Found`; logged by the gateway |
 
 The call ending answers every verb still waiting (`the call ended before it was answered`).

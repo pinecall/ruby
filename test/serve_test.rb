@@ -77,6 +77,49 @@ class ServeTest < Minitest::Test
     assert_equal "production", @gateway.world
   end
 
+  def test_the_console_is_answered_its_panel_by_the_class_and_every_other_verb_is_the_clis
+    Dir.mktmpdir do |folder|
+      file = File.join(folder, "agent.rb")
+      File.write(file, <<~RUBY)
+        # La ficha, en la consola.
+        class ConFicha < Pinecall::Agent
+          panel "Ficha" do |who|
+            panel "Paciente" do
+              row "Teléfono", who.contact
+            end
+          end
+        end
+      RUBY
+      reading, @writing = IO.pipe
+      running = Thread.new do
+        Pinecall::Serve.main(["start", "--file", file, "--slug", "con-ficha"], out: @out, err: @err, env:, input: reading,
+                                                                                signals: Thread::Queue.new)
+      end
+      until_registered
+      @gateway.send_entry("con-ficha", "dev.request", { id: "dev_1", verb: "view.render", data: { contact: "+34600", call: "CA_1" } })
+      @gateway.send_entry("con-ficha", "dev.request", { id: "dev_2", verb: "goldens.roster", data: {} })
+      answers = [@gateway.next_frame("dev.answer"), @gateway.next_frame("dev.answer")].map { |frame| frame[:data] }
+      @writing.close
+      running.value
+
+      panel = { tag: "panel", title: "Paciente", children: [{ tag: "row", label: "Teléfono", value: "+34600" }] }
+      assert_includes answers, { id: "dev_1", result: { name: "Ficha", nodes: [panel] } }
+      assert_includes answers, { id: "dev_2", refused: { status: 404, detail: Pinecall::Serve::Viewing::ONLY_THE_VIEW } }
+    end
+  end
+
+  def test_a_class_that_draws_no_panel_is_a_404_the_console_falls_back_from
+    running = started
+    until_registered
+    @gateway.send_entry(SLUG, "dev.request", { id: "dev_1", verb: "view.render", data: { contact: "+34600", call: "CA_1" } })
+    answer = @gateway.next_frame("dev.answer")[:data]
+    @writing.close
+    running.value
+
+    assert_equal({ id: "dev_1", refused: { status: 404, detail: "#{SLUG} declares no view: nothing in this directory draws a panel" } },
+                 answer)
+  end
+
   def test_nothing_in_the_environment_is_a_sentence_and_exit_two
     code = Pinecall::Serve.main(["start", "--file", AGENT, "--slug", SLUG], out: @out, err: @err, env: {})
 

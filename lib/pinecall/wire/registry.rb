@@ -99,6 +99,7 @@ module Pinecall
         "call.hold" => "CallHold",
         "call.log" => "CallLog",
         "call.mute" => "CallMute",
+        "call.opt_out" => "CallOptOut",
         "call.transfer" => "CallTransfer",
         "call.unhold" => "CallUnhold",
         "call.unmute" => "CallUnmute",
@@ -120,7 +121,7 @@ module Pinecall
       EVENT_TYPES = %w[agent.configured agent.detached agent.draining agent.registered agent.state agent.transcript attention.answered attention.requested call.attached call.claimed call.dialing call.ended call.line call.ringing call.score call.started call.summary call.transferred callback.requested code.claimed code.issued confirm.declined confirm.granted confirm.request credits.exhausted custom dev.request docs.sources dtmf.received error event.received fleet.full log.caught_up log.gap memory.ops message.taken message.waiting metrics.avatar metrics.eot metrics.eou metrics.interruption metrics.llm metrics.realtime metrics.stt metrics.tts metrics.vad participant.joined participant.left participant.speaking pong prompt.changed room.opened room.sent spend.unusual state.changed supervisor.ended supervisor.released supervisor.said supervisor.took_over supervisor.transferred supervisor.whispered tool.call tool.result tools.changed track.published track.unpublished turn.agent turn.user user.state user.transcript vendor.switched].freeze
 
       # Every command an app may send.
-      COMMAND_TYPES = %w[agent.configure agent.drain agent.register agent.reply agent.say call.attention call.callback call.claim call.dial call.dtmf call.event call.hangup call.hold call.log call.mute call.transfer call.unhold call.unmute dev.answer participant.mute participant.remove ping prompt.set room.invite room.send session.configure state.set supervisor.verb tool.result tools.set].freeze
+      COMMAND_TYPES = %w[agent.configure agent.drain agent.register agent.reply agent.say call.attention call.callback call.claim call.dial call.dtmf call.event call.hangup call.hold call.log call.mute call.opt_out call.transfer call.unhold call.unmute dev.answer participant.mute participant.remove ping prompt.set room.invite room.send session.configure state.set supervisor.verb tool.result tools.set].freeze
 
       # Entries a store may drop and a slow reader may miss without harm: the entry's
       # own ephemeral flag defaults to this.

@@ -17,6 +17,7 @@ class ConformanceTest < Minitest::Test
     "participant.remove" => "Pinecall::CallWorld::Seat#remove",
     "call.log" => "Pinecall::CallWorld#log",
     "call.hangup" => "Pinecall::CallWorld#hangup",
+    "call.opt_out" => "Pinecall::CallWorld#opt_out",
     "call.transfer" => "Pinecall::CallWorld#transfer",
     "call.attention" => "Pinecall::CallWorld#attention",
     "call.hold" => "Pinecall::CallWorld#hold",

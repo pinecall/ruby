@@ -108,6 +108,13 @@ class CallWorldTest < Minitest::Test
     assert_equal "2026-10-07", @world.today
   end
 
+  def test_a_caller_who_asks_never_to_be_called_again_goes_on_the_do_not_call_list_with_the_note
+    @world.opt_out("pidió no volver a recibir llamadas")
+    @world.opt_out
+
+    assert_equal [["call.opt_out", { note: "pidió no volver a recibir llamadas" }], ["call.opt_out", {}]], @sent
+  end
+
   private
 
   def stub_const(name, value)

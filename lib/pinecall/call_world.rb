@@ -113,6 +113,12 @@ module Pinecall
       @send.call("call.log", { name: name.to_s, data: data.is_a?(Hash) ? data : { value: data } })
     end
 
+    # The caller asked never to be called again: their number joins the org's do-not-call list, and no
+    # call of the org reaches it until a consent is recorded. Tell them it is done.
+    def opt_out(note = nil)
+      @send.call("call.opt_out", note.nil? ? {} : { note: })
+    end
+
     # End the call; `call.ended` follows with reason `agent_hung_up`.
     def hangup(reason = nil)
       @send.call("call.hangup", reason.nil? ? {} : { reason: })

@@ -2,6 +2,7 @@
 
 require_relative "serve/loading"
 require_relative "serve/held"
+require_relative "serve/viewing"
 
 module Pinecall
   # The entry the one `pinecall` CLI starts a Ruby agent with: `start` holds the agents and serves
@@ -41,7 +42,9 @@ module Pinecall
       classes = flags.served.map { |served| [served, Loading.load_served(served)] }
       said(client, out:, err:, events: flags.events)
       mounted = classes.map do |served, klass|
-        Pinecall.mount(klass, client:, slug: served.slug, takes_unclaimed: !flags.console)
+        held = Pinecall.mount(klass, client:, slug: served.slug, takes_unclaimed: !flags.console)
+        held.agent.on_dev { |verb, data| Viewing.answer(klass, served.slug, verb, data) }
+        held
       end
       held = Held.new(client, mounted)
       asked = signals || trapped

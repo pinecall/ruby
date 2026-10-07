@@ -32,6 +32,17 @@ module Pinecall
   class DeclarationRefused < Error
   end
 
+  # A console's ask refused with a status: raised by an `on_dev` handler, answered as `refused`.
+  class DevRefused < Error
+    attr_reader :status, :detail
+
+    def initialize(status, detail)
+      @status = status
+      @detail = detail
+      super("#{status}: #{detail}")
+    end
+  end
+
   # A tool failed; the message is returned to the model as the tool result.
   class ToolFailed < Error
   end

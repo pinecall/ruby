@@ -51,11 +51,12 @@ module Pinecall
       @errors = []
       @entries = []
       @stops = []
+      @connects = []
       @listeners = Listeners.new { |error| on_error(error) }
       @connection = Connection.new(
         url:, api_key:, env:, ping_every:, backoff:,
         handlers: Connection::Handlers.new(
-          on_open: -> { @agents.each_value(&:open) },
+          on_open: -> { opened },
           on_entry: ->(entry) { took(entry) },
           on_error: ->(error) { on_error(error) },
           on_heartbeat: -> { @agents.each_value { |agent| guarded { agent.ping } } }
@@ -99,6 +100,13 @@ module Pinecall
     def on_entries(&listener)
       @entries << listener
       -> { @entries.delete(listener) }
+    end
+
+    # Called each time the socket is up and every agent on it registered: the first connect and every
+    # reconnect after a drop. Returns a lambda that unsubscribes.
+    def on_connected(&listener)
+      @connects << listener
+      -> { @connects.delete(listener) }
     end
 
     # Called when a member of the org stops this app: the socket is closed for good. Returns a
@@ -171,6 +179,12 @@ module Pinecall
     def stop?(entry) = entry.type == "error" && entry.agent.to_s.empty? && entry.data[:code] == STOPPED
 
     # With no stop listener the stop is reported as an error, so it is never silent.
+    # Every agent registered again, then whoever asked to know.
+    def opened
+      @agents.each_value(&:open)
+      @connects.each { |listener| guarded { listener.call } }
+    end
+
     def stopped(why)
       @connection.close
       return on_error(NotConnected.new(why)) if @stops.empty?

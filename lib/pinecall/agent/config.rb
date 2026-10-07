@@ -91,6 +91,8 @@ module Pinecall
             tools:,
             state_fields: state_field_specs,
             events: event_specs,
+            # Only the name: the panel is drawn on demand, by `view.render`.
+            view: (declared_panel && { name: declared_panel.name }),
             uses_knowledge: (true if Searching.searches?(self))
           }.compact
         end

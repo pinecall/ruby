@@ -57,6 +57,16 @@ version number is the human's call.
   agent can be talked to from a page.
 
 ### Added
+- **The console's panel: `panel "Cliente" do |who| … end`**, as the TypeScript package's `@view`.
+  The block draws with the console's catalogue — `panel`, `rows`, `row`, `stat`, `table`, `badge`,
+  `text` — and the nodes are the same JSON, drawn by the console's own parts. The gateway is told the
+  panel's name; serve's `start` answers `view.render` with it, and refuses every other console verb
+  as the TypeScript entry does. A class without one is the 404 the console falls back from.
+- **`agent.on_dev { |verb, data| … }`** answers a console's ask (raise `DevRefused` to refuse with a
+  status); without one an ask is a 501 saying this process answers none. It replaces the fixed "a
+  Ruby agent draws no panel".
+- **`client.on_connected`**, each time the socket is up and every agent on it registered.
+- **`call.opt_out(note)`**: the caller's number joins the org's do-not-call list (`call.opt_out`).
 - **`Pinecall::Serve`, the entry the one `pinecall` CLI starts a Ruby agent with**:
   `start --file --slug [--console] [--events] [--prod]` holds the agents (its door from
   `PINECALL_URL`, `PINECALL_KEY`, `PINECALL_ENV` alone; the wire entry by entry on stdout with

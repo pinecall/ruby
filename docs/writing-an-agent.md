@@ -208,6 +208,7 @@ call.hold                               # and call.unhold
 call.dtmf("1#")
 call.claim("4821")                      # the page showing 4821 follows this call; call.claimed says so
 call.callback("+34600000001", at: "mañana por la tarde", note: "presupuesto")
+call.opt_out("no quiere más llamadas")  # their number joins the org's do-not-call list
 call.hangup("done")
 log "resultado", { referencia: booking[:referencia] }
 knowledge.search("horario de verano", k: 3)   # the bases attached to the agent, searched for this call
@@ -221,3 +222,41 @@ then and not mid-call. A view can ask `call[:claimed]` for the page code this ca
 
 There is no LiveKit here and no escape hatch to it: a need the room cannot express is a new
 command with a name.
+
+## The panel beside a conversation: `panel`
+
+The console draws a pane beside every thread in **Calls**. Without a panel it is what the console
+itself knows — how many conversations there have been with this person, what they came in by, how
+long the agent spent on the line with them. A class that declares a panel has **its own drawn over
+that**, and that is where the business's data goes: the customer's file, their orders, the balance.
+
+```ruby
+class ClinicaNorte < Pinecall::Agent
+  def self.crm = Crm.new(ENV.fetch("CRM_URL"))
+
+  panel "Cliente" do |who|
+    client = crm.find(who.contact)
+    next panel("Sin ficha") { text "No está en el CRM." } if client.nil?
+
+    panel client.name do
+      rows do
+        row "Alta", client.since
+        row "Zona", client.area
+      end
+      stat "Servicios", client.jobs.length
+      table columns: %w[fecha servicio importe], rows: client.jobs
+      badge client.debt.positive? ? "con saldo" : "al día", tone: client.debt.positive? ? :warn : :good
+    end
+  end
+end
+```
+
+It is the TypeScript package's `@view`, and what reaches the console is the same: a tree of the
+closed catalogue — `panel`, `rows`, `row`, `stat`, `table`, `badge`, `text` — drawn by the console's
+own parts, in the theme the person reading chose; nothing a tenant writes reaches the page's
+styling, its scripts or its key. `who` is the conversation — `agent`, `contact`, `call` — and nothing
+else: the panel is read beside threads that ended weeks ago, so it fetches what it shows. It runs in
+your process, under `pinecall start`; a method the block calls that is not one of the catalogue's is
+the class's own (`crm` above). The gateway is told only the panel's name when the class registers;
+a panel that raises is said in the pane, in its own words, and the conversation's screen keeps
+working. One per class, and a subclass does not inherit it.
