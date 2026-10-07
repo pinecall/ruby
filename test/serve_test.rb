@@ -8,7 +8,7 @@ require_relative "client/fake_gateway"
 # The entry the one CLI starts a Ruby agent with: the wire on stdout, its door from the environment,
 # a drained leave, and a prompt that needs nothing.
 class ServeTest < Minitest::Test
-  AGENT = File.expand_path("../examples/clinica_norte/agent.rb", __dir__)
+  AGENT = File.expand_path("../examples/clinica_norte/agents/clinica-norte/agent.rb", __dir__)
   SLUG = "clinica-norte"
 
   def setup
@@ -93,8 +93,8 @@ class ServeTest < Minitest::Test
   end
 
   def test_a_prompt_needs_no_gateway_and_opens_in_the_state_its_pairs_name
-    code = Pinecall::Serve.main(["prompt", "--file", AGENT, "--slug", SLUG, "--state", 'stage="book"', "--show-machine"],
-                                out: @out, err: @err, env: {})
+    code = Pinecall::Serve.main(["prompt", "--file", AGENT, "--slug", SLUG, "--state", 'stage="book"',
+                                 "--state", 'patient={"name":"Ana García"}', "--show-machine"], out: @out, err: @err, env: {})
 
     assert_equal 0, code
     assert_includes @out.string, "── tools ── stage: book"
