@@ -2,7 +2,7 @@
 
 require "test_helper"
 require "tmpdir"
-require_relative "rest_gateway"
+require_relative "../client/rest_gateway"
 
 class CLIKeysTest < Minitest::Test
   # Must never appear in any output.

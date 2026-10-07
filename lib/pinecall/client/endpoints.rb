@@ -15,6 +15,9 @@ module Pinecall
       # `GET /v1/agents/{slug}/calls`: the agent's log (registrations, configs, errors).
       def agent_log(base, agent) = door(base, "/v1/agents/#{CGI.escape(agent)}/calls")
 
+      # `POST /v1/calls/{id}/lookup`: a platform tool run for one call this app serves.
+      def lookup(base, call) = door(base, "/v1/calls/#{CGI.escape(call)}/lookup")
+
       # `GET /v1/knowledge`
       def knowledge_bases(base) = door(base, "/v1/knowledge")
 

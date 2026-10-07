@@ -86,7 +86,8 @@ module Pinecall
             language: config[:language]&.to_s,
             tools:,
             state_fields: state_field_specs,
-            events: event_specs
+            events: event_specs,
+            uses_knowledge: (true if Searching.searches?(self))
           }.compact
         end
 

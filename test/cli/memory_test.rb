@@ -2,7 +2,7 @@
 
 require "test_helper"
 require "tmpdir"
-require_relative "rest_gateway"
+require_relative "../client/rest_gateway"
 
 class CLIMemoryTest < Minitest::Test
   # A TTY stdin with scripted input.

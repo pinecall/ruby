@@ -6,6 +6,8 @@ require_relative "agent/state"
 require_relative "agent/spec"
 require_relative "agent/tools"
 require_relative "agent/config"
+require_relative "agent/knowledge"
+require_relative "agent/searching"
 
 module Pinecall
   # Base class for an agent: fields are state, `tool` methods are the model's tools, comments
@@ -64,6 +66,9 @@ module Pinecall
 
     # Whether this instance is serving a call.
     def call? = !@call.nil?
+
+    # The knowledge bases attached to this agent: `knowledge.search("…")` inside a tool.
+    def knowledge = Knowledge.new(self)
 
     # Speak `text` verbatim now, as a `turn.agent`.
     def say(text, **options) = call.say(text, **options)

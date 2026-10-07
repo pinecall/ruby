@@ -33,6 +33,13 @@ version number is the human's call.
   `knowledge/clinica.md` is gone: that page lives in the agent's settings.
 
 ### Added
+- **The whole call.** `call.transfer(to, mode:)` and `call.attention(reason, wait_s:)` block until
+  the log answers (a `Transferred`, an `Attended`); `call.hold`, `unhold`, `dtmf(digits)`,
+  `claim(code)` (then `call.claimed`) and `callback(number, at:, note:)` are one command each.
+  `knowledge.search(query, k:)` — or `call.search` — searches the bases attached to the agent
+  through the gateway, and a class that searches registers `uses_knowledge`. The view is rendered
+  again on the caller's turn, on a claim and on recall, and reads `call[:claimed]`. The call ending
+  answers every verb still waiting. `Testing::Gateway#finds` and `#searched` for ring 0.
 - The wire reads `call.started`'s `worker`, which the runtime writes on every spoken call: until
   now a Ruby app refused a phone call's first entry.
 - The wire reads `call.started`'s `state`, the state a call opens in when its opener asked for

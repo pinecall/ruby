@@ -123,6 +123,7 @@ module Pinecall
     def sealed?: () -> bool
     def call: () -> CallWorld
     def call?: () -> bool
+    def knowledge: () -> Agent::Knowledge
     def say: (String, **untyped) -> bool
     def reply: (String, **untyped) -> bool
     def log: (String | Symbol, ?untyped) -> untyped
@@ -151,16 +152,75 @@ module Pinecall
     end
   end
 
+  class Agent
+    class Knowledge
+      def initialize: (Agent) -> void
+      def search: (String, ?k: Integer?) -> Array[CallWorld::Found]
+    end
+
+    module Searching
+      SEARCHES: Array[Array[String]]
+      def self.searches?: (Class) -> bool
+      def self.in_source?: (String) -> bool
+    end
+  end
+
   class CallWorld
+    LANDS_WITHIN_S: Integer
+    TRANSFER_WITHIN_S: Integer
+    A_MOMENT_S: Integer
+    NO_ANSWER: String
+    THE_CALL_ENDED: String
+    NO_GATEWAY_TO_SEARCH: String
+
+    class Transferred
+      attr_reader to: String
+      attr_reader mode: String?
+      attr_reader ok: bool
+      attr_reader error: String?
+      def initialize: (to: String, mode: String?, ok: bool, error: String?) -> void
+    end
+
+    class Attended
+      attr_reader ok: bool
+      attr_reader by: Hash[Symbol, untyped]?
+      attr_reader error: String?
+      def initialize: (ok: bool, by: Hash[Symbol, untyped]?, error: String?) -> void
+    end
+
+    class Found
+      attr_reader path: String
+      attr_reader heading: String?
+      attr_reader text: String
+      def initialize: (path: String, heading: String?, text: String) -> void
+    end
+
+    class Waiting
+      def wait: [T] (Symbol, Numeric, T) { () -> void } -> T
+      def settle: (Symbol, untyped) -> void
+      def end_all: () -> void
+    end
+
     attr_reader id: String
     attr_reader contact: String?
     attr_reader from: String?
     attr_reader channel: String?
+    attr_reader today: String
+    attr_reader claimed: String?
     attr_accessor cause: Hash[Symbol, untyped]?
-    def today: () -> String
+    def initialize: (id: String, ?contact: String?, ?from: String?, ?channel: String?, ?today: String, ?claimed: String?,
+                     ?searching: (^(String, Integer?) -> Array[Hash[Symbol, untyped]])?) { (String, Hash[Symbol, untyped]) -> untyped } -> void
     def numbered: () -> Integer
     def say: (String, **untyped) -> bool
     def reply: (String, **untyped) -> bool
+    def search: (String, ?k: Integer?) -> Array[Found]
+    def transfer: (String, ?mode: (String | Symbol)?) -> Transferred
+    def attention: (String, wait_s: Numeric) -> Attended
+    def hold: () -> untyped
+    def unhold: () -> untyped
+    def dtmf: (String) -> untyped
+    def claim: (String) -> untyped
+    def callback: (String, ?at: String?, ?note: String?) -> untyped
     def send_to: (String, untyped, ?to: Array[String]?) -> untyped
     def participant: (String) -> untyped
     def invite: (String, ?kind: String?) -> untyped
@@ -188,6 +248,7 @@ module Pinecall
     def observe: (Hash[Symbol, String], **untyped) { (untyped) -> void } -> void
     def history: (Hash[Symbol, String], **untyped) -> untyped
     def knowledge: () -> Client::Knowledge
+    def search: (String, String, ?k: Integer?) -> Array[Hash[Symbol, untyped]]
     def memory_of: (String) -> Client::ContactMemory
     def memory: () -> Client::Memory
     def provider_keys: () -> Client::ProviderKeys

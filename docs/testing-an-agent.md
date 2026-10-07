@@ -36,6 +36,7 @@ every command the agent sent, and lets the test say what happened next.
 | `call.said("el martes me viene bien")` | the caller said something |
 | `call.fact("agenda.changed", { slots: [] })` | a fact from the tenant's backend. `from: "participant"` for a browser |
 | `call.ended` | the call is over, `on_end` runs |
+| `gateway.finds({ path:, heading:, text: }, …)` | what every search answers with; `gateway.searched` is what was asked, `{ call:, query:, k: }` each |
 
 ## Asking what the agent said
 

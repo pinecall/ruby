@@ -12,7 +12,8 @@ module Pinecall
   # The view carries the operator's authority, so never splice external content (memory,
   # knowledge results) into it; that reaches the model as tool results in the history.
   #
-  # In scope: every state field by name, `resumed`, `call[:channel]`, `remembers?(text)`.
+  # In scope: every state field by name, `resumed`, `call[:channel]`, `call[:claimed]` (the page
+  # code this call claimed, or nil), `remembers?(text)`.
   class View
     # Default location: `views/<slug>.erb` next to the class's file.
     def self.beside(file, slug) = File.join(File.dirname(file), "views", "#{slug}.erb")

@@ -186,4 +186,65 @@ class BridgeTest < Minitest::Test
     assert_equal "Ana Sanz", @mounted.serving("CA_first").patient
     assert_equal "Marta Ruiz", @mounted.serving("CA_second").patient
   end
+
+  # Busca en la base de conocimiento.
+  class Buscadora < Pinecall::Agent
+    web true
+    language :es
+    state :said, ""
+    view template: <<~ERB
+      <% if remembers?("alergia") -%>
+      Recuerda su alergia.
+      <% end -%>
+      <% if call[:claimed] -%>
+      Ve la página <%= call[:claimed] %>.
+      <% end -%>
+    ERB
+
+    # Busca el horario.
+    tool
+    def horario(q:) = knowledge.search(q, k: 2).map(&:text)
+  end
+
+  def test_a_search_goes_through_the_gateway_for_this_call
+    gateway = Pinecall::Testing::Gateway.new.finds({ path: "horario.md", heading: "Horario", text: "de 9 a 18" })
+    Pinecall.mount(Buscadora, client: gateway)
+    call = gateway.call_started
+
+    answer = call.tool("horario", q: "cuándo abren")
+
+    assert_equal ["de 9 a 18"], answer[:output]
+    assert_equal [{ call: call.id, query: "cuándo abren", k: 2 }], gateway.searched
+  end
+
+  def test_a_class_that_searches_says_so_when_it_registers
+    gateway = Pinecall::Testing::Gateway.new
+    Pinecall.mount(Buscadora, client: gateway).agent.open
+
+    configured = gateway.commands.find { |sent| sent.type == "agent.configure" }
+    assert_equal true, configured.data[:config][:uses_knowledge]
+  end
+
+  def test_what_memory_recalled_reaches_the_view
+    gateway = Pinecall::Testing::Gateway.new
+    Pinecall.mount(Buscadora, client: gateway)
+    call = gateway.call_started
+    recalled = { op: "recall", facts: [{ text: "alergia a la penicilina", category: "salud" }], took_ms: 3.0 }
+
+    gateway.deliver("memory.ops", { ops: [recalled] }, call: call.id)
+    gateway.settle
+
+    assert_includes call.prompt, "Recuerda su alergia."
+  end
+
+  def test_a_claim_reaches_the_view_once_the_log_says_it_took
+    gateway = Pinecall::Testing::Gateway.new
+    Pinecall.mount(Buscadora, client: gateway)
+    call = gateway.call_started
+
+    gateway.deliver("call.claimed", { code: "4821", via: "agent" }, call: call.id)
+    gateway.settle
+
+    assert_includes call.prompt, "Ve la página 4821."
+  end
 end

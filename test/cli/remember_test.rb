@@ -2,7 +2,7 @@
 
 require "test_helper"
 require "tmpdir"
-require_relative "rest_gateway"
+require_relative "../client/rest_gateway"
 
 class CLIRememberTest < Minitest::Test
   Remember = Pinecall::CLI::Remember

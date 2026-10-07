@@ -2,7 +2,7 @@
 
 require "test_helper"
 require "tmpdir"
-require_relative "rest_gateway"
+require_relative "../client/rest_gateway"
 
 class CLIKnowledgeTest < Minitest::Test
   EXAMPLE = File.expand_path("../../examples/clinica_norte", __dir__)

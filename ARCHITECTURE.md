@@ -47,7 +47,11 @@ lib/pinecall/
   view.rb                    the ERB template and what it is rendered in
   lang.rb                    the framework's own words: the rules and the protocols, es · en
   blocks.rb                  the prompt as four named blocks in two regions: the layout, `render`, `show`
-  call_world.rb              the live call as the class holds it: the room, the turns, six verbs
+  agent/knowledge.rb         `knowledge.search`: the bases attached, searched for the call in hand
+  agent/searching.rb         whether a class searches at all, read off its source with Ripper's tokens
+  call_world.rb              the live call as the class holds it: its verbs, and the entries folded in
+  call_world/room.rb         who is in the room, a seat's two verbs, the turns
+  call_world/answers.rb      what a verb waits for and what it gets: a transfer, a supervisor, a search
   bridge.rb                  `mount`: one instance per call, and the sync that sends what changed
   client.rb                  `Pinecall::Client`: one socket, the agents on it, observe · history
   client/connection.rb       the WS: the key at the door, backoff on the way back, a ping
@@ -98,6 +102,9 @@ gives that TypeScript does not, or what it takes away.
 | `Camel<T>`, `toCamel`, `toSnake` — a whole conversion layer | *nothing* | The wire is snake_case and so is Ruby. The layer does not exist here. |
 | `render()`, a method on the class, returning JSX | an **ERB template** beside the class, `views/<slug>.erb`, rendered with the instance in scope | The same sentence — the object renders itself — in each language's own idiom. A TypeScript class renders in a method because JSX is an expression; a Ruby class renders in a view because that is what a view *is* here, and it costs no build step: `pinecall prompt` reads the file a person edited. |
 | `THE_WORLDS` and `refuseTheEnvironment`: a field of the world's on the probe instance, refused when `load.ts` loads the class | `Config::THE_WORLDS`, the same table word for word, and a class macro per field that raises `DeclarationRefused` | TypeScript can only see a field once an instance exists, so it builds one to look. Ruby's config words are calls in the class body, so the refusal is the call itself: it fires on the line that wrote it, while the file is still loading, with the same sentence. |
+| `searching.ts`: the source parsed with oxc for a `this.knowledge` member expression | `Searching`: Ripper's tokens for `knowledge . search` or `call . search` | Ripper is in the stdlib and a string or a comment is one token of another kind, so a word in prose never counts. No dependency, the same answer as an AST walk. |
+| a `Promise` per waiting verb, settled by the entry that answers it | a `Thread::Queue` per waiting verb (`CallWorld::Waiting`), popped with a ceiling | The tool that asked runs on its own thread, so blocking it is the honest shape: `transfer` returns when the log says how it went, or at 90 s. |
+| `searching(query, k)` handed by the bridge, `pc.search` over `POST /v1/calls/{id}/lookup` | the same lambda, `Client#search` over the same door | The search is the gateway's for the call in hand; the class only asks. |
 | `this.remembers("médico habitual")` inside `render()` | `remembers?("médico habitual")` in the template | The same question, asked of the runtime's answer, in each language's own punctuation. Neither prints the fact: a fact reaches the model as a `recall` tool result, in the history, and the view only branches on it. |
 | `pinecall knowledge push`, `pinecall memory` in `src/cli`, on the login path | the same verbs on `Client::Rest`, with the key `cli/env.rb` resolves for every verb | One resolution order for the socket and the REST doors; a refusal is printed as the gateway wrote it. |
 | `Blocks = { blocks }`; the layout is `Block[]` in send order | `Blocks = Data.define(:blocks, :history)`, `Block = Data.define(:name, :region, :text)` | Ruby keeps the history on the same value, because `pinecall prompt` prints it between the regions and a `collapse` is the one thing the app knows about the turns. |
@@ -191,6 +198,15 @@ command on the wire. There is no LiveKit in this repository at all.
 | `call.participant(id).mute` / `.remove` | `participant.mute` / `.remove` | removing the caller ends the call |
 | `call.invite(to)` | `room.invite` | a second SIP leg, or a seat |
 | `log(name, data)` | `call.log` | a `custom` entry with a `seq` like anything else |
+| `call.transfer(to, mode:)` | `call.transfer` | `call.transferred` — returns a `Transferred`; `ok: false` after 90 s with no word |
+| `call.attention(reason, wait_s:)` | `call.attention` | `attention.answered` — returns an `Attended`, or lapses `wait_s` + 15 s later |
+| `call.hold` / `call.unhold` | `call.hold` / `call.unhold` | hold music, and back |
+| `call.dtmf(digits)` | `call.dtmf` | tones on the line |
+| `call.claim(code)` | `call.claim` | `call.claimed` sets `call.claimed`; a code that is not four digits never leaves |
+| `call.callback(number, at:, note:)` | `call.callback` | `callback.requested`; `at:` is the wire's `when` |
+| `knowledge.search(q, k:)` · `call.search` | `POST /v1/calls/{id}/lookup` | the chunks, as `Found`; logged by the gateway |
+
+The call ending answers every verb still waiting (`the call ended before it was answered`).
 
 ## 8. The bridge, step by step
 
@@ -214,6 +230,9 @@ command on the wire. There is no LiveKit in this repository at all.
    carrying `error`, because a turn that never gets one waits forever.
 7. **An outside fact** — the pair (name, source) is checked against `accepts`. Facts run one at a
    time, in the order they arrived, on that call's own thread.
+   **The view again** — on the caller's turn (the view answers the turn being taken), on
+   `call.claimed` (the caller can see the page), and on `memory.ops`, whose recalled facts become
+   what `remembers?` answers from: none of them is a state change, so nothing else would render.
 8. **`call.ended`** → nothing may render for this call any more; `on_end` runs, and the log stays
    open one hook longer so a farewell line still lands.
 

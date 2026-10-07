@@ -198,9 +198,22 @@ reply "Dile que ya está reservado."     # the model speaks, guided by words nob
 call.send_to("cart", { total: 42 })     # a payload in the browser
 call.participant(id).mute
 call.invite("+34910000001", kind: :supervisor)
+call.transfer("+34910000002")           # blocks until the log says how it went: a Transferred
+call.attention("quiere hablar con una persona", wait_s: 60)   # an Attended: who took the line
+call.hold                               # and call.unhold
+call.dtmf("1#")
+call.claim("4821")                      # the page showing 4821 follows this call; call.claimed says so
+call.callback("+34600000001", at: "mañana por la tarde", note: "presupuesto")
 call.hangup("done")
 log "resultado", { referencia: booking[:referencia] }
+knowledge.search("horario de verano", k: 3)   # the bases attached to the agent, searched for this call
 ```
+
+`transfer` and `attention` block the tool that called them until the log answers — `ok: false`
+and a sentence when nobody did, or when the call ended first. `knowledge.search` (or
+`call.search`) asks the gateway, which searches the bases attached to the agent and logs what it
+found; a class that searches says so when it registers, so a world with no base attached is refused
+then and not mid-call. A view can ask `call[:claimed]` for the page code this call claimed.
 
 There is no LiveKit here and no escape hatch to it: a need the room cannot express is a new
 command with a name.

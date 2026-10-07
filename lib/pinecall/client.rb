@@ -108,6 +108,14 @@ module Pinecall
     # The org's own provider (BYOK) keys.
     def provider_keys = ProviderKeys.new(url: @url, api_key: @api_key)
 
+    # Search the agent's knowledge bases on behalf of a call this client serves; the gateway runs
+    # the search and logs it. Returns the chunks as the gateway answered them.
+    def search(call, query, k: nil)
+      input = k.nil? ? { query: } : { query:, k: }
+      answer = Rest.post(Endpoints.lookup(@url, call), { tool: "search", input: }, api_key: @api_key)
+      answer.dig(:output, :chunks) || []
+    end
+
     # ── used by agents ───────────────────────────────────────────────────────
 
     # Send one command, validated against its schema.

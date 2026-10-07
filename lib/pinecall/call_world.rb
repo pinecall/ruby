@@ -1,38 +1,34 @@
 # frozen_string_literal: true
 
+require_relative "call_world/room"
+require_relative "call_world/answers"
+
 module Pinecall
-  # A room participant, as reported by the room's entries.
-  Participant = Struct.new(:identity, :kind, :name, :joined_at, :speaking, keyword_init: true)
-
-  # A finished conversation turn.
-  Turn = Data.define(:who, :text, :speech_id, :interrupted, :at)
-
   # The call as an agent sees it: room, turns, and the commands it can send.
   #
   # State is reduced from received entries; each verb is one wire command. No LiveKit access by
   # design: a missing capability should become a new command of the wire.
   class CallWorld
-    # Seconds `say`/`reply` wait for their turn before returning false (the call may have ended).
-    LANDS_WITHIN_S = 30
+    attr_reader :id, :contact, :from, :channel, :room, :turns, :today, :claimed
 
-    attr_reader :id, :contact, :from, :channel, :room, :turns
-
-    # `send` puts one command on the wire for this call; supplied by the bridge.
-    def initialize(id:, contact: nil, from: nil, channel: nil, &send)
+    # `send` puts one command on the wire for this call; `searching` asks the gateway to search for
+    # it. Both are supplied by the bridge. `today` is the day the call opened, YYYY-MM-DD.
+    def initialize(id:, contact: nil, from: nil, channel: nil, today: Time.now.strftime("%Y-%m-%d"), claimed: nil,
+                   searching: nil, &send)
       @id = id
       @contact = contact
       @from = from
       @channel = channel
+      @today = today
+      @claimed = claimed
+      @searching = searching
       @send = send
       @room = { participants: [], caller: nil }
       @turns = []
-      @waiting = []
+      @waiting = Waiting.new
       @cause = nil
       @events = 0
     end
-
-    # The call's start date, YYYY-MM-DD in the process timezone.
-    def today = @today ||= Time.now.strftime("%Y-%m-%d")
 
     # The external event being handled, if any; logged as the cause of state changes.
     attr_accessor :cause
@@ -44,12 +40,53 @@ module Pinecall
 
     # Speak `text` verbatim now. Returns true once the turn arrives, false after `LANDS_WITHIN_S`.
     def say(text, **options)
-      lands { @send.call("agent.say", { text: }.merge(options)) }
+      @waiting.wait(:spoken, LANDS_WITHIN_S, false) { @send.call("agent.say", { text: }.merge(options)) }
     end
 
     # Make the model speak now, guided by instructions the caller does not hear.
     def reply(instructions, **options)
-      lands { @send.call("agent.reply", { instructions: }.merge(options)) }
+      @waiting.wait(:spoken, LANDS_WITHIN_S, false) { @send.call("agent.reply", { instructions: }.merge(options)) }
+    end
+
+    # Search the knowledge bases attached to this agent; the gateway runs it and logs the results.
+    # `k` defaults to each base's own setting.
+    def search(query, k: nil)
+      raise Error, NO_GATEWAY_TO_SEARCH if @searching.nil?
+
+      @searching.call(query, k).map { |chunk| Found.new(path: chunk[:path], heading: chunk[:heading], text: chunk[:text]) }
+    end
+
+    # Transfer the caller to a number: sent on (cold) on a phone call, dialled into the call (warm)
+    # in a browser; `mode:` forces one. `ok: false` means the caller is still with the agent.
+    def transfer(to, mode: nil)
+      wanted = mode.nil? ? { to: } : { to:, mode: mode.to_s }
+      lapsed = Transferred.new(to:, mode: nil, ok: false, error: NO_ANSWER)
+      @waiting.wait(:transfers, TRANSFER_WITHIN_S, lapsed) { @send.call("call.transfer", wanted) }
+    end
+
+    # Ask for a supervisor; the caller waits until someone takes the line or `wait_s` passes.
+    # `reason` is shown to the supervisor. The calling tool runs the whole time.
+    def attention(reason, wait_s:)
+      lapsed = Attended.new(ok: false, by: nil, error: NO_ANSWER)
+      @waiting.wait(:asks, wait_s + A_MOMENT_S, lapsed) { @send.call("call.attention", { reason:, wait_s: }) }
+    end
+
+    # Put the caller on hold: they hear hold music and the agent neither speaks nor listens.
+    def hold = @send.call("call.hold", {})
+
+    # Take the caller off hold.
+    def unhold = @send.call("call.unhold", {})
+
+    # Send DTMF tones: `0-9`, `*`, `#`, and `,` for a pause.
+    def dtmf(digits) = @send.call("call.dtmf", { digits: })
+
+    # Bind this call to the four-digit code shown on the caller's page; `claimed` is set when the
+    # log says it took. A code that is not four digits never reaches the wire.
+    def claim(code) = @send.call("call.claim", { code: })
+
+    # Record a callback request in the call's log for the backend to dial. `at:` is the wire's `when`.
+    def callback(number, at: nil, note: nil)
+      @send.call("call.callback", { number:, when: at, note: }.compact)
     end
 
     # Send a payload to browsers in the room. The log records its size, not its content.
@@ -81,14 +118,18 @@ module Pinecall
 
     # ── entries ──────────────────────────────────────────────────────────────
 
-    # Apply one log entry to the room and turn state.
+    # Apply one log entry to the room, the turns and the verbs waiting on it.
     def take(type, data, at)
       case type
       when "participant.joined" then joined(data, at)
       when "participant.left" then @room[:participants].reject! { |one| one.identity == data[:identity] }
       when "participant.speaking" then speaking(data)
       when "turn.user" then remember("user", data, at)
-      when "turn.agent" then settle(remember("agent", data, at))
+      when "turn.agent" then remember("agent", data, at).tap { @waiting.settle(:spoken, true) }
+      when "call.claimed" then @claimed = data[:code].to_s
+      when "call.transferred" then @waiting.settle(:transfers, transferred(data))
+      when "attention.answered" then @waiting.settle(:asks, Attended.new(ok: data[:ok] == true, by: data[:by], error: data[:error]))
+      when "call.ended" then @waiting.end_all
       end
     end
 
@@ -119,32 +160,8 @@ module Pinecall
       turn
     end
 
-    # The wire has no id linking a `say` to its turn, so the oldest waiter takes the next agent turn.
-    def settle(turn)
-      waiting = @waiting.shift
-      waiting&.push(turn)
-      turn
-    end
-
-    def lands
-      waiting = Thread::Queue.new
-      @waiting << waiting
-      yield
-      !waiting.pop(timeout: LANDS_WITHIN_S).nil?
-    ensure
-      @waiting.delete(waiting)
-    end
-
-    # A participant handle. Removing the caller ends the call.
-    class Seat
-      def initialize(identity, send)
-        @identity = identity
-        @send = send
-      end
-
-      def mute(muted: true) = @send.call("participant.mute", { identity: @identity, muted: })
-
-      def remove = @send.call("participant.remove", { identity: @identity })
+    def transferred(data)
+      Transferred.new(to: data[:to].to_s, mode: data[:mode], ok: data[:ok] == true, error: data[:error])
     end
   end
 end

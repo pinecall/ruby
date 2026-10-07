@@ -22,13 +22,15 @@ module Pinecall
     # One served call: its instance, what was last sent, and a thread running its jobs in order.
     class Live
       attr_reader :agent, :world, :sent, :stops
-      attr_accessor :tools_shown
+      # What memory recalled about this caller in this call: what `remembers?` answers from.
+      attr_accessor :tools_shown, :remembered
 
       def initialize(agent, world)
         @agent = agent
         @world = world
         @sent = {}
         @tools_shown = nil
+        @remembered = []
         @stops = {}
         @work = Thread::Queue.new
         @thread = Thread.new { work }
@@ -72,7 +74,7 @@ module Pinecall
       probe = klass.new
       options = klass.wire_config(tools: tools_for(probe, live)).merge(takes_unclaimed:)
       agent = client.agent(name, **options)
-      agent.on("call.started") { |_data, call| start(klass, live, call, agent, last, opening) }
+      agent.on("call.started") { |_data, call| start(klass, live, call, client, last, opening) }
       agent.on("call.ended") { |_data, call| finish(live, call) }
       Mounted.new(slug: name, agent:, options:, live:)
     end
@@ -91,11 +93,12 @@ module Pinecall
 
     # Build the instance and run `on_call` before listening, so the first prompt is sent once
     # rather than once per field.
-    def start(klass, live, call, agent, last, opening)
+    def start(klass, live, call, client, last, opening)
       instance = klass.new.seal
       instance.reads_last_from(last) unless last.nil?
-      world = CallWorld.new(id: call.id, contact: call.contact&.dig(:id) || call.from,
-                            from: call.from, channel: call.channel) do |type, data|
+      searching = ->(query, k) { client.search(call.id, query, k:) }
+      world = CallWorld.new(id: call.id, contact: call.contact&.dig(:id) || call.from, from: call.from,
+                            channel: call.channel, today: call.today, searching:) do |type, data|
         call.command(type, data)
       end
       instance.serving(world)
@@ -107,12 +110,12 @@ module Pinecall
         instance.start_in(wanted) unless wanted.nil?
         call.set_state(instance.snapshot)
         sync(serving, call)
-        listen(serving, call, agent)
+        listen(serving, call)
       end
     end
 
     # Re-sync the prompt on every state change.
-    def listen(serving, call, agent)
+    def listen(serving, call)
       instance = serving.agent
       serving.stops[:state] = instance.on_change do |change|
         call.set_state(instance.snapshot, [change.field])
@@ -124,13 +127,32 @@ module Pinecall
       serving.stops[:log] = instance.on_log { |entry| call.log(entry.name, as_object(entry.data)) }
       serving.stops[:entries] = call.on_any do |event|
         serving.world.take(event.type, event.data, Time.now.to_f)
-        received(serving, agent, event.data) if event.type == "event.received"
+        received(serving, event.data) if event.type == "event.received"
+        rerendered(serving, call, event)
+      end
+    end
+
+    # The view answers the turn being taken, not the one before it; a claim lets the caller see the
+    # page; recall is not state, so nothing else would render what it brought.
+    def rerendered(serving, call, event)
+      case event.type
+      when "turn.user", "call.claimed" then sync(serving, call)
+      when "memory.ops"
+        serving.remembered = words_recalled(event.data)
+        sync(serving, call)
+      end
+    end
+
+    # Each recalled fact's text and category; a `remember` op stores this call's facts, it surfaces none.
+    def words_recalled(data)
+      (data[:ops] || []).select { |op| op[:op] == "recall" }.flat_map do |op|
+        (op[:facts] || []).flat_map { |fact| [fact[:text], fact[:category] || ""] }
       end
     end
 
     # Drop events whose (name, source) the class did not declare: an `:app` event arriving from
     # a browser could be spoofed.
-    def received(serving, agent, fact)
+    def received(serving, fact)
       name = fact[:name].to_s
       allowed = agent_class(serving).declared_events[name]
       unless allowed&.include?(fact[:source].to_s)
@@ -162,7 +184,8 @@ module Pinecall
     # Send only blocks whose text changed since this call's last send: identical re-sends waste
     # the provider's prompt cache. Unsent blocks count as empty.
     def sync(serving, call)
-      rendered = Prompt.render(serving.agent, line: { channel: call.channel || "web", from: call.from })
+      line = { channel: call.channel || "web", from: call.from, claimed: serving.world.claimed }
+      rendered = Prompt.render(serving.agent, remembered: serving.remembered, line:)
       rendered.blocks.each do |block|
         next if block.text == serving.sent.fetch(block.name, "")
 

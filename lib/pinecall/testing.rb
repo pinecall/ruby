@@ -40,7 +40,7 @@ module Pinecall
 
       # Deliver a caller turn.
       def said(text)
-        @gateway.deliver("turn.user", { text:, speech_id: "sp_#{@gateway.next_seq}" }, call: @id)
+        @gateway.deliver("turn.user", { text:, speech_id: "sp_#{@gateway.next_seq}", metrics: {} }, call: @id)
         @gateway.settle
       end
 
@@ -83,6 +83,23 @@ module Pinecall
         @agents = {}
         @seq = 0
         @errors = []
+        @found = []
+        @searched = []
+      end
+
+      # The chunks every search of this gateway answers with: `{ path:, heading:, text: }`.
+      def finds(*chunks)
+        @found = chunks
+        self
+      end
+
+      # Every search asked of this gateway, in order: `{ call:, query:, k: }`.
+      attr_reader :searched
+
+      # Same signature as `Pinecall::Client#search`.
+      def search(call, query, k: nil)
+        @searched << { call:, query:, k: }
+        @found
       end
 
       def sdk = "pinecall-ruby-testing/#{VERSION}"
