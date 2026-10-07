@@ -17,16 +17,12 @@ rake test
 rake examples     # the ring-0 suite a customer writes, run the way they run it
 rake rbs
 
-bin/pinecall prompt examples/clinica_norte/agent.rb --stage book
-bin/pinecall run examples/clinica_norte/agent.rb
-bin/pinecall ui
-
-rake console:build   # rebuild the vendored console from ../agents. Needs pnpm, once
-rake console:check    # is what is in console/ what that source would produce
+ruby -Ilib -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agent.rb --slug x   # what the CLI runs
 ```
 
-`bin/pinecall` is the bin of a checkout: it adds `lib/`.
-`exe/pinecall` is what a gem install puts on the PATH and must never mention a sibling.
+This gem is a library and ships no executable: the verbs are the one `pinecall` CLI's (npm), which
+starts `Pinecall::Serve.main` for `prompt`, `chat`, `test` and `start`. A verb, a console screen or
+a REST door the CLI reaches is never added here.
 
 ## Structure
 
@@ -41,12 +37,10 @@ A change lands with the page that describes it, in the same commit.
 | you changed | you edit |
 |---|---|
 | a module, an entity, the correspondence with the TypeScript package | `ARCHITECTURE.md` |
-| a CLI verb or a flag | `README.md` and `docs/the-cli.md` |
 | the serve entry, `Pinecall.serve`, how a server runs the agent | `docs/production.md`, ARCHITECTURE §10 |
 | anything a person writing an agent types | the `docs/` page for it |
 | a rule that is refused at load | `docs/writing-an-agent.md`, with the sentence the refusal says |
 | anything a user would notice | `CHANGELOG.md`, under Unreleased |
-| a screen of the console | **`../agents`**, then `rake console:build` here — the bundle is generated |
 
 Before renaming anything public: `grep -rn "<old name>" lib test examples docs *.md sig`.
 
@@ -67,10 +61,6 @@ When a doc and the code disagree, the code is what happened and the doc is the b
   as tool results, in the history. A view may ask `remembers?("…")`; it may never print a fact.
 - **A static block cannot read the state.** It is rendered against a reading that refuses by name.
 - **Nothing here imports LiveKit, a model vendor, or the runtime.** Commands out, entries in.
-- **`console/` is generated and nothing else in this gem is.** It is the TypeScript package's
-  vite build, vendored. Never edit a file under it; edit `../agents/src/cli/ui/console` and run
-  `rake console:build`. `rake console:check` fails when what is committed is not what that source
-  would produce, and `rake check` runs it.
 - **The wire is the runtime's, kept in `lib/pinecall/wire/`**: the shapes this gem uses and no
   more, held to the runtime's golden log by `test/wire/reduce_test.rb`. A field this package needs
   lands in the runtime's wire first, then here by hand.

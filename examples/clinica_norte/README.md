@@ -6,31 +6,25 @@ y su propia suite de ring 0.
 ```
 agent.rb                      la clase: idioma, estado, herramientas, hooks
 views/clinica-norte.erb       el prompt como función del estado: el bloque `view`
-knowledge/docs/*.md           de lo que responde: se sube con `pinecall knowledge push`, por nombre
+knowledge/docs/*.md           de lo que responde: se sube con `pinecall docs push`, por nombre
 lib/agenda.rb                 lo que en producción sería el ERP. No sabe nada de Pinecall
 test/clinica_test.rb          ring 0: sin red, sin clave, sin modelo, sin gateway
 ```
 
 ```bash
-# el prompt exacto, sin gateway y sin clave
-bin/pinecall prompt examples/clinica_norte/agent.rb
-bin/pinecall prompt examples/clinica_norte/agent.rb --stage book
-
 # la suite del cliente, como la corre él
 ruby -Ilib examples/clinica_norte/test/clinica_test.rb
-
-# el proceso que se despliega
-bin/pinecall run examples/clinica_norte/agent.rb
-
-# la base de conocimiento, subida con el slug del agente: clinica-norte
-cd examples/clinica_norte && ../../bin/pinecall knowledge push
 ```
+
+Los verbos son los del CLI único de `pinecall` (npm), el mismo para Ruby que para TypeScript: el
+prompt, el chat, los goldens y el proceso que se despliega arrancan la entrada `Pinecall::Serve`
+de esta gema ([../../docs/production.md](../../docs/production.md)).
 
 Lo que la recepción se sabe de memoria — horarios, precios, qué necesita autorización — no está en
 este repo: se escribe en la consola, Settings ▸ Knowledge (o `pinecall agent knowledge edit`), y el
 modelo lo lee entero en cada llamada. La voz, el modelo, el saludo, cuándo colgar, las palabras, lo
 que la memoria guarda (`pinecall memory policy`) y la base que busca por turno (`pinecall docs
-attach clinica-norte --k 4`) son del mundo, no de la clase: se ponen con el CLI de Node
+attach clinica-norte --k 4`) son del mundo, no de la clase: se ponen con el CLI
 (`pinecall agent set`) o en Settings, y una clase que todavía los declara se rechaza al cargar.
 
 ## Lo que este ejemplo enseña

@@ -14,7 +14,7 @@ state. The log is the truth.
 | repository | language | what it owns |
 |---|---|---|
 | `pinecall/runtime` | Python, on livekit-agents | the wire and its golden log; the real time: LiveKit rooms and SIP, STT/LLM/TTS, the gateway's doors, the log, the judges |
-| `pinecall/agents` | TypeScript, Node ≥ 24 | the same class, for a team that writes TypeScript, plus the CLI and the console |
+| `pinecall/agents` | TypeScript, Node ≥ 24 | the same class, for a team that writes TypeScript; the one `pinecall` CLI, for every language, starts this gem's serve entry |
 | **`pinecall/ruby`** (this one) | Ruby ≥ 3.2 | the same class, for a team that writes Ruby |
 
 The line between this package and the runtime is a **socket**. This package never imports the
@@ -63,23 +63,8 @@ lib/pinecall/
   client/listeners.rb        who is listening for what
   client/observe.rb          reading a log: one page, and the stream after it
   client/rest.rb             one JSON request at a REST door, and the refusal as the gateway wrote it
-  client/knowledge.rb        the org's knowledge bases: push one whole, list them, drop one
-  client/contact_memory.rb   what is remembered about one contact, and the right to be forgotten
-  client/memory.rb           the two goldens memory is held to, read and write; neither names a contact
-  client/provider_keys.rb    the provider keys this org brought of its own: add, remove, name them
-  client/endpoints.rb        one base URL, ten doors
-  cli.rb  cli/env.rb         `pinecall <verb>`, and where the key comes from
-  cli/knowledge.rb           `pinecall knowledge push | list | drop`
-  cli/memory.rb              `pinecall memory CONTACT`, `forget`, and `eval`
-  cli/remember.rb            `pinecall remember`: the goldens memory.remember is held to
-  cli/keys.rb                `pinecall keys add | rm | list`, the key read off stdin
-  ui.rb                      `pinecall ui`: serve, open, wait, close
-  ui/server.rb               the loopback, the nonce, the console's files, and the forwarded doors
-  ui/browser.rb              whether this machine has a browser, and how a URL is handed to it
+  client/endpoints.rb        one base URL, its four doors: the apps' socket, two logs, a call's lookup
   testing.rb                 a gateway that is not there — what ring 0 mounts against
-console/                     the compiled React console, vendored. The one generated thing here
-exe/pinecall                 what a gem install puts on the PATH
-bin/pinecall                 the bin of a checkout: this source
 sig/                         the public surface as RBS. `rake rbs` is part of the gate
 examples/clinica_norte/      a whole agent, its view, and its own ring-0 suite
 test/                        mirrors lib/; `conformance_test.rb` holds the SDK to its wire: every
@@ -110,7 +95,6 @@ gives that TypeScript does not, or what it takes away.
 | `searching(query, k)` handed by the bridge, `pc.search` over `POST /v1/calls/{id}/lookup` | the same lambda, `Client#search` over the same door | The search is the gateway's for the call in hand; the class only asks. |
 | `call.started.state` applied by `connect.ts` between `onCall` and the first render | the same, in `Bridge.start` | The state a call opens in is the wire's: whoever opened the call asked for it, and both SDKs apply it at the same moment. |
 | `this.remembers("médico habitual")` inside `render()` | `remembers?("médico habitual")` in the template | The same question, asked of the runtime's answer, in each language's own punctuation. Neither prints the fact: a fact reaches the model as a `recall` tool result, in the history, and the view only branches on it. |
-| `pinecall knowledge push`, `pinecall memory` in `src/cli`, on the login path | the same verbs on `Client::Rest`, with the key `cli/env.rb` resolves for every verb | One resolution order for the socket and the REST doors; a refusal is printed as the gateway wrote it. |
 | `Blocks = { blocks }`; the layout is `Block[]` in send order | `Blocks = Data.define(:blocks, :history)`, `Block = Data.define(:name, :region, :text)` | Ruby keeps the history on the same value, because `pinecall prompt` prints it between the regions and a `collapse` is the one thing the app knows about the turns. |
 | `src/serve/` — `main(argv, io)`, `start` and `prompt`, spawned by the CLI | `Pinecall::Serve.main(argv, out:, err:, env:, input:, signals:)`, the same two verbs, spawned by the same CLI through `ruby -r pinecall -e` | One CLI for every language: it never loads a class, so each SDK ships the entry that does and no executable. |
 | `new Pinecall({ url, apiKey })` reads nothing | `Client.new(url:, api_key:, env:)` reads nothing | The environment is the entry's to read, once; a library that reads it picks the wrong key in a process that runs two. |
@@ -118,8 +102,6 @@ gives that TypeScript does not, or what it takes away.
 | `Promise`, one event loop | one reader thread, one thread per call, one per tool call | The socket is never blocked by a hook or a tool. Everything belonging to one call is still serialised, which is what makes `call.cause` mean anything. |
 | `WeakMap` internals kept off the instance | plain ivars behind declared readers | Nothing enumerates a Ruby object's fields by accident, so nothing has to be hidden from a snapshot. |
 | `test/index.test.ts` pins the exports by name | `sig/pinecall.rbs` and `rake rbs` | Ruby's answer to a `.d.ts`: adding to the surface means editing the signature on purpose. |
-| the console is built into `dist/cli/ui/console` by the package that owns its source | the same build, **vendored** into `console/`, with `rake console:check` guarding it | One React program, built once. Ruby ships the bytes the way a Rails engine ships assets; installing the gem must not mean installing Node. |
-| `node:http` server, `fetch` proxying, `Readable.fromWeb` | HTTP/1.1 on a `TCPServer`, `Net::HTTP` streaming, one connection per answer | Ruby has no HTTP server in the stdlib, and an SSE proxy has to own the write side. Loopback, one person: `connection: close` makes the framing exact and the file short. |
 
 What did **not** change, because it is the product and not the language: the four blocks of the
 prompt, their two regions and their order, `recall` and `search` being tools whose answers reach
@@ -256,19 +238,20 @@ no CLI. It knows the wire (`lib/pinecall/wire/`) and `websocket-driver`.
 - **Registration is memory, not a database.** `open` runs again on every reconnect. Many sockets
   may hold one agent at once; a call that named no app goes to the newest registration that takes
   unclaimed calls. That is what makes a rolling deploy work.
-- **Two commands are awaited** (`agent.register` → `agent.registered`, `agent.configure` →
-  `agent.configured`). Everything else is fire and read the log.
+- **Three commands are awaited** (`agent.register` → `agent.registered`, `agent.configure` →
+  `agent.configured`, `agent.drain` → `agent.draining`). Everything else is fire and read the log.
 - **The declaration goes up on its own thread**, because the answer arrives as an entry and a
   thread waiting for that entry is a thread not reading it. (That was a real deadlock; the socket
   test is what found it.)
 - **The key travels as `Authorization: Bearer`**, never in a URL, because a URL ends up in a log.
-- **The REST doors share the key and the sentence.** `client.knowledge` (push · bases · drop),
-  `client.memory_of(contact)` (history · forget), `client.memory` (eval) and
-  `client.provider_keys` (add · remove ·
-  vendors) go through `Client::Rest`, one JSON request with the same key, and a refusal comes
-  back as `Refused` carrying the gateway's own `detail`. A provider key goes up through that
-  door and comes back through none: `vendors` answers names, because the runtime answers
-  with a key at exactly one door and it is the worker's.
+- **It reads nothing from the environment.** `Client.new(url:, api_key:, env:)` is given all
+  three; `env` names the world in `pinecall-env`, on the socket and on a REST request alike.
+- **One REST door of its own:** `client.search(call, query, k:)`, the gateway's lookup for a call
+  this client serves, through `Client::Rest`; a refusal comes back as `Refused` carrying the
+  gateway's own `detail`. The org's bases, memory and keys are the one CLI's verbs.
+- **Leaving.** `drain` asks every agent to drain and waits for the tools running, up to 30 s;
+  a stop from the org (`error` coded `stopped`, for no agent) closes the socket for good and goes
+  to `on_stopped`; `on_entries` hands over every entry as the gateway wrote it.
 
 ## 10. The serve contract
 
@@ -292,65 +275,17 @@ ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agents/x/
 - **The console's verbs** are answered by the CLI's companion; the one this process could answer,
   `view.render`, is refused 404 `a Ruby agent draws no panel`, by the client's default handler.
 
-## The CLI this gem still ships
-
-| verb | what it is | needs a gateway |
-|---|---|---|
-| `prompt` | the exact prompt a state would produce | **no** |
-| `run` | the agent registered and answering: the process you deploy | yes |
-| `ui` | the console on 127.0.0.1 for the life of the command | yes |
-| `whoami` | which gateway, and where this terminal's key came from | no |
-| `knowledge` | `push [DIR] --base NAME` · `list` · `drop BASE`: a folder of Markdown as a base, by name | yes |
-| `memory` | `CONTACT`: the history, current first · `forget CONTACT`: asked once on a terminal · `eval [GOLDEN] [--k N]`: every question of a golden asked of `recall`, each bringing its own facts, and `recall@k` and `nDCG@10` by code with no model | yes |
-| `keys` | `add VENDOR` (the key off stdin, never a flag) · `rm VENDOR` · `list`: the provider keys this org brought of its own. `list` prints names, never a key | yes |
-
-`cli/env.rb` decides where the key comes from, in one order, for every verb:
-
-1. the URL: `PINECALL_URL` → the local gateway's `~/.pinecall/dev` → the single row a login kept →
-   `http://localhost:8080`;
-2. **if the URL is the local dev gateway, its own dev key** — and an exported `PINECALL_API_KEY`
-   is then ignored **out loud**, because that gateway honours its own key and no other;
-3. otherwise `PINECALL_API_KEY` → the `credentials` row for that URL → `PINECALL_DEV_KEY`;
-4. nothing: the verb says so and exits 2.
-
-It **reads** `~/.pinecall/credentials` and `~/.pinecall/dev` and writes neither — `pinecall login`
-belongs to the Node CLI, and one program keeping a key is enough. A file any other account can
-read is treated as absent.
-
-`CLI::PLANNED` names the verbs the design has and this package has not written; typing one says
-what it will be and exits 0. A verb leaves that table in the commit that writes it.
-
-## 11. The console
-
-`pinecall ui` is the one verb that opens a port, and everything about it is a containment
-decision: **127.0.0.1 only**, the kernel picks the port, and everything answers under a random
-nonce, so a process that scans the loopback finds a `404` and nothing behind it. **The org key
-never reaches the browser**: the page asks this process, this process signs the request and
-forwards it, passing only `content-type`, `accept`, `last-event-id` and `range`.
-
-The page itself is not written here. It is the React program in `pinecall/agents`, built once by
-vite and **vendored compiled** into `console/` — one program, so a screen is written in one place
-and both packages show the same digits. `rake console:build` rebuilds it from the sibling
-repository; `rake console:check` hashes that source and fails when what is committed is not what
-it would produce; `rake` runs the check. Nothing else in this gem is generated, and no file under
-`console/` is ever edited.
-
-`ui/server.rb` speaks HTTP/1.1 on a `TCPServer` rather than through a web server, because a
-console reads a live log over SSE and a proxy that streams has to own the write side. Every answer
-carries `connection: close`, which lets a body end at EOF with no length and no chunked framing —
-on the loopback, for one person, a connection per request costs nothing.
-
-## 12. The four rings, and where each of them runs
+## 11. The four rings, and where each of them runs
 
 | ring | what it asks | where it runs |
 |---|---|---|
 | 0 | does the class behave? | `minitest`, in the tenant's own repo. No network, no key, no model — `pinecall/testing` is the gateway that is not there |
-| 1 | does the agent hold its goldens? | `pinecall test`, in the Node CLI today |
-| 2 | does it hold on a real line? | `pinecall simulate --voice`, in the Node CLI today |
+| 1 | does the agent hold its goldens? | `pinecall test`: the one CLI, this gem's serve entry holding the class |
+| 2 | does it hold on a real line? | `pinecall test --voice` and `pinecall simulate --voice`, the same way |
 | 3 | what does one real call score? | `pinecall eval <call-id>` |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up |
 
-## 13. The wire
+## 12. The wire
 
 The wire is the runtime's, and `lib/pinecall/wire/` (`Pinecall::Wire`) keeps what this gem speaks
 of it: the frames (`Entry`, `Command`, `Event`), the registries, the shapes the validator walks
@@ -358,11 +293,10 @@ of it: the frames (`Entry`, `Command`, `Event`), the registries, the shapes the 
 validator and the reducer. No gem of the runtime's is read. `test/wire/golden/` is the runtime's
 golden call log, and `test/wire/reduce_test.rb` holds the reducer to the state it folds to.
 
-## 14. Packaging
+## 13. Packaging
 
-- **One gem, two bins.** `exe/pinecall` is what a gem install puts on the PATH; `bin/pinecall` is
-  the bin of a checkout.
+- **A library, no executable.** The verbs are the one `pinecall` CLI's (npm); it starts
+  `Pinecall::Serve.main` through `ruby -r pinecall -e` (bundler when the project has a `Gemfile`).
 - **`sig/` ships with the gem.** Ruby's type story is RBS, and `rake rbs` is part of the gate.
-- **`rake check`** is the console's staleness gate, the tests, the example's own suite, then the
-  signatures. Ruby has nothing to compile: the only build step in this repository belongs to the
-  console, and it runs in the repository that owns the console's source.
+- **`rake check`** is the tests, the example's own suite, then the signatures. Ruby has nothing to
+  compile.

@@ -25,12 +25,8 @@ Gem::Specification.new do |spec|
     "rubygems_mfa_required" => "true"
   }
 
-  # `console/` is the compiled React console, vendored the way a Rails engine ships its assets:
-  # a browser reads no TypeScript, and installing this gem must not mean installing Node.
-  spec.files = Dir["lib/**/*.rb", "sig/**/*.rbs", "exe/*", "console/**/*",
-                   "LICENSE", "README.md", "CHANGELOG.md"]
-  spec.bindir = "exe"
-  spec.executables = ["pinecall"]
+  # A library and no executable: the one `pinecall` CLI (npm) starts `Pinecall::Serve.main`.
+  spec.files = Dir["lib/**/*.rb", "sig/**/*.rbs", "LICENSE", "README.md", "CHANGELOG.md"]
   spec.require_paths = ["lib"]
 
   # The protocol driver ActionCable runs on: the handshake and the framing, no transport and no

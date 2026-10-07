@@ -3,48 +3,29 @@
 Forty minutes, from an empty directory to an agent that picks up a call, answers out of a folder of
 Markdown you wrote, and knows on the second call what it learned on the first.
 
-Everything here was run before it was written. The output blocks are what the commands actually
-printed; where a number is a measurement it says so.
+You need the gateway — Pinecall's, at `https://cloud.pinecall.io`, whose sandbox is yours to break —
+the one `pinecall` CLI, and this gem. The CLI is a Node program for every language: it never loads
+your class, it starts this gem's serve entry and talks to it through the gateway. Your code never
+imports LiveKit.
 
-You need a runtime — the two processes that own the conversation — and an app, which is your class.
-The runtime is `pinecall` on PyPI and its repository; the app is this gem. They meet over a socket,
-and your code never imports LiveKit. Nothing is published yet, so the `pinecall` below is a
-checkout's `bin/pinecall`, with its `lib/` on `RUBYLIB`.
-
-## 1. The runtime, on your laptop
-
-From a checkout of the runtime repository, and then a key for your org, which is printed once and
-never again:
-
-```
-docker compose -f infra/compose/dev.yml up -d      livekit · sip · redis · postgres · tei
-scripts/bootstrap                                  uv sync, every extra and tool group
-uv run pinecall-runtime migrate up                 the schema, and a `default` org
-uv run pinecall-runtime gateway                    the control plane, on 8080
-uv run pinecall-runtime keys issue --label laptop  in another terminal
-
-export PINECALL_URL=http://127.0.0.1:8080
-export PINECALL_API_KEY=pk_…
-```
-
-**On an Apple Silicon laptop TEI cannot run** — its CPU image has no arm64 build — so the embedder
-is a hosted one: `EMBED_PROVIDER=perplexity` and a `PERPLEXITY_API_KEY`, and retrieval is the same.
-
-`uv run pinecall-runtime doctor` says whether every service and every key is there, one line each.
-From the Ruby side the question is shorter — which gateway, and where its key came from:
+## 1. The CLI, and a key
 
 ```bash
-pinecall whoami
-# gateway: http://127.0.0.1:8080
-# key: PINECALL_API_KEY
+npm i -g pinecall                # the CLI, Node 24+
+mkdir clinica && cd clinica
+bundle init && bundle add pinecall
+pinecall link                    # signs this machine in, picks the org, writes its key to ./.env
+pinecall whoami                  # which gateway, which org, and where the key was read
 ```
 
-Where the key was found, never the key. `env | grep PINECALL` is still the first thing to run when a
-door refuses you and will not say why.
+`pinecall link` writes `PINECALL_KEY` and `PINECALL_URL` into this folder's `.env`, which nothing
+else reads: another org is another folder. Every verb works in the sandbox unless `--prod` is said.
 
 ## 2. The class
 
-A new directory, and two files in it. `agent.rb` is the whole thing:
+The project's layout is the CLI's, the same as a TypeScript one: `agents/<slug>/agent.rb`, its
+views beside it, its tests under `test/<slug>/`. **The folder's name is the agent's slug.** Two
+files, then, `agents/clinica-norte/agent.rb` — the whole thing:
 
 ```ruby
 require "pinecall"
@@ -66,7 +47,7 @@ class ClinicaNorte < Pinecall::Agent
 end
 ```
 
-and `views/clinica-norte.erb`, beside it, is the prompt as a function of that state:
+and `agents/clinica-norte/views/clinica-norte.erb`, beside it, is the prompt as a function of that state:
 
 ```erb
 <% if stage == :identify -%>
@@ -136,37 +117,19 @@ again only when its own text changed.
 
 ## 3. Talk to it
 
-The first terminal is the process you deploy:
-
 ```bash
-pinecall run
-# clinica-norte is answering on http://127.0.0.1:8080
+pinecall chat                    # the agent served from this terminal, and a written caller against it
+pinecall start                   # registered and answering: the process you deploy
 ```
 
-The second is a caller, and here Ruby is one verb short of TypeScript:
+`chat` starts this gem's serve entry for the agent of this folder — `bundle exec ruby -r pinecall
+-e 'exit Pinecall::Serve.main(ARGV)' -- start …`, a process that takes no call it did not open —
+opens a written call naming that process, and stops it when you leave. `start` is the same entry
+taking every call, with the console's screens answered beside it; under it, the console's Talk
+tab is a real voice call to the same process.
 
-```bash
-pinecall chat
-# pinecall chat: the same agent in this terminal, and a written caller against it
-# It is not written in the Ruby package yet.
-```
-
-Two doors reach a Ruby agent today. The first needs nothing you do not already have: `pinecall ui
-clinica-norte` opens the console, and the microphone in its Talk tab joins the agent's room while
-the call underneath is drawn from the log. That is a real voice call, which is what you want to hear.
-
-The second is written, and it comes from the runtime's own CLI rather than this one:
-
-```
-uv run pinecall-runtime chat --agent clinica-norte
-```
-
-It names no app in the socket it opens, so the gateway hands the call to whichever app registered
-last — your `pinecall run`. The Node CLI's `pinecall chat` will *not* do instead: it mounts its own
-TypeScript class in its own process and names it in the URL, so its call is served there, never here.
-
-Either way your tools run in the `pinecall run` process, on a thread of that call's own: the gateway
-asks, your method answers, and no code of yours ever crosses the socket.
+Either way your tools run in that Ruby process, on a thread of that call's own: the gateway asks,
+your method answers, and no code of yours ever crosses the socket.
 
 ## 4. Knowledge: a page the agent knows by heart
 
@@ -186,14 +149,13 @@ folder of a hundred documents is not, and that is the next step.
 
 ## 5. The knowledge base: what it looks up per turn
 
-Put your Markdown under `knowledge/docs/`, one file per subject, with headings, and push it. With no
-arguments the verb reads both halves off the `agent.rb` in this directory: `knowledge/docs` beside
-it, under the agent's slug. The class does not name the base: attaching it to the agent, with its
-`k` and `min_score`, is the world's — the Node CLI's `pinecall docs attach clinica-norte --k 4`.
+Put your Markdown under `docs/clinica-norte/`, one file per subject, with headings, and push it.
+With no arguments the verb reads that folder and pushes it under the agent's slug. The class does not
+name the base: attaching it to the agent, with its `k` and `min_score`, is the world's —
+`pinecall docs attach clinica-norte --k 4`.
 
 ```bash
-pinecall knowledge push
-# clinica-norte · 2 files · 7 chunks · 300 ms
+pinecall docs push
 ```
 
 That is all: no vector-database client, no `search` call in your code, no `if` that decides when to
@@ -216,10 +178,8 @@ same call the first turn brought back four chunks and the second, a sharper ques
 Two more verbs. A push replaces the base whole, so re-push after every edit: one command, always right.
 
 ```bash
-pinecall knowledge list
-# clinica-norte · 7 chunks · pushed 2026-09-10 10:30
-pinecall knowledge drop clinica-norte
-# clinica-norte dropped
+pinecall docs list
+pinecall docs drop clinica-norte
 ```
 
 ## 6. Memory: what it keeps between calls
@@ -228,7 +188,7 @@ pinecall knowledge drop clinica-norte
 pinecall memory policy --remember "cómo prefiere que le llamen" "alergias" "su médico habitual" --forget "pagos"
 ```
 
-The policy is the org's, set with the Node CLI, not declared on the class. `remember` is the vocabulary, **in your own words**, of what is worth keeping about a person.
+The policy is the world's, set with the CLI or the console, not declared on the class. `remember` is the vocabulary, **in your own words**, of what is worth keeping about a person.
 `forget` is what is never written whatever the model heard.
 
 **Reading, on a turn.** A `recall` runs beside the `search`, on the same path and budget. It answers
@@ -250,10 +210,7 @@ rows; it works on any plan, whatever the quota, and asks once when stdin is a te
 
 ```bash
 pinecall memory +34600123456
-# - Prefiere que le llamen Marta.  (cómo prefiere que le llamen · since 2026-09-10)
-# - Prefiere que le llamen por la mañana.  (cómo prefiere que le llamen · since 2026-09-10 · until 2026-09-10)
 pinecall memory forget +34600123456
-# +34600123456: 2 facts forgotten
 ```
 
 ## 7. What the model actually receives
@@ -296,19 +253,15 @@ cannot open the confirmation gate anyway, because that gate is code.
 Everything above wrote lines. Read them:
 
 ```bash
-pinecall ui
-# gateway: http://127.0.0.1:8080 · key: PINECALL_API_KEY
-# clinica-norte · http://127.0.0.1:57274/4c694c5a7354ab385fd27cfb25ef6a83/a/clinica-norte
+pinecall console                 # the sandbox's console, signed in as this folder's key
+pinecall sessions                # the calls this org has taken; `sessions <call>` reads one whole
 ```
 
-The console opens on 127.0.0.1, on a port the kernel picks, for the life of the command, and every
-path answers under that nonce, so a process scanning the loopback finds a `404`. **Your org key never
-reaches the browser**: the page asks this process, and this process signs the request and forwards it.
 Live is the calls happening now — the transcript, the marks, the state and the metrics of one watched
 call; Sessions is every finished one read whole, entry by entry in `seq`.
 
 The same log without a browser is `Pinecall::Client`, the other door this gem has — no class, no view,
-no CLI, just the socket and the REST doors under one key. What the base answered on one call:
+no CLI, just the socket and its key. What the base answered on one call:
 
 ```ruby
 require "pinecall"
@@ -320,14 +273,6 @@ client.history({ call: ARGV.fetch(0) }).entries.each do |entry|
 end
 ```
 
-```
-$ ruby sources.rb call_fa4172e0077a452fa299b2ebf1aec31e
-tarifas.md › Tarifas › Traumatología · 1.0
-tarifas.md › Tarifas · 0.98
-…
-tarifas.md › Tarifas › Revisión · 1.0
-tarifas.md › Tarifas › Traumatología · 0.98
-```
 
 Every call is an append-only log of typed entries, each with a `seq` written before control returns —
 the same bytes streamed and stored, and a public contract.
@@ -342,7 +287,7 @@ every command the agent sent, and lets the test say what happened next.
 require "minitest/autorun"
 require "pinecall"
 require "pinecall/testing"
-require_relative "../agent"
+require_relative "../../agents/clinica-norte/agent"
 
 class ClinicaNorteTest < Minitest::Test
   def test_una_vez_identificada_el_prompt_deja_de_pedirle_el_nombre
@@ -358,18 +303,14 @@ class ClinicaNorteTest < Minitest::Test
 end
 ```
 
-```
-$ ruby test/clinica_test.rb
-1 runs, 4 assertions, 0 failures, 0 errors, 0 skips
-```
 
 `call.prompt` is the view as the agent last sent it, `call.tools` what the model may call right now,
 `call.block("knowledge")` any of the four blocks by name. The prompt is a pure function of the state:
 `Pinecall.render(agent.start_in(patient: { nombre: "Marta" }))[:view]` needs no gateway at all.
 
 **Rings 1, 2 and 3** — the goldens, a real line, and one call re-scored — are `pinecall test`,
-`pinecall simulate --voice` and `pinecall eval`, in the Node CLI today; `test` and `eval` are in this
-package's planned table, and typing one says so.
+`pinecall simulate --voice` and `pinecall eval`: the goldens under `test/clinica-norte/goldens/`, each
+call served by this gem's entry, scored by the gateway.
 
 **Ring 4** happens without you: every finished call is judged at hang-up and the verdict is an entry
 in your own log, `call.score`, beside the `call.summary` that says what the call cost. `consent` is
@@ -383,5 +324,6 @@ evidence it was given — which is what the `search` result is for.
 | every declaration a class may carry | [writing-an-agent.md](writing-an-agent.md) |
 | the four blocks, the two regions, and the template | [the-view.md](the-view.md) |
 | the rings, and what is worth a test | [testing-an-agent.md](testing-an-agent.md) |
-| every verb, and where the key comes from | [the-cli.md](the-cli.md) |
+| running it on a server | [production.md](production.md) |
+| every verb, and where the key comes from | the one CLI's reference, at docs.pinecall.io |
 | why retrieval is shaped this way | `runtime/docs/security/prompt-injection.md` |

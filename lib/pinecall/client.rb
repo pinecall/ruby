@@ -14,14 +14,10 @@ require_relative "client/call"
 require_relative "client/agent"
 require_relative "client/observe"
 require_relative "client/rest"
-require_relative "client/knowledge"
-require_relative "client/contact_memory"
-require_relative "client/memory"
-require_relative "client/provider_keys"
 
 module Pinecall
-  # A connection to the Pinecall gateway: one socket, its agents, log reads, and the org's
-  # knowledge bases and contact memory. `Pinecall::Agent` is built on top of it.
+  # A connection to the Pinecall gateway: one socket, its agents, log reads, and a search for a call
+  # it serves. `Pinecall::Agent` is built on top of it.
   #
   #     pc = Pinecall::Client.new(url: "https://cloud.pinecall.io", api_key: ENV.fetch("PINECALL_KEY"))
   #     agent = pc.agent("clinica-norte", tools: [])
@@ -133,18 +129,6 @@ module Pinecall
 
     # Fetch one page of a log and its reduced state.
     def history(target, **options) = Observe.history(target, url: @url, api_key: @api_key, **options)
-
-    # The org's knowledge bases.
-    def knowledge = Knowledge.new(url: @url, api_key: @api_key)
-
-    # Memory about one contact, including erasure.
-    def memory_of(contact) = ContactMemory.new(contact, url: @url, api_key: @api_key)
-
-    # The org's memory recall golden.
-    def memory = Memory.new(url: @url, api_key: @api_key)
-
-    # The org's own provider (BYOK) keys.
-    def provider_keys = ProviderKeys.new(url: @url, api_key: @api_key)
 
     # Search the agent's knowledge bases on behalf of a call this client serves; the gateway runs
     # the search and logs it. Returns the chunks as the gateway answered them.

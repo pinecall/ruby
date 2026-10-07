@@ -18,30 +18,6 @@ module Pinecall
       # `POST /v1/calls/{id}/lookup`: a platform tool run for one call this app serves.
       def lookup(base, call) = door(base, "/v1/calls/#{CGI.escape(call)}/lookup")
 
-      # `GET /v1/knowledge`
-      def knowledge_bases(base) = door(base, "/v1/knowledge")
-
-      # `PUT` / `DELETE /v1/knowledge/{base}`
-      def knowledge(base, name) = door(base, "/v1/knowledge/#{CGI.escape(name)}")
-
-      def knowledge_eval(base, name) = "#{knowledge(base, name)}/eval"
-
-      # `GET` / `DELETE /v1/contacts/{contact}/memory`
-      def contact_memory(base, contact) = door(base, "/v1/contacts/#{CGI.escape(contact)}/memory")
-
-      # `POST /v1/contacts/memory/eval`: recall golden; each case carries its own facts.
-      def memory_eval(base) = door(base, "/v1/contacts/memory/eval")
-
-      # `POST /v1/agents/{slug}/memory/extraction`: extraction goldens, scoped to the agent's
-      # declared vocabulary.
-      def extraction(base, agent) = door(base, "/v1/agents/#{CGI.escape(agent)}/memory/extraction")
-
-      # `GET /v1/provider-keys`
-      def provider_keys(base) = door(base, "/v1/provider-keys")
-
-      # `PUT` / `DELETE /v1/provider-keys/{vendor}`
-      def provider_key(base, vendor) = door(base, "/v1/provider-keys/#{CGI.escape(vendor)}")
-
       def door(base, path, websocket: false)
         url = URI.parse(base)
         secure = %w[https wss].include?(url.scheme)

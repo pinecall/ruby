@@ -115,7 +115,7 @@ module Pinecall
       Reading.new(agent.snapshot.merge(resumed:, call: line || { channel: "web" }), remembered)
     end
 
-    # Shared by `pinecall prompt` and `pinecall run --show-prompt` so both print alike.
+    # What `Pinecall::Serve`'s `prompt` prints: every block under its header.
     def header_for(section, region = nil) = "── #{[section, region && "(#{region})"].compact.join(" ")} ──"
 
     # The prompt as one page, as `pinecall prompt` prints it.

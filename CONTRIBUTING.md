@@ -11,7 +11,7 @@ rake        # the tests, the example's own suite, then `rbs validate`
 
 **A change lands with the page that describes it, in the same commit.** A new module or a changed
 correspondence with the TypeScript package is a line in `ARCHITECTURE.md`; a new verb or flag is
-`README.md` and `docs/the-cli.md`; anything a person writing an agent types is the `docs/` page
+`README.md` and `docs/production.md`; anything a person writing an agent types is the `docs/` page
 for it; anything a user would notice is a line in `CHANGELOG.md` under Unreleased. When a doc and
 the code disagree, the code is what happened and the doc is the bug.
 

@@ -263,11 +263,7 @@ module Pinecall
     def on_errors: () { (StandardError) -> void } -> ^() -> void
     def observe: (Hash[Symbol, String], **untyped) { (untyped) -> void } -> void
     def history: (Hash[Symbol, String], **untyped) -> untyped
-    def knowledge: () -> Client::Knowledge
     def search: (String, String, ?k: Integer?) -> Array[Hash[Symbol, untyped]]
-    def memory_of: (String) -> Client::ContactMemory
-    def memory: () -> Client::Memory
-    def provider_keys: () -> Client::ProviderKeys
     def send_command: (type: String, agent: String, call: String?, data: Hash[Symbol, untyped], ?id: String?) -> untyped
     def seen: (untyped, Client::Call?) -> void
     def on_error: (StandardError) -> void
@@ -327,34 +323,6 @@ module Pinecall
       def on: (String | Symbol) { (untyped, untyped) -> void } -> ^() -> void
       def on_any: () { (untyped, untyped) -> void } -> ^() -> void
       def emit: (untyped, untyped) -> void
-    end
-
-    class Knowledge
-      def initialize: (url: String, api_key: String) -> void
-      def push: (String, Array[{ path: String, text: String }]) -> Hash[Symbol, untyped]
-      def bases: () -> Array[Hash[Symbol, untyped]]
-      def eval: (String, Array[Hash[Symbol, untyped]], ?k: Integer?) -> Hash[Symbol, untyped]
-      def drop: (String) -> nil
-    end
-
-    class ContactMemory
-      attr_reader contact: String
-      def initialize: (String, url: String, api_key: String) -> void
-      def history: () -> Array[Hash[Symbol, untyped]]
-      def forget: () -> Integer
-    end
-
-    class Memory
-      def initialize: (url: String, api_key: String) -> void
-      def eval: (Array[Hash[Symbol, untyped]], ?k: Integer?) -> Hash[Symbol, untyped]
-      def extraction: (String, Array[Hash[Symbol, untyped]]) -> Hash[Symbol, untyped]
-    end
-
-    class ProviderKeys
-      def initialize: (url: String, api_key: String) -> void
-      def add: (String, String) -> nil
-      def remove: (String) -> nil
-      def vendors: () -> Array[String]
     end
 
     module Rest
@@ -418,70 +386,6 @@ module Pinecall
     DEFAULT: String
     def self?.words_for: (Class) -> Hash[Symbol, String]
     def self?.languages: () -> Array[String]
-  end
-
-  module UI
-    FILES: String
-    def self?.run: (Array[String], ?out: IO, ?err: IO, ?files: String, ?open: (^(String) -> void)?,
-                    ?env: Hash[String, String]) -> Integer
-
-    class Server
-      LOOPBACK: String
-      attr_reader url: String
-      def self.open: (door: untyped, files: String) -> Server
-      def listen: () -> Server
-      def at: (String) -> String
-      def close: () -> nil
-    end
-
-    module Browser
-      def self?.headless: (?env: untyped, ?platform: Symbol) -> String?
-      def self?.open: (String, ?platform: Symbol) -> nil
-      def self?.this_platform: () -> Symbol
-    end
-  end
-
-  module CLI
-    PLANNED: Hash[String, String]
-    def self?.run: (Array[String], ?out: IO, ?err: IO, ?input: IO) -> Integer
-    def self?.door: (IO) -> Client?
-
-    module Knowledge
-      DEFAULT_DIR: String
-      def self?.run: (Array[String], out: IO, err: IO) -> Integer
-    end
-
-    module Memory
-      DEFAULT_GOLDEN: String
-      def self?.run: (Array[String], input: IO, out: IO, err: IO) -> Integer
-    end
-
-    module Remember
-      HELD: String
-      BROKEN: String
-      DEFAULT_CASES: String
-      def self?.run: (Array[String], out: IO, err: IO) -> Integer
-      def self?.held_to_the_goldens: (untyped, Array[Hash[Symbol, untyped]], out: IO, err: IO) -> Integer
-      def self?.lines_of: (Hash[Symbol, untyped]) -> Array[String]
-      def self?.case_lines: (Hash[Symbol, untyped]) -> Array[String]
-      def self?.cases_in: (Array[String], untyped, String?, err: IO) -> Array[Hash[Symbol, untyped]]?
-      def self?.beside: (untyped) -> String
-      def self?.files_under: (String) -> Array[String]
-      def self?.cases_of: (String) -> Array[Hash[Symbol, untyped]]
-      def self?.no_cases: (Array[String]) -> String
-      def self?.parse: (Array[String]) -> [Array[String], String?, String?]
-      def self?.usage: (IO) -> Integer
-    end
-
-    module Keys
-      def self?.run: (Array[String], input: IO, out: IO, err: IO) -> Integer
-    end
-
-    module Env
-      LOCAL: String
-      def self?.home: () -> String
-      def self?.pointed: () -> untyped
-    end
   end
 
   def self.mount: (Class, client: untyped, **untyped) -> Bridge::Mounted

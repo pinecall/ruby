@@ -62,27 +62,24 @@ answer.
 
 ## Five minutes
 
+This gem is a library: the verbs are the one `pinecall` CLI's, the same for every language. In a
+project laid out as `agents/<name>/agent.rb`, with this gem in its `Gemfile`:
+
 ```bash
-gem install pinecall
-pinecall prompt agent.rb              # the exact prompt this state would produce. No gateway.
-pinecall prompt agent.rb --stage book
-pinecall run agent.rb                 # registered and answering: the process you deploy
-pinecall knowledge push               # knowledge/docs, as a base named after the agent
-pinecall memory +34600123456          # what is remembered about a contact; `forget` to forget
-pinecall memory eval                  # the golden: does recall bring the right facts back?
-pinecall keys add elevenlabs          # this org's own key for a vendor, read off stdin
-pinecall ui                           # the console on 127.0.0.1: calls, sessions, evals, talk
+bundle add pinecall
+npm i -g pinecall                     # the CLI: Node, whatever the agent is written in
+pinecall link                         # this folder tied to your org: its key, in ./.env
+pinecall prompt --state test/<name>/goldens/a.json   # the exact prompt a state produces. No gateway.
+pinecall chat                         # the agent served from this terminal, and a caller against it
+pinecall test                         # ring 1: the goldens, scored by the gateway
+pinecall start                        # registered and answering: the process you deploy
 ```
 
-`pinecall prompt` needs no gateway, key or network: the prompt is a function of the state.
-
-## The console
-
-`pinecall ui` serves the console on 127.0.0.1 while the command runs: live calls and logs,
-finished sessions, eval runs, and a page to talk to an agent with the browser's microphone. It is
-the same compiled React console the TypeScript package builds, vendored into the gem, so no Node
-is needed. It listens on a random port under a random path prefix, and the org key never reaches
-the browser: this process signs and forwards each request.
+The CLI never loads your class: for `prompt`, `chat`, `test` and `start` it runs this gem's serve
+entry, `bundle exec ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)'`, and talks to it through
+the gateway. The console, the knowledge bases, memory, keys and every other verb are the CLI's.
+How a server runs the agent, with the CLI or inside your own Ruby process, is
+[docs/production.md](docs/production.md).
 
 ## Architecture
 
@@ -92,7 +89,8 @@ held to the runtime's golden call log. Tools are the only code that may change s
 
 | you want | you use |
 |---|---|
-| the class, the view, the CLI | `Pinecall::Agent`, `Pinecall.mount` |
+| the class and the view | `Pinecall::Agent`, `Pinecall.mount` |
+| the agent held inside your own process | `Pinecall.serve` |
 | the socket alone, your own way of deciding what to answer | `Pinecall::Client` |
 | a suite with no network, no key and no model | `pinecall/testing` |
 
@@ -129,14 +127,15 @@ assert_equal %w[propose], call.tools
 | how to write an agent, step by step | [docs/writing-an-agent.md](docs/writing-an-agent.md) |
 | the view, and the blocks of a prompt | [docs/the-view.md](docs/the-view.md) |
 | how to test one | [docs/testing-an-agent.md](docs/testing-an-agent.md) |
-| the CLI, verb by verb | [docs/the-cli.md](docs/the-cli.md) |
-| the console, and how it is vendored | [docs/the-console.md](docs/the-console.md) |
+| running it in production | [docs/production.md](docs/production.md) |
+| the CLI, verb by verb | the one CLI's reference, at docs.pinecall.io |
 | a complete example agent | [examples/clinica_norte](examples/clinica_norte) |
 | the wire itself | `lib/pinecall/wire/`, the runtime's shapes this gem speaks |
 
 ## Requirements
 
-Ruby 3.2+. The only runtime dependency is `websocket-driver` (the driver ActionCable uses).
+Ruby 3.2+. The only runtime dependency is `websocket-driver` (the driver ActionCable uses). The
+`pinecall` CLI is a Node program (Node 24+): the verbs need it, the library does not.
 
 ## License
 

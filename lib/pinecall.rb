@@ -19,8 +19,6 @@ require_relative "pinecall/call_world"
 require_relative "pinecall/client"
 require_relative "pinecall/bridge"
 require_relative "pinecall/serve"
-require_relative "pinecall/ui"
-require_relative "pinecall/cli"
 
 module Pinecall
   class << self

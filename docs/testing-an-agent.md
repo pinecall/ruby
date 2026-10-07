@@ -97,10 +97,14 @@ other door and means something stronger: a whole state, so a field it leaves out
 
 ## The rings above
 
+The verbs are the one `pinecall` CLI's (npm), the same for a Ruby project as for a TypeScript
+one, in the same layout: `agents/<slug>/agent.rb`, `test/<slug>/goldens/`, `test/<slug>/memory/`,
+`docs/<slug>/`. For the ones that need the class, the CLI starts this gem's serve entry.
+
 | ring | what it asks | how |
 |---|---|---|
-| 1 | does the agent hold its goldens? | `pinecall test` — the Node CLI today |
-| 2 | does it hold on a real line? | `pinecall simulate --voice` — the Node CLI today |
+| 1 | does the agent hold its goldens? | `pinecall test` — the goldens under `test/<slug>/goldens/`, each call served by this gem's entry |
+| 2 | does it hold on a real line? | `pinecall test --voice` · `pinecall simulate --voice` |
 | 3 | what does one real call score? | `pinecall eval <call-id>` |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up |
 
@@ -128,9 +132,9 @@ naming a file alone accepts any chunk of it, naming a heading accepts that secti
 under it. Fifty to a hundred questions per base is the size that stops being noise.
 
 ```bash
-pinecall knowledge eval                        # knowledge/golden.json beside agent.rb
-pinecall knowledge eval --k 4                  # as many chunks as the class asks for
-pinecall knowledge eval golden.json --base clinica-norte
+pinecall docs eval                             # test/<slug>/goldens/docs.json
+pinecall docs eval --k 4                       # as many chunks as the agent's attachment asks for
+pinecall docs eval golden.json --base clinica-norte
 ```
 
 ```
@@ -169,7 +173,7 @@ in four ways that all cost a business:
 
 An extraction golden is one call **already held** — both speakers, because nothing is re-run — the
 facts memory already holds about that caller, and what must come of it. One file per case, in
-`test/memory/` beside the `agent.rb`:
+`test/<slug>/memory/` of the project:
 
 ```json
 {
@@ -194,9 +198,9 @@ facts memory already holds about that caller, and what must come of it. One file
 | `expect.invalidates` | every held fact named here was superseded — and, the mirror, **no other held fact was**. That is the half that catches a model which replaces whatever it touches |
 
 ```bash
-pinecall remember                              # every case in test/memory/
-pinecall remember test/memory/alergia.json     # one of them
-pinecall remember --grep tarjeta               # while writing one
+pinecall remember                                            # every case in test/<slug>/memory/
+pinecall remember test/clinica-norte/memory/alergia.json     # one of them
+pinecall remember --grep tarjeta                             # while writing one
 ```
 
 ```
@@ -270,7 +274,7 @@ whitespace. A fact is a sentence a model wrote and you know the substance, not t
 `"Alérgica a la penicilina"` is not answered by *"Alérgica"*, which says less than you asked for.
 
 ```bash
-pinecall memory eval                  # memory/golden.json beside agent.rb
+pinecall memory eval                  # test/<slug>/goldens/memory.json
 pinecall memory eval --k 1            # the best fact alone: is the right one first?
 ```
 
