@@ -42,6 +42,7 @@ A change lands with the page that describes it, in the same commit.
 |---|---|
 | a module, an entity, the correspondence with the TypeScript package | `ARCHITECTURE.md` |
 | a CLI verb or a flag | `README.md` and `docs/the-cli.md` |
+| the serve entry, `Pinecall.serve`, how a server runs the agent | `docs/production.md`, ARCHITECTURE §10 |
 | anything a person writing an agent types | the `docs/` page for it |
 | a rule that is refused at load | `docs/writing-an-agent.md`, with the sentence the refusal says |
 | anything a user would notice | `CHANGELOG.md`, under Unreleased |

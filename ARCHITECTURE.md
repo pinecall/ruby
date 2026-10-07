@@ -53,6 +53,9 @@ lib/pinecall/
   call_world/room.rb         who is in the room, a seat's two verbs, the turns
   call_world/answers.rb      what a verb waits for and what it gets: a transfer, a supervisor, a search
   bridge.rb                  `mount`: one instance per call, and the sync that sends what changed
+  serve.rb                   `Pinecall::Serve.main`: the entry the one CLI starts — `start`, `prompt` — and `Pinecall.serve`
+  serve/loading.rb           its flags, the class in a file, a state field by field
+  serve/held.rb              the agents a process holds, and leaving: a drain, then the socket, once
   client.rb                  `Pinecall::Client`: one socket, the agents on it, observe · history
   client/connection.rb       the WS: the key at the door, backoff on the way back, a ping
   client/agent.rb            one agent from the app's side: registration, tool calls, listeners
@@ -109,6 +112,9 @@ gives that TypeScript does not, or what it takes away.
 | `this.remembers("médico habitual")` inside `render()` | `remembers?("médico habitual")` in the template | The same question, asked of the runtime's answer, in each language's own punctuation. Neither prints the fact: a fact reaches the model as a `recall` tool result, in the history, and the view only branches on it. |
 | `pinecall knowledge push`, `pinecall memory` in `src/cli`, on the login path | the same verbs on `Client::Rest`, with the key `cli/env.rb` resolves for every verb | One resolution order for the socket and the REST doors; a refusal is printed as the gateway wrote it. |
 | `Blocks = { blocks }`; the layout is `Block[]` in send order | `Blocks = Data.define(:blocks, :history)`, `Block = Data.define(:name, :region, :text)` | Ruby keeps the history on the same value, because `pinecall prompt` prints it between the regions and a `collapse` is the one thing the app knows about the turns. |
+| `src/serve/` — `main(argv, io)`, `start` and `prompt`, spawned by the CLI | `Pinecall::Serve.main(argv, out:, err:, env:, input:, signals:)`, the same two verbs, spawned by the same CLI through `ruby -r pinecall -e` | One CLI for every language: it never loads a class, so each SDK ships the entry that does and no executable. |
+| `new Pinecall({ url, apiKey })` reads nothing | `Client.new(url:, api_key:, env:)` reads nothing | The environment is the entry's to read, once; a library that reads it picks the wrong key in a process that runs two. |
+| `pc.drain()`, `pc.onEntries`, `pc.onStopped` | `client.drain`, `client.on_entries`, `client.on_stopped` | The serve contract is the same in both: the wire entry on stdout, a drained leave, a stop said once. |
 | `Promise`, one event loop | one reader thread, one thread per call, one per tool call | The socket is never blocked by a hook or a tool. Everything belonging to one call is still serialised, which is what makes `call.cause` mean anything. |
 | `WeakMap` internals kept off the instance | plain ivars behind declared readers | Nothing enumerates a Ruby object's fields by accident, so nothing has to be hidden from a snapshot. |
 | `test/index.test.ts` pins the exports by name | `sig/pinecall.rbs` and `rake rbs` | Ruby's answer to a `.d.ts`: adding to the surface means editing the signature on purpose. |
@@ -260,7 +266,29 @@ no CLI. It knows the wire (`lib/pinecall/wire/`) and `websocket-driver`.
   door and comes back through none: `vendors` answers names, because the runtime answers
   with a key at exactly one door and it is the worker's.
 
-## 10. The CLI
+## 10. The serve contract
+
+The one CLI (npm `pinecall`) starts this gem's entry for the two verbs that need the class:
+
+```
+ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- start --file agents/x/agent.rb --slug x [--console] [--events] [--prod]
+ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agents/x/agent.rb --slug x [--state field=json]… [--channel c] [--show-machine]
+```
+
+- **The door is the environment's, and nothing else:** `PINECALL_URL`, `PINECALL_KEY`,
+  `PINECALL_ENV` (`--prod` forces production). Missing → one sentence, exit 2. Never an argv.
+- **The slug is the folder's**, `--slug`; a class whose `slug "…"` says another is refused.
+- **`--events`:** one line per wire entry, `{"type","agent","call","data"}` with `data` as the
+  gateway wrote it, `agent.registered` first (the listener is in place before the socket opens);
+  the "answering on" line goes to stderr.
+- **`--console`:** `takes_unclaimed: false` — a console's process takes only the calls it opened.
+- **Leaving:** SIGINT, SIGTERM or the end of its stdin (the CLI that started it is gone) drains,
+  then closes; a second reason closes at once; a stop from the org closes without draining. A
+  trap only pushes onto a queue: the main thread does the leaving.
+- **The console's verbs** are answered by the CLI's companion; the one this process could answer,
+  `view.render`, is refused 404 `a Ruby agent draws no panel`, by the client's default handler.
+
+## The CLI this gem still ships
 
 | verb | what it is | needs a gateway |
 |---|---|---|

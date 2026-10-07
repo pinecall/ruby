@@ -18,6 +18,7 @@ require_relative "pinecall/agent"
 require_relative "pinecall/call_world"
 require_relative "pinecall/client"
 require_relative "pinecall/bridge"
+require_relative "pinecall/serve"
 require_relative "pinecall/ui"
 require_relative "pinecall/cli"
 
@@ -32,5 +33,14 @@ module Pinecall
 
     # Render the prompt as one page, each block under its header.
     def show_prompt(agent, **context) = Prompt.show(agent, **context)
+
+    # Serve an agent class from inside your own Ruby process: mounted on a client of its own (or
+    # the one given), connected, and held. `held.stop` drains then closes, for an `at_exit`.
+    def serve(klass, client: nil, url: nil, api_key: nil, env: nil, slug: nil, last: nil)
+      client ||= Client.new(url:, api_key:, env:)
+      mounted = mount(klass, client:, slug: slug || klass.slug, last:)
+      client.connect
+      Serve::Held.new(client, [mounted])
+    end
   end
 end

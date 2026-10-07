@@ -8,7 +8,7 @@ module Pinecall
 
   type state = Hash[Symbol, untyped]
   type spec = Hash[Symbol, untyped]
-  type line = { channel: String, ?from: String? }
+  type line = { channel: String, ?from: String?, ?claimed: String? }
 
   class Error < StandardError
   end
@@ -89,6 +89,7 @@ module Pinecall
 
     def self.doc: (?String) -> String?
     def self.slug: (?String) -> String
+    def self.declared_slug: () -> String?
     def self.accepts: (String | Symbol, from: Array[String | Symbol]) -> untyped
     def self.wire_config: (?tools: Array[spec]?) -> Hash[Symbol, untyped]
 
@@ -235,7 +236,22 @@ module Pinecall
   class Client
     attr_reader url: String
     attr_reader api_key: String
-    def initialize: (?url: String?, ?api_key: String?, ?ping_every: Numeric, ?backoff: Hash[Symbol, Numeric]) -> void
+    STOPPED: String
+    TOOLS_FINISH_WITHIN_S: Integer
+
+    class Drained
+      attr_reader handed: Integer
+      attr_reader parked: Integer
+      attr_reader tools: Integer
+      attr_reader finished: Integer
+      def initialize: (handed: Integer, parked: Integer, tools: Integer, finished: Integer) -> void
+    end
+
+    attr_reader env: String?
+    def initialize: (url: String, api_key: String, ?env: String?, ?ping_every: Numeric, ?backoff: Hash[Symbol, Numeric]) -> void
+    def drain: (?answer_s: Numeric, ?tools_s: Numeric) -> Drained
+    def on_entries: () { (untyped) -> void } -> ^() -> void
+    def on_stopped: () { (String) -> void } -> ^() -> void
     def sdk: () -> String
     def agent: (String, **untyped) -> Client::Agent
     def agents: () -> Hash[String, Client::Agent]
@@ -269,6 +285,9 @@ module Pinecall
       def take: (untyped) -> void
       def command: (String, String?, Hash[Symbol, untyped]) -> untyped
       def ping: () -> untyped
+      def drain: (?answer_s: Numeric) -> Hash[Symbol, untyped]
+      def in_flight: () -> Integer
+      def settled: (?within_s: Numeric?) -> nil
       def on_error: (StandardError) -> void
     end
 
@@ -355,6 +374,33 @@ module Pinecall
     def self?.header_for: (Symbol | String, ?String?) -> String
   end
 
+  module Serve
+    USAGE: String
+    NO_DOOR: String
+    WORLDS: Array[String]
+
+    class CannotServe < Error
+    end
+
+    class Served
+      attr_reader file: String
+      attr_reader slug: String
+      def initialize: (file: String, slug: String) -> void
+    end
+
+    class Held
+      attr_reader client: Client
+      attr_reader mounted: Array[Bridge::Mounted]
+      def initialize: (Client, Array[Bridge::Mounted]) -> void
+      def stop: () -> Client::Drained
+      def close: () -> untyped
+      def join: () -> untyped
+    end
+
+    def self?.main: (Array[String], ?out: IO, ?err: IO, ?env: Hash[String, String], ?input: IO, ?signals: Thread::Queue?) -> Integer
+    def self?.drain_line: (Client::Drained) -> String
+  end
+
   module Bridge
     def self?.mount: (Class, client: untyped, ?slug: String?, ?last: untyped, ?takes_unclaimed: bool) -> Mounted
 
@@ -439,4 +485,5 @@ module Pinecall
   def self.mount: (Class, client: untyped, **untyped) -> Bridge::Mounted
   def self.render: (Agent, **untyped) -> Blocks
   def self.show_prompt: (Agent, **untyped) -> String
+  def self.serve: (Class, ?client: Client?, ?url: String?, ?api_key: String?, ?env: String?, ?slug: String?, ?last: untyped) -> Serve::Held
 end

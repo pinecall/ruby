@@ -313,7 +313,8 @@ no CLI, just the socket and the REST doors under one key. What the base answered
 ```ruby
 require "pinecall"
 
-Pinecall::Client.new.history({ call: ARGV.fetch(0) }).entries.each do |entry|
+client = Pinecall::Client.new(url: ENV.fetch("PINECALL_URL"), api_key: ENV.fetch("PINECALL_KEY"))
+client.history({ call: ARGV.fetch(0) }).entries.each do |entry|
   next unless entry.type == "docs.sources"
   entry.data[:sources].each { |chunk| puts "#{chunk[:path]} › #{chunk[:heading]} · #{chunk[:score].round(2)}" }
 end

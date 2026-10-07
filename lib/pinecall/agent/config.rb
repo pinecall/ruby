@@ -72,6 +72,9 @@ module Pinecall
           @config ||= superclass.respond_to?(:config) ? superclass.config.dup : {}
         end
 
+        # The slug the class names itself, or nil when it names none.
+        def declared_slug = @slug
+
         # Registration slug; defaults to the class name in kebab-case.
         def slug(name = NOTHING)
           return (@slug || default_slug) if name.equal?(NOTHING)

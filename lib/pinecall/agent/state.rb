@@ -94,16 +94,19 @@ module Pinecall
         kept
       end
 
-      # Replace the state with a snapshot; fields missing from it are cleared.
+      # Replace the state with a snapshot; fields missing from it are cleared. A stage that came
+      # back as JSON is a string, and is the declared stage it names.
       def restore(state)
         state = state.transform_keys(&:to_sym)
         Author.with(Author.current || "restore") do
           self.class.declared_state.each_key do |name|
-            write_state(name, state.key?(name) ? state[name] : nil)
+            value = state.key?(name) ? state[name] : nil
+            write_state(name, name == :stage ? declared_stage(value) : value)
           end
         end
         self
       end
+
 
       # Merge the given fields over the current state (unlike `restore`, which clears the rest).
       def start_in(state)
@@ -144,6 +147,11 @@ module Pinecall
       def sealed? = @sealed
 
       private
+
+      def declared_stage(value)
+        named = self.class.stages&.find { |stage| stage.to_s == value.to_s }
+        named.nil? ? value : named
+      end
 
       # Every state write goes through here; after `seal` a write without an author raises.
       def write_state(field, value)

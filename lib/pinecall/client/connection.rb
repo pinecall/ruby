@@ -17,9 +17,10 @@ module Pinecall
 
       attr_reader :url
 
-      def initialize(url:, api_key:, handlers:, ping_every: PINGS_EVERY_S, backoff: {})
+      def initialize(url:, api_key:, handlers:, env: nil, ping_every: PINGS_EVERY_S, backoff: {})
         @url = Endpoints.apps(url)
         @api_key = api_key
+        @env = env
         @handlers = handlers
         @ping_every = ping_every
         @backoff = { first: FIRST_WAIT_S, longest: LONGEST_WAIT_S, grows_by: GROWS_BY }.merge(backoff)
@@ -55,13 +56,17 @@ module Pinecall
         end
       end
 
+      # A drain was asked: the gateway closing the socket from now on is not dialled back.
+      def leaving! = @leaving = true
+
       # Close without reconnecting.
       def close
         @closed = true
         @open = false
         @heartbeat&.kill
         @socket&.close
-        @reader&.join(1)
+        # A stop is read on the reader thread itself, which cannot wait for its own end.
+        @reader&.join(1) unless Thread.current.equal?(@reader)
         nil
       end
 
@@ -81,7 +86,7 @@ module Pinecall
           rescue StandardError => e
             fail_the_first_dial(e)
           end
-          break if @closed
+          break if @closed || @leaving
 
           sleep(wait_s)
         end
@@ -91,6 +96,7 @@ module Pinecall
         @socket = connect_to(URI.parse(@url))
         @driver = WebSocket::Driver.client(self)
         @driver.set_header("Authorization", "Bearer #{@api_key}")
+        @driver.set_header(Rest::ENV_HEADER, @env) unless @env.nil?
         @driver.on(:open) { opened }
         @driver.on(:message) { |event| took(event.data) }
         @driver.on(:close) { |event| shut(event) }

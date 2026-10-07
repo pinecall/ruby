@@ -11,6 +11,10 @@ module Pinecall
     class Agent
       ANSWERS_WITHIN_S = 10
 
+      # The one dev verb a Ruby process could answer is the panel, and a Ruby class draws none;
+      # every other verb is the CLI's companion's.
+      DRAWS_NO_PANEL = "a Ruby agent draws no panel"
+
       attr_reader :slug, :calls, :config, :app
 
       def initialize(slug, options, client)
@@ -22,6 +26,8 @@ module Pinecall
         @waiting = []
         @config = options.reject { |key, _| %i[routes tools takes_unclaimed].include?(key) }
         @app = nil
+        @running = []
+        @lock = Mutex.new
         declare(options[:tools] || [])
         @calls = CallBook.new(self)
         @listeners = Listeners.new { |error| on_error(error) }
@@ -50,7 +56,8 @@ module Pinecall
       # Register the slug and send the config. Runs on every reconnect.
       def open
         registered = ask("agent.register", lands_as: "agent.registered", data: {
-                           routes: @routes, sdk: @client.sdk, takes_unclaimed: @takes_unclaimed
+                           routes: @routes, sdk: @client.sdk, host: Socket.gethostname,
+                           takes_unclaimed: @takes_unclaimed
                          })
         # Each connection gets a new app id.
         @app = registered[:app]
@@ -68,6 +75,7 @@ module Pinecall
         call&.take(event)
         @listeners.emit(event, call)
         @client.seen(event, call)
+        return refuse_the_console(event.data) if event.type == "dev.request"
         return if call.nil?
 
         run_tool(event, call) if event.type == "tool.call"
@@ -83,6 +91,20 @@ module Pinecall
       # Agent-scoped heartbeat; answered with `pong`.
       def ping = command("ping", nil, {})
 
+      # Stop taking new calls and hand the live ones to another holder, or park them for the next.
+      # Running tools still answer. Returns where the calls went: `{ handed:, parked: }`.
+      def drain(answer_s: ANSWERS_WITHIN_S) = ask("agent.drain", lands_as: "agent.draining", data: {}, within_s: answer_s)
+
+      # How many tool runs have not sent their `tool.result` yet.
+      def in_flight = @lock.synchronize { @running.count(&:alive?) }
+
+      # Wait until every running tool has answered, or `within_s` passed.
+      def settled(within_s: nil)
+        deadline = within_s && (now + within_s)
+        @lock.synchronize { @running.dup }.each { |thread| thread.join(deadline && [deadline - now, 0].max) }
+        nil
+      end
+
       private
 
       # Always answer with exactly one `tool.result`: without one the turn waits forever.
@@ -92,7 +114,7 @@ module Pinecall
         tool = @tools[name.to_s]
         return call.tool_result({ call_id:, name:, error: "this app declares no tool called #{name}" }) if tool.nil?
 
-        Thread.new do
+        running = Thread.new do
           started = now
           begin
             output = tool[:run].call(arguments || {}, call)
@@ -102,17 +124,23 @@ module Pinecall
             call.tool_result({ call_id:, name:, error: e.message, duration_s: now - started })
           end
         end
+        @lock.synchronize { (@running << running).select!(&:alive?) }
+      end
+
+      # Every ask needs one answer, or the console's request hangs until the gateway gives up.
+      def refuse_the_console(asked)
+        command("dev.answer", nil, { id: asked[:id], refused: { status: 404, detail: DRAWS_NO_PANEL } })
       end
 
       # Await the reply event, or an `error` carrying our id. Only register/configure are awaited;
       # other commands are fire-and-forget.
-      def ask(type, lands_as:, data:)
+      def ask(type, lands_as:, data:, within_s: ANSWERS_WITHIN_S)
         id = "#{@slug}:#{type}"
         answer = Thread::Queue.new
         @waiting << { type: lands_as, id:, answer: }
         @client.send_command(type:, agent: @slug, call: nil, data:, id:)
-        settled = answer.pop(timeout: ANSWERS_WITHIN_S)
-        raise NotConnected, "#{type}: the gateway did not answer in #{ANSWERS_WITHIN_S}s" if settled.nil?
+        settled = answer.pop(timeout: within_s)
+        raise NotConnected, "#{type}: the gateway did not answer in #{within_s}s" if settled.nil?
         raise settled if settled.is_a?(Exception)
 
         settled

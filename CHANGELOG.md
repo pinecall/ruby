@@ -7,6 +7,9 @@ version number is the human's call.
 ## [Unreleased]
 
 ### Changed
+- **Breaking: `Pinecall::Client.new` reads nothing from the environment.** It takes `url:`,
+  `api_key:` and `env:` (`"production"` names production for a person's key), and v1's
+  `PINECALL_API_KEY` is read by nothing in this gem's library.
 - **Breaking: a call opens in the state its `call.started` carries.** `Pinecall.mount` takes no
   `opening:`: the state a golden, a persona or a chat's `?state=` asked for rides the call, and the
   bridge applies it after `on_call` and before the first render. `Testing::Gateway#call_started`
@@ -37,6 +40,15 @@ version number is the human's call.
   `knowledge/clinica.md` is gone: that page lives in the agent's settings.
 
 ### Added
+- **`Pinecall::Serve`, the entry the one `pinecall` CLI starts a Ruby agent with**:
+  `start --file --slug [--console] [--events] [--prod]` holds the agents (its door from
+  `PINECALL_URL`, `PINECALL_KEY`, `PINECALL_ENV` alone; the wire entry by entry on stdout with
+  `--events`; leaves draining on a signal or the end of its stdin) and `prompt --file --slug
+  [--state field=json]… [--show-machine]` prints a prompt. `Pinecall.serve(klass, url:, api_key:,
+  env:)` holds one inside your own Ruby process. The client gains `drain`, `on_entries`,
+  `on_stopped` and the `pinecall-env` header, registers its machine as `host`, and answers a
+  console's ask with `a Ruby agent draws no panel`. `docs/production.md` says how a server runs it.
+- A stage restored from JSON — a golden's, `call.started.state` — is the declared stage it names.
 - **The whole call.** `call.transfer(to, mode:)` and `call.attention(reason, wait_s:)` block until
   the log answers (a `Transferred`, an `Attended`); `call.hold`, `unhold`, `dtmf(digits)`,
   `claim(code)` (then `call.claimed`) and `callback(number, at:, note:)` are one command each.

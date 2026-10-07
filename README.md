@@ -97,8 +97,8 @@ held to the runtime's golden call log. Tools are the only code that may change s
 | a suite with no network, no key and no model | `pinecall/testing` |
 
 ```ruby
-pc = Pinecall::Client.new                # PINECALL_URL and PINECALL_API_KEY
-agent = pc.agent("clinica-norte", routes: [{ channel: "web", number: nil }], tools: [])
+pc = Pinecall::Client.new(url: "https://cloud.pinecall.io", api_key: ENV.fetch("PINECALL_KEY"))
+agent = pc.agent("clinica-norte", tools: [])
 agent.on("turn.user") { |data, call| call.say("Le he oído: #{data[:text]}") }
 pc.connect
 ```

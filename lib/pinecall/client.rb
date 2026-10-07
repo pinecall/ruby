@@ -23,31 +23,41 @@ module Pinecall
   # A connection to the Pinecall gateway: one socket, its agents, log reads, and the org's
   # knowledge bases and contact memory. `Pinecall::Agent` is built on top of it.
   #
-  #     pc = Pinecall::Client.new                 # PINECALL_URL and PINECALL_API_KEY
-  #     agent = pc.agent("clinica-norte", routes: [{ channel: "web", number: nil }], tools: [])
+  #     pc = Pinecall::Client.new(url: "https://cloud.pinecall.io", api_key: ENV.fetch("PINECALL_KEY"))
+  #     agent = pc.agent("clinica-norte", tools: [])
   #     agent.on("turn.user") { |data, call| call.say("Le he oído: #{data[:text]}") }
   #     pc.connect
   #
-  # `PINECALL_URL` and `PINECALL_API_KEY` are required; there are no defaults.
+  # It reads nothing from the environment: the app hands it the gateway and the key it keeps, and
+  # `env: "production"` names production for a person's key (a server's token needs none).
   class Client
     # The `sdk` field sent on register.
     def sdk = "pinecall-ruby/#{VERSION}"
 
-    attr_reader :url, :api_key
+    # A stop from the org: the socket is closed for good and the app decides what comes next.
+    STOPPED = "stopped"
 
-    def initialize(url: ENV.fetch("PINECALL_URL", nil), api_key: ENV.fetch("PINECALL_API_KEY", nil),
-                   ping_every: Connection::PINGS_EVERY_S, backoff: {})
-      if url.nil? || api_key.nil?
-        raise ArgumentError, "PINECALL_URL and PINECALL_API_KEY: one of them is not set"
-      end
+    # Seconds the running tools are given to answer once a drain was asked.
+    TOOLS_FINISH_WITHIN_S = 30
+
+    # Where a drain sent the calls, and what became of the tools running then.
+    Drained = Data.define(:handed, :parked, :tools, :finished)
+
+    attr_reader :url, :api_key, :env
+
+    def initialize(url:, api_key:, env: nil, ping_every: Connection::PINGS_EVERY_S, backoff: {})
+      raise ArgumentError, "Pinecall::Client.new(url:, api_key:): one of the two was not given" if url.nil? || api_key.nil?
 
       @url = url
       @api_key = api_key
+      @env = env
       @agents = {}
       @errors = []
+      @entries = []
+      @stops = []
       @listeners = Listeners.new { |error| on_error(error) }
       @connection = Connection.new(
-        url:, api_key:, ping_every:, backoff:,
+        url:, api_key:, env:, ping_every:, backoff:,
         handlers: Connection::Handlers.new(
           on_open: -> { @agents.each_value(&:open) },
           on_entry: ->(entry) { took(entry) },
@@ -73,6 +83,34 @@ module Pinecall
 
     # Close the socket without reconnecting; agents are unregistered.
     def close = @connection.close
+
+    # Leave without cutting calls: each agent drains (its live calls go to another holder, or wait
+    # for the next one) and the tools running get up to `tools_s` to answer. Close afterwards.
+    def drain(answer_s: Agent::ANSWERS_WITHIN_S, tools_s: TOOLS_FINISH_WITHIN_S)
+      @connection.leaving!
+      return Drained.new(handed: 0, parked: 0, tools: 0, finished: 0) unless connected?
+
+      answers = @agents.values.filter_map { |agent| guarded { agent.drain(answer_s:) } }
+      running = @agents.values.sum(&:in_flight)
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + tools_s
+      @agents.each_value { |agent| agent.settled(within_s: [deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max) }
+      Drained.new(handed: answers.sum { |one| one[:handed] }, parked: answers.sum { |one| one[:parked] },
+                  tools: running, finished: running - @agents.values.sum(&:in_flight))
+    end
+
+    # Every entry the socket receives, as the gateway wrote it, before any agent takes it — other
+    # agents' entries and the client's own errors included. Returns a lambda that unsubscribes.
+    def on_entries(&listener)
+      @entries << listener
+      -> { @entries.delete(listener) }
+    end
+
+    # Called when a member of the org stops this app: the socket is closed for good. Returns a
+    # lambda that unsubscribes.
+    def on_stopped(&listener)
+      @stops << listener
+      -> { @stops.delete(listener) }
+    end
 
     # True while the socket is up.
     def connected? = @connection.open?
@@ -112,7 +150,7 @@ module Pinecall
     # the search and logs it. Returns the chunks as the gateway answered them.
     def search(call, query, k: nil)
       input = k.nil? ? { query: } : { query:, k: }
-      answer = Rest.post(Endpoints.lookup(@url, call), { tool: "search", input: }, api_key: @api_key)
+      answer = Rest.post(Endpoints.lookup(@url, call), { tool: "search", input: }, api_key: @api_key, env: @env)
       answer.dig(:output, :chunks) || []
     end
 
@@ -135,6 +173,9 @@ module Pinecall
     private
 
     def took(entry)
+      @entries.each { |listener| guarded { listener.call(entry) } }
+      return stopped(entry.data[:message]) if stop?(entry)
+
       agent = @agents[entry.agent]
       # The socket may carry entries for agents this client did not declare.
       return if agent.nil?
@@ -142,10 +183,22 @@ module Pinecall
       guarded { agent.take(entry) }
     end
 
+    # An `error` coded `stopped` for no agent: a member of the org pressed Stop.
+    def stop?(entry) = entry.type == "error" && entry.agent.to_s.empty? && entry.data[:code] == STOPPED
+
+    # With no stop listener the stop is reported as an error, so it is never silent.
+    def stopped(why)
+      @connection.close
+      return on_error(NotConnected.new(why)) if @stops.empty?
+
+      @stops.each { |listener| guarded { listener.call(why) } }
+    end
+
     def guarded
       yield
     rescue StandardError => e
       on_error(e)
+      nil
     end
   end
 end

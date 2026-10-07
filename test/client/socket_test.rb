@@ -1,77 +1,12 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require_relative "fake_gateway"
 
 # The client socket against a real TCP/WebSocket server: auth, register/configure, commands.
 class SocketTest < Minitest::Test
-  # Minimal gateway: answers register/configure and records every frame.
-  class Gateway
-    attr_reader :frames, :authorization
-
-    def initialize
-      @server = TCPServer.new("127.0.0.1", 0)
-      @frames = Thread::Queue.new
-      @sockets = []
-      @thread = Thread.new { serve }
-    end
-
-    def url = "http://127.0.0.1:#{@server.addr[1]}"
-
-    def stop
-      @thread.kill
-      @sockets.each { |socket| socket.close rescue nil } # rubocop:disable Style/RescueModifier
-      @server.close
-    end
-
-    private
-
-    def serve
-      loop do
-        socket = @server.accept
-        @sockets << socket
-        Thread.new { talk(socket) }
-      end
-    rescue IOError, Errno::EBADF
-      nil
-    end
-
-    def talk(socket)
-      driver = WebSocket::Driver.server(Writer.new(socket))
-      driver.on(:connect) do
-        @authorization = driver.env["HTTP_AUTHORIZATION"]
-        driver.start
-      end
-      driver.on(:message) { |event| took(driver, event.data) }
-      loop { driver.parse(socket.readpartial(4096)) }
-    rescue EOFError, IOError, Errno::ECONNRESET
-      nil
-    end
-
-    def took(driver, raw)
-      frame = JSON.parse(raw, symbolize_names: true)
-      @frames << frame
-      case frame[:type]
-      when "agent.register"
-        write(driver, frame[:agent], "agent.registered", { app: "app_1", routes: frame[:data][:routes] })
-      when "agent.configure"
-        write(driver, frame[:agent], "agent.configured", { changed: %w[tools] })
-      end
-    end
-
-    def write(driver, agent, type, data)
-      @seq = (@seq || 0) + 1
-      driver.text(JSON.generate({ seq: @seq, ts: Time.now.to_f, call: nil, agent:, type:,
-                                  ephemeral: false, data: }))
-    end
-
-    # websocket-driver needs an object with `write` and `url`.
-    Writer = Struct.new(:socket) do
-      def write(bytes) = socket.write(bytes)
-    end
-  end
-
   def setup
-    @gateway = Gateway.new
+    @gateway = FakeGateway.new
     @client = Pinecall::Client.new(url: @gateway.url, api_key: "pk_test_key")
   end
 
@@ -139,7 +74,6 @@ class SocketTest < Minitest::Test
   def test_a_client_with_no_url_and_no_key_says_which_two_things_it_needs
     refused = assert_raises(ArgumentError) { Pinecall::Client.new(url: nil, api_key: nil) }
 
-    assert_includes refused.message, "PINECALL_URL"
-    assert_includes refused.message, "PINECALL_API_KEY"
+    assert_includes refused.message, "url:, api_key:"
   end
 end

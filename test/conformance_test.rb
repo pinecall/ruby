@@ -135,7 +135,7 @@ class ConformanceTest < Minitest::Test
   }.freeze
 
   # What the SDK does not do yet: each row is a skip, saying so, until the commit that does it.
-  MISSING_TODAY = %w[agent.drain event:call.claimed event:call.attached event:agent.draining event:dev.request].freeze
+  MISSING_TODAY = %w[event:call.claimed event:call.attached].freeze
 
   def test_every_command_is_sent_by_the_sdk_or_said_to_be_nobodys_here
     strays = Pinecall::Wire::Registry::COMMANDS.keys - COMMANDS.keys - NOT_THE_SDKS.keys
