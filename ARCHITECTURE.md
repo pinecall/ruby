@@ -75,7 +75,9 @@ exe/pinecall                 what a gem install puts on the PATH
 bin/pinecall                 the bin of a checkout: this source
 sig/                         the public surface as RBS. `rake rbs` is part of the gate
 examples/clinica_norte/      a whole agent, its view, and its own ring-0 suite
-test/                        mirrors lib/
+test/                        mirrors lib/; `conformance_test.rb` holds the SDK to its wire: every
+                             command sent by one method or said to be nobody's, every event folded
+                             or ignored with a reason, today's gaps skipped by name
 ```
 
 ## 3. What came from where: the TypeScript package, line by line
