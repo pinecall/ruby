@@ -119,7 +119,8 @@ module Pinecall
       Client.new(url:, api_key: key, env: world)
     end
 
-    # Listening starts before connect, so `agent.registered` is the first line of a pipe.
+    # Listening starts before connect, so `agent.registered` is the first line of a pipe. A pipe's
+    # $stdout is buffered: each line is flushed, or the CLI waiting on it sees it only at exit.
     def said(client, out:, err:, events:)
       client.on_entries do |entry|
         if events
@@ -127,6 +128,7 @@ module Pinecall
         elsif entry.type == "agent.registered"
           out.puts("#{entry.agent}  · answering as #{entry.data[:app]}")
         end
+        out.flush
       end
       client.on_errors { |error| err.puts("#{error.class}: #{error.message}") }
     end

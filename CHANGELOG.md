@@ -7,6 +7,9 @@ version number is the human's call.
 ## [Unreleased]
 
 ### Fixed
+- **`pinecall start`, `chat` and `test` see a Ruby agent register.** The serve entry's lines went
+  to a pipe's buffered `$stdout` and reached the CLI only when the process left, so every verb
+  that waits for `agent.registered` gave up after 30 seconds. Each line is flushed now.
 - **A voice call whose vendor fails over no longer stops the agent.** The runtime writes
   `vendor.switched` when a stage's fallback switches vendor, and the gem did not know the type: the
   socket raised `unknown event type` mid-call. `vendor.switched` and `spend.unusual` are in the

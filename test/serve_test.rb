@@ -47,6 +47,21 @@ class ServeTest < Minitest::Test
     assert_equal "app_1", first[:data][:app]
   end
 
+  def test_on_a_pipe_the_registration_is_read_while_the_process_still_holds
+    piped, @out = IO.pipe
+    @out.sync = false # as $stdout is when it is not a terminal
+    running = started("--events")
+    seen = Thread.new { piped.gets }.join(5)&.value
+    @signals.push(:signalled)
+    running.join(5)
+
+    refute_nil seen, "nothing reached the pipe before the process left"
+    assert_equal "agent.registered", JSON.parse(seen)["type"]
+  ensure
+    @out.close unless @out.closed?
+    piped&.close
+  end
+
   def test_a_signal_drains_before_the_socket_closes
     running = started
     until_registered
