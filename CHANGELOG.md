@@ -33,6 +33,8 @@ version number is the human's call.
   `knowledge/clinica.md` is gone: that page lives in the agent's settings.
 
 ### Added
+- The wire reads `call.started`'s `state`, the state a call opens in when its opener asked for
+  one, and `agent.register` may carry `answers_dev`. Nothing sends or reads either yet.
 - **`pinecall remember [PATHS]`**, and `client.memory.extraction(slug, cases)` — the goldens
   the memory policy is held to, which is the write side and the half that persists. A case is one
   call already held (both speakers, in `said`), the facts memory already holds (`holds`), and what

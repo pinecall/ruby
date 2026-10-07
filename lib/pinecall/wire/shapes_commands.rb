@@ -14,7 +14,8 @@ module Pinecall
           routes: { kind: :list, items: { kind: :ref, ref: "Route" }, required: true },
           sdk: { kind: :str },
           host: { kind: :str },
-          takes_unclaimed: { kind: :bool, default: true }
+          takes_unclaimed: { kind: :bool, default: true },
+          answers_dev: { kind: :bool, default: false }
         }.freeze,
         "AgentReply" => {
           instructions: { kind: :str, required: true },

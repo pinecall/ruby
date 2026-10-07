@@ -94,7 +94,8 @@ module Pinecall
           declines_when: { kind: :str, null: true },
           caller: { kind: :ref, null: true, ref: "Contact", required: true },
           started_at: { kind: :float, required: true },
-          env: { kind: :ref, ref: "Env" }
+          env: { kind: :ref, ref: "Env" },
+          state: { kind: :json }
         }.freeze,
         "CallSummary" => {
           reason: { kind: :ref, ref: "EndReason", required: true },

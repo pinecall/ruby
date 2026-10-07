@@ -14,6 +14,18 @@ class ValidateTest < Minitest::Test
     assert_equal result, Pinecall::Wire::Validate.call!("ToolResult", result, where: "tool.result")
   end
 
+  def test_a_call_started_reads_with_the_state_it_opens_in_and_without_one
+    started = { channel: "web", direction: "inbound", from: "web_7fb3", to: "clinica", caller: nil, started_at: 1.5 }
+    assert_equal started, Pinecall::Wire::Validate.call!("CallStarted", started, where: "call.started")
+    opened = started.merge(state: { patient_name: "Ana" })
+    assert_equal opened, Pinecall::Wire::Validate.call!("CallStarted", opened, where: "call.started")
+  end
+
+  def test_a_register_may_say_it_answers_the_console
+    register = { routes: [], takes_unclaimed: false, answers_dev: true }
+    assert_equal register, Pinecall::Wire::Validate.call!("AgentRegister", register, where: "agent.register")
+  end
+
   def test_a_required_field_still_has_to_be_there
     error = assert_raises(Pinecall::Wire::WireError) do
       Pinecall::Wire::Validate.call!("ToolResult", { name: "find_patient" }, where: "tool.result")
