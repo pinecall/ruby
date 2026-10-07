@@ -38,8 +38,8 @@ agent can be talked to from a page. A class that still writes `phone "+34…"`, 
 
 Everything the agent **runs on** is the world's: set per world and per corner, versioned, with who
 set it and why, and changed without a deploy — by `pinecall agent set`, the console's Settings
-tab, or the verb the table names. Those verbs belong to the Node CLI (`@pinecall/agents`); this
-gem's `pinecall` does not have them. A class that still declares one of these fields is refused
+tab, or the verb the table names. Those verbs belong to the one Node CLI (`pinecall` on npm); this
+gem ships no executable. A class that still declares one of these fields is refused
 when it loads, before a prompt is printed or a gateway is knocked at, with the verb that sets it
 now:
 

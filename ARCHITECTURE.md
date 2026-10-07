@@ -14,7 +14,8 @@ state. The log is the truth.
 | repository | language | what it owns |
 |---|---|---|
 | `pinecall/runtime` | Python, on livekit-agents | the wire and its golden log; the real time: LiveKit rooms and SIP, STT/LLM/TTS, the gateway's doors, the log, the judges |
-| `pinecall/agents` | TypeScript, Node ≥ 24 | the same class, for a team that writes TypeScript; the one `pinecall` CLI, for every language, starts this gem's serve entry |
+| `pinecall/agents` | TypeScript, Node ≥ 24 | the same class, for a team that writes TypeScript (`@pinecall/agents`) |
+| `pinecall/cli` | TypeScript, Node ≥ 24 | the one `pinecall` CLI, for every language: it starts this gem's serve entry |
 | **`pinecall/ruby`** (this one) | Ruby ≥ 3.2 | the same class, for a team that writes Ruby |
 
 The line between this package and the runtime is a **socket**. This package never imports the
@@ -281,7 +282,7 @@ ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agents/x/
 | ring | what it asks | where it runs |
 |---|---|---|
 | 0 | does the class behave? | `minitest`, in the tenant's own repo. No network, no key, no model — `pinecall/testing` is the gateway that is not there |
-| 1 | does the agent hold its goldens? | `pinecall test`: the one CLI, this gem's serve entry holding the class. `rake ring1` runs the example's, the same eleven the TypeScript example holds, and the agents repository's nightly runs it |
+| 1 | does the agent hold its goldens? | `pinecall test`: the one CLI, this gem's serve entry holding the class. `rake ring1` runs the example's, the same eleven the TypeScript example holds, and the CLI repository's nightly runs it |
 | 2 | does it hold on a real line? | `pinecall test --voice` and `pinecall simulate --voice`, the same way |
 | 3 | what does one real call score? | `pinecall eval <call-id>` |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up |
