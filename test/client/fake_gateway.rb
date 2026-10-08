@@ -6,6 +6,8 @@ require "socket"
 # frame and the headers the socket came with, and sends an app whatever entry a test says.
 class FakeGateway
   attr_reader :frames, :authorization, :world
+  # False: a drain is heard and never answered, as a gateway that went quiet.
+  attr_accessor :answers_drains
 
   def initialize
     @server = TCPServer.new("127.0.0.1", 0)
@@ -13,6 +15,7 @@ class FakeGateway
     @sockets = []
     @drivers = []
     @seq = 0
+    @answers_drains = true
     @thread = Thread.new { serve }
   end
 
@@ -73,6 +76,8 @@ class FakeGateway
     when "agent.configure"
       write(driver, frame[:agent], "agent.configured", { changed: %w[tools] })
     when "agent.drain"
+      return unless answers_drains
+
       write(driver, frame[:agent], "agent.draining", { app: "app_1", env: "sandbox", handed: 0, parked: 0 })
     end
   end

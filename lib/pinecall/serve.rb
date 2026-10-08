@@ -50,7 +50,6 @@ module Pinecall
       asked = signals || trapped
       client.on_stopped { |why| err.puts(why) || asked.push(:stopped) }
       client.connect
-      err.puts("#{mounted.map(&:slug).join(", ")} answering on #{client.url}") if flags.events
       Thread.new { ended(input, asked) }
       leave(held, asked, err)
     end
@@ -149,7 +148,8 @@ module Pinecall
       asked.push(:ended)
     end
 
-    # The first reason drains (unless the org already stopped it); a second one closes at once.
+    # The first reason drains (unless the org already stopped it); only a second signal closes at
+    # once. The end of stdin is not one: the CLI passes a signal on and closes the pipe together.
     def leave(held, asked, err)
       if asked.pop == :stopped
         held.close
@@ -157,7 +157,10 @@ module Pinecall
       end
       outcome = Thread::Queue.new
       Thread.new { outcome.push(held.stop) }
-      Thread.new { asked.pop && outcome.push(:again) }
+      Thread.new do
+        nil until asked.pop == :signalled
+        outcome.push(:again)
+      end
       drained = outcome.pop
       drained == :again ? held.close : err.puts(drain_line(drained))
       0

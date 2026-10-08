@@ -273,11 +273,11 @@ ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agents/x/
   `PINECALL_ENV` (`--prod` forces production). Missing → one sentence, exit 2. Never an argv.
 - **The slug is the folder's**, `--slug`; a class whose `slug "…"` says another is refused.
 - **`--events`:** one line per wire entry, `{"type","agent","call","data"}` with `data` as the
-  gateway wrote it, `agent.registered` first (the listener is in place before the socket opens);
-  the "answering on" line goes to stderr.
+  gateway wrote it, `agent.registered` first (the listener is in place before the socket opens).
 - **`--console`:** `takes_unclaimed: false` — a console's process takes only the calls it opened.
 - **Leaving:** SIGINT, SIGTERM or the end of its stdin (the CLI that started it is gone) drains,
-  then closes; a second reason closes at once; a stop from the org closes without draining. A
+  then closes; a second signal closes at once, and the end of stdin after a signal is the same ask
+  (the CLI sends both); a stop from the org closes without draining. A
   trap only pushes onto a queue: the main thread does the leaving.
 - **The console's verbs** are answered by the CLI's companion; the one this process could answer,
   `view.render`, is refused 404 `a Ruby agent draws no panel`, by the client's default handler.

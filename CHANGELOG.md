@@ -7,6 +7,11 @@ version number is the human's call.
 ## [Unreleased]
 
 ### Fixed
+- **`pinecall start` drains a Ruby agent whole on Ctrl-C or a SIGTERM.** The CLI passes the signal on
+  and closes the child's stdin together, and the serve entry took the second as "leave now": it
+  closed the socket mid-drain, with tools still running. Only a second signal cuts a drain short,
+  as in TypeScript; the drain line is printed. The serve entry no longer prints its own
+  `answering on` line, which the CLI already says.
 - **Leaving after the socket closed is quiet.** When the gateway's socket closed just before the
   drain was asked, `pinecall test` and `chat` ended with `Pinecall::NotConnected: agent.drain: the
   gateway is not connected`; a drain with no socket has nothing to hand over, and says so.

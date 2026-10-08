@@ -72,6 +72,29 @@ class ServeTest < Minitest::Test
     assert_includes @err.string, "draining · no live calls"
   end
 
+  def test_a_signal_and_then_the_end_of_its_stdin_is_one_ask_and_it_drains_whole
+    running = started
+    until_registered
+    @signals.push(:signalled)
+    @writing.close # the CLI passes a signal on and closes the pipe, both at once
+
+    assert_equal 0, running.value
+    refute_nil @gateway.next_frame("agent.drain")
+    assert_includes @err.string, "draining · no live calls"
+  end
+
+  def test_a_second_signal_leaves_without_waiting_for_the_drain
+    @gateway.answers_drains = false
+    running = started
+    until_registered
+    @signals.push(:signalled)
+    refute_nil @gateway.next_frame("agent.drain")
+    @signals.push(:signalled)
+
+    assert_equal 0, running.join(5)&.value
+    refute_includes @err.string, "draining"
+  end
+
   def test_the_end_of_its_stdin_drains_it_too
     running = started
     until_registered
