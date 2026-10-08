@@ -38,9 +38,9 @@ A change lands with the page that describes it, in the same commit.
 | you changed | you edit |
 |---|---|
 | a module, an entity, the correspondence with the TypeScript package | `ARCHITECTURE.md` |
-| the serve entry, `Pinecall.serve`, how a server runs the agent | `docs/production.md`, ARCHITECTURE §10 |
+| the serve entry, `Pinecall.serve`, how a server runs the agent | `docs/` and ARCHITECTURE §10 |
 | anything a person writing an agent types | the `docs/` page for it |
-| a rule that is refused at load | `docs/writing-an-agent.md`, with the sentence the refusal says |
+| a rule that is refused at load | `docs/`, with the sentence the refusal says |
 | anything a user would notice | `CHANGELOG.md`, under Unreleased |
 
 Before renaming anything public: `grep -rn "<old name>" lib test examples docs *.md sig`.
