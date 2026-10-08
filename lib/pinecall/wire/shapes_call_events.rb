@@ -81,7 +81,8 @@ module Pinecall
           judges: { kind: :list, items: { kind: :ref, ref: "Judgment" }, required: true },
           panel: { kind: :list, items: { kind: :str } },
           judge_calls: { kind: :int, required: true },
-          judge_cost_usd: { kind: :float }
+          judge_cost_usd: { kind: :float },
+          judged_by: { kind: :ref, ref: "JudgedBy" }
         }.freeze,
         "CallStarted" => {
           channel: { kind: :ref, ref: "Channel", required: true },

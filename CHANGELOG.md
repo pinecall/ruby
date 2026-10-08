@@ -7,6 +7,9 @@ version number is the human's call.
 ## [Unreleased]
 
 ### Fixed
+- **A judged call's score reaches the agent.** The runtime's `call.score` says which judge model
+  gave it (`judged_by`), and the gem refused the field: `pinecall simulate --judge` and every
+  judged call printed `CallScore has no field called judged_by` and dropped the score.
 - **`pinecall start`, `chat` and `test` see a Ruby agent register.** The serve entry's lines went
   to a pipe's buffered `$stdout` and reached the CLI only when the process left, so every verb
   that waits for `agent.registered` gave up after 30 seconds. Each line is flushed now.

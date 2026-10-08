@@ -308,6 +308,11 @@ module Pinecall
           status: { kind: :int, required: true },
           detail: { kind: :str, required: true }
         }.freeze,
+        "JudgedBy" => {
+          provider: { kind: :str, null: true, required: true },
+          model: { kind: :str, null: true, required: true },
+          criteria: { kind: :str, required: true }
+        }.freeze,
         "Judgment" => {
           name: { kind: :str, required: true },
           verdict: { kind: :ref, ref: "ScoreVerdict", required: true },

@@ -32,6 +32,12 @@ class ValidateTest < Minitest::Test
     assert_equal register, Pinecall::Wire::Validate.call!("AgentRegister", register, where: "agent.register")
   end
 
+  def test_a_score_says_which_judge_gave_it
+    score = { passed: true, judges: [], judge_calls: 2, judge_cost_usd: 0.003,
+              judged_by: { provider: "anthropic", model: "claude-haiku-4-5", criteria: "c0ffee" } }
+    assert_equal score, Pinecall::Wire::Validate.call!("CallScore", score, where: "call.score")
+  end
+
   def test_a_required_field_still_has_to_be_there
     error = assert_raises(Pinecall::Wire::WireError) do
       Pinecall::Wire::Validate.call!("ToolResult", { name: "find_patient" }, where: "tool.result")
