@@ -25,6 +25,20 @@ class AgentTest < Minitest::Test
     assert_equal [0, 0, 0, 0], [drained.handed, drained.parked, drained.tools, drained.finished]
   end
 
+  def test_a_socket_that_closed_before_the_drain_was_asked_is_a_drain_with_nothing_to_hand_over
+    errors = []
+    @client.on_errors { |error| errors << error }
+    client = @client
+    @client.agents["clinica-norte"].define_singleton_method(:drain) do |**|
+      client.close
+      raise Pinecall::NotConnected, "agent.drain: the gateway is not connected"
+    end
+    drained = @client.drain(tools_s: 0.1)
+
+    assert_equal [0, 0], [drained.handed, drained.parked]
+    assert_empty errors
+  end
+
   def test_a_consoles_ask_with_nobody_to_answer_it_is_a_501_that_says_so
     @gateway.send_entry("clinica-norte", "dev.request", { id: "dev_1", verb: "view.render", data: {} })
 

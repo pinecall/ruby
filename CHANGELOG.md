@@ -7,6 +7,9 @@ version number is the human's call.
 ## [Unreleased]
 
 ### Fixed
+- **Leaving after the socket closed is quiet.** When the gateway's socket closed just before the
+  drain was asked, `pinecall test` and `chat` ended with `Pinecall::NotConnected: agent.drain: the
+  gateway is not connected`; a drain with no socket has nothing to hand over, and says so.
 - **A judged call's score reaches the agent.** The runtime's `call.score` says which judge model
   gave it (`judged_by`), and the gem refused the field: `pinecall simulate --judge` and every
   judged call printed `CallScore has no field called judged_by` and dropped the score.

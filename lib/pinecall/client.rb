@@ -87,7 +87,7 @@ module Pinecall
       @connection.leaving!
       return Drained.new(handed: 0, parked: 0, tools: 0, finished: 0) unless connected?
 
-      answers = @agents.values.filter_map { |agent| guarded { agent.drain(answer_s:) } }
+      answers = @agents.values.filter_map { |agent| guarded { drained(agent, answer_s) } }
       running = @agents.values.sum(&:in_flight)
       deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + tools_s
       @agents.each_value { |agent| agent.settled(within_s: [deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max) }
@@ -190,6 +190,16 @@ module Pinecall
       return on_error(NotConnected.new(why)) if @stops.empty?
 
       @stops.each { |listener| guarded { listener.call(why) } }
+    end
+
+    # The socket can close between `connected?` and the ask: then nothing was left to hand over. A
+    # gateway still connected that never answered is still said.
+    def drained(agent, answer_s)
+      agent.drain(answer_s:)
+    rescue NotConnected
+      raise if connected?
+
+      nil
     end
 
     def guarded
