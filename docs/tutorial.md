@@ -18,8 +18,8 @@ pinecall link                    # signs this machine in, picks the org, writes 
 pinecall whoami                  # which gateway, which org, and where the key was read
 ```
 
-`pinecall link` writes `PINECALL_KEY` and `PINECALL_URL` into this folder's `.env`, which nothing
-else reads: another org is another folder. Every verb works in the sandbox unless `--prod` is said.
+`pinecall link` writes `PINECALL_KEY` into this folder's `.env` (and `PINECALL_URL` when the gateway
+is not Pinecall's), which nothing else reads: another org is another folder. Every verb works in the sandbox unless `--prod` is said.
 
 ## 2. The class
 
@@ -86,15 +86,19 @@ $ pinecall prompt
 Eres la recepción de Clínica Norte. Hablas de usted, con frases cortas.
 
 <rules>
-- No inventes ningún dato: lo que no salga de una herramienta o del conocimiento, no lo digas.
-- Una sola pregunta por turno, y espera la respuesta.
+- Invent nothing: if it did not come from a tool or from the knowledge, do not say it.
+- One question per turn, and wait for the answer.
 …
 </rules>
 
 <protocols>
-- Para actuar usa una herramienta; decir que has hecho algo no lo hace.
+- To act, call a tool; saying you have done something does not do it.
 …
 </protocols>
+
+<channel>
+You are on a phone call. Everything you write is read aloud by a voice: short spoken sentences, …
+</channel>
 
 ── knowledge (static) ──
 
@@ -264,7 +268,8 @@ no CLI, just the socket and its key. What the base answered on one call:
 ```ruby
 require "pinecall"
 
-client = Pinecall::Client.new(url: ENV.fetch("PINECALL_URL"), api_key: ENV.fetch("PINECALL_KEY"))
+url = ENV.fetch("PINECALL_URL", "https://cloud.pinecall.io")
+client = Pinecall::Client.new(url: url, api_key: ENV.fetch("PINECALL_KEY"))
 client.history({ call: ARGV.fetch(0) }).entries.each do |entry|
   next unless entry.type == "docs.sources"
   entry.data[:sources].each { |chunk| puts "#{chunk[:path]} › #{chunk[:heading]} · #{chunk[:score].round(2)}" }
