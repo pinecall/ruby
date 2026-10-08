@@ -34,7 +34,7 @@ class ValidateTest < Minitest::Test
 
   def test_a_score_says_which_judge_gave_it
     score = { passed: true, judges: [], judge_calls: 2, judge_cost_usd: 0.003,
-              judged_by: { provider: "anthropic", model: "claude-haiku-4-5", criteria: "c0ffee" } }
+              judged_by: { provider: "anthropic", model: "claude-haiku-5-5", criteria: "c0ffee" } }
     assert_equal score, Pinecall::Wire::Validate.call!("CallScore", score, where: "call.score")
   end
 

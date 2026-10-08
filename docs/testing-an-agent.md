@@ -204,7 +204,7 @@ pinecall remember --grep tarjeta                             # while writing one
 ```
 
 ```
-clinica-norte · anthropic/claude-haiku-4-5 · 3 cases · 3 held · 3672 ms
+clinica-norte · anthropic/claude-haiku-5-5 · 3 cases · 3 held · 3672 ms
   ✓ anota la alergia y nunca la tarjeta
   ✓ la mañana sustituye a la tarde, no convive con ella
   ✓ ni guarda un permiso ni borra lo que nadie desmintió
