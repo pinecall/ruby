@@ -16,7 +16,7 @@ class ToolsTest < Minitest::Test
     end
 
     # Horas libres de un día.
-    tool stage: :book, preview: 2, params: { day: String, how_many: Integer }
+    tool stage: :book, preview: 2, announce: "Voy a mirar la agenda.", params: { day: String, how_many: Integer }
     def free_slots(day:, how_many: 3)
       Array.new(how_many) { |at| "#{day} #{10 + at}:00" }
     end
@@ -55,6 +55,11 @@ class ToolsTest < Minitest::Test
 
   def test_a_parameter_nobody_typed_is_text_because_that_is_what_a_caller_says
     assert_equal({ type: "string" }, spec_of(:find_patient)[:parameters][:properties][:name])
+  end
+
+  def test_an_announcement_travels_as_the_wire_carries_it
+    assert_equal "Voy a mirar la agenda.", spec_of(:free_slots)[:announce]
+    assert_nil spec_of(:book)[:announce]
   end
 
   def test_a_read_back_is_what_makes_a_tool_irreversible_on_the_wire

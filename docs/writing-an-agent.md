@@ -133,6 +133,7 @@ tool; the signature is the schema it fills.
 | `stage:` | visible while the state is in one of these stages. Sugar over `when:` |
 | `when:` | a question asked of the state, on every change: `-> { slots.any? }` or `->(s) { s.slots.any? }` |
 | `confirm:` | the read-back the agent says before running. **This is what makes a tool irreversible on the wire** |
+| `announce:` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself; a turn that spoke first is not announced twice |
 | `preview:` | how many rows of a list result the *model* sees. The state field keeps every row |
 | `pii:` | parameters that carry personal data, masked in the log by declaration |
 | `timeout:` | how long the platform waits for this method, in seconds |

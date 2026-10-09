@@ -12,6 +12,7 @@ module Pinecall
           parameters: { kind: :json, required: true },
           side_effect: { kind: :enum, values: %w[read write irreversible], default: "read" },
           confirm: { kind: :str },
+          announce: { kind: :str },
           pii: { kind: :list, items: { kind: :str } },
           timeout_s: { kind: :float }
         }.freeze,

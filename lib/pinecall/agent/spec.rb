@@ -36,6 +36,7 @@ module Pinecall
             side_effect: options[:confirm] ? "irreversible" : "read"
           }
           spec[:confirm] = options[:confirm] if options[:confirm]
+          spec[:announce] = options[:announce] if options[:announce]
           spec[:pii] = pii!(options, spec) if options[:pii]
           spec[:timeout_s] = options[:timeout].to_f if options[:timeout]
           Wire::Validate.call!("ToolSpec", spec, where: "tool #{name}")

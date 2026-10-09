@@ -6,6 +6,13 @@ version number is the human's call.
 
 ## [Unreleased]
 
+## [0.0.4] — A tool announces itself (2026-10-09)
+
+### Added
+- **`tool announce: "Let me check the agenda."`**: what the agent says as the tool starts, when the
+  model's turn said nothing itself; a turn that spoke and then called the tool is not announced
+  twice. Needs runtime 0.1.11.
+
 ## [0.0.3] — A call runs on the day a golden pinned (2026-10-09)
 
 ### Added
