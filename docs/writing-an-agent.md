@@ -6,8 +6,8 @@ comment above the class, what the class declares, the comments above its tools, 
 ```ruby
 require "pinecall"
 
-# Eres la recepción de Clínica Norte. Hablas de usted, con frases cortas.
-# Todo lo que dices se lee en voz alta: sin listas, sin markdown.
+# You are the front desk of Clínica Norte. Formal, short sentences.
+# Everything you say is read aloud: no lists, no markdown.
 class ClinicaNorte < Pinecall::Agent
 end
 ```
@@ -17,7 +17,7 @@ change during a call and are what a provider caches. Write it as instructions to
 documentation.
 
 For a class with no source file to read (one built at runtime, one loaded from a database), say it
-out loud instead: `doc "Eres la recepción…"`.
+out loud instead: `doc "You are the front desk…"`.
 
 ## Config: what the agent *is*
 
@@ -85,7 +85,7 @@ None of the three is in the class any more, and the runtime does the work for al
 **Neither a fact nor a chunk ever reaches the prompt.** Both arrive as a `tool_result`, JSON, in
 the history, where a model reads them as information rather than as an instruction — the rule, and
 the vendor guidance behind it, is `runtime/docs/security/prompt-injection.md`. What the view may do
-with memory is ask it a question: `remembers?("médico habitual")`, and then say a sentence of your
+with memory is ask it a question: `remembers?("usual doctor")`, and then say a sentence of your
 own. The history of a contact, and the right to be forgotten, are `pinecall memory CONTACT` and
 `pinecall memory forget CONTACT`.
 
@@ -115,10 +115,10 @@ calls being served at the same moment never read each other's.
 ## Tools: what the model may do
 
 ```ruby
-# Busca al paciente por nombre y teléfono. Pide los dos antes de llamarla.
+# Finds the patient by name and phone. Ask for both before calling it.
 tool stage: :identify, pii: %i[name phone]
 def find_patient(name:, phone:)
-  self.patient = Agenda.buscar(name, phone)
+  self.patient = Agenda.find(name, phone)
   self.stage = :choose if patient
   patient
 end
@@ -172,11 +172,11 @@ name, the same way an undefined instance variable does in a Rails view.
 
 ```ruby
 def on_call(call)                  # a call started. Writes here are authored by the hook
-  self.patient = Agenda.por_telefono(call.from)
+  self.patient = Agenda.by_phone(call.from)
   self.stage = :choose if patient
 end
 
-def on_end(call)  = log("resultado", { fase: stage })
+def on_end(call)  = log("outcome", { stage: })
 def on_event(name, data, meta)     # an outside fact this class declared with `accepts`
 def on_memory(ops, call)           # memory was written
 ```
@@ -197,21 +197,21 @@ name on it, and the hook never sees it.
 Inside a tool or a hook, `call` is the live call:
 
 ```ruby
-say "Un momento, que lo miro."          # blocks until the turn lands, or 30 seconds
-reply "Dile que ya está reservado."     # the model speaks, guided by words nobody hears
+say "One moment, let me check."        # blocks until the turn lands, or 30 seconds
+reply "Tell them it is booked."        # the model speaks, guided by words nobody hears
 call.send_to("cart", { total: 42 })     # a payload in the browser
 call.participant(id).mute
 call.invite("+34910000001", kind: :supervisor)
 call.transfer("+34910000002")           # blocks until the log says how it went: a Transferred
-call.attention("quiere hablar con una persona", wait_s: 60)   # an Attended: who took the line
+call.attention("wants to talk to a person", wait_s: 60)   # an Attended: who took the line
 call.hold                               # and call.unhold
 call.dtmf("1#")
 call.claim("4821")                      # the page showing 4821 follows this call; call.claimed says so
-call.callback("+34600000001", at: "mañana por la tarde", note: "presupuesto")
-call.opt_out("no quiere más llamadas")  # their number joins the org's do-not-call list
+call.callback("+34600000001", at: "tomorrow afternoon", note: "a quote")
+call.opt_out("does not want more calls")  # their number joins the org's do-not-call list
 call.hangup("done")
-log "resultado", { referencia: booking[:referencia] }
-knowledge.search("horario de verano", k: 3)   # the bases attached to the agent, searched for this call
+log "outcome", { reference: booking[:reference] }
+knowledge.search("summer opening hours", k: 3)   # the bases attached to the agent, searched for this call
 ```
 
 `transfer` and `attention` block the tool that called them until the log answers — `ok: false`
@@ -234,18 +234,18 @@ that**, and that is where the business's data goes: the customer's file, their o
 class ClinicaNorte < Pinecall::Agent
   def self.crm = Crm.new(ENV.fetch("CRM_URL"))
 
-  panel "Cliente" do |who|
+  panel "Customer" do |who|
     client = crm.find(who.contact)
-    next panel("Sin ficha") { text "No está en el CRM." } if client.nil?
+    next panel("Not on file") { text "Not in the CRM." } if client.nil?
 
     panel client.name do
       rows do
-        row "Alta", client.since
-        row "Zona", client.area
+        row "Since", client.since
+        row "Area", client.area
       end
-      stat "Servicios", client.jobs.length
-      table columns: %w[fecha servicio importe], rows: client.jobs
-      badge client.debt.positive? ? "con saldo" : "al día", tone: client.debt.positive? ? :warn : :good
+      stat "Jobs", client.jobs.length
+      table columns: %w[date job amount], rows: client.jobs
+      badge client.debt.positive? ? "owes" : "paid up", tone: client.debt.positive? ? :warn : :good
     end
   end
 end

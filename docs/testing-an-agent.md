@@ -15,10 +15,10 @@ class ClinicaTest < Minitest::Test
     @mounted = Pinecall.mount(ClinicaNorte, client: @gateway)
   end
 
-  def test_una_paciente_de_la_ficha_no_tiene_que_decir_su_nombre_otra_vez
+  def test_a_patient_on_file_is_not_asked_for_their_name_again
     call = @gateway.call_started(from: "+34600123456")
 
-    assert_includes call.prompt, "Hablas con Marta Ruiz"
+    assert_includes call.prompt, "You are talking to Marta Ruiz"
     assert_equal %w[free_slots], call.tools
   end
 end
@@ -32,8 +32,8 @@ every command the agent sent, and lets the test say what happened next.
 | you write | what happens |
 |---|---|
 | `gateway.call_started(from:, channel:, id:, state:)` | a call opens, `on_call` runs, then `state:` (what `call.started` carries when a golden or a persona opened it) is written over the hook's, and the first prompt goes out. Returns the handle |
-| `call.tool("free_slots", day: "martes")` | the model calls a tool. Returns the `tool.result` the agent sent back |
-| `call.said("el martes me viene bien")` | the caller said something |
+| `call.tool("free_slots", day: "Tuesday")` | the model calls a tool. Returns the `tool.result` the agent sent back |
+| `call.said("Tuesday works for me")` | the caller said something |
 | `call.fact("agenda.changed", { slots: [] })` | a fact from the tenant's backend. `from: "participant"` for a browser |
 | `call.ended` | the call is over, `on_end` runs |
 | `gateway.call_attached(state:, id:)` | a call handed over mid-conversation: no `on_call`, the state the gateway kept, the whole prompt sent |
@@ -56,21 +56,21 @@ every command the agent sent, and lets the test say what happened next.
 The things a prompt makes true, not the things a method returns:
 
 ```ruby
-def test_el_telefono_pide_ofrecer_dos_horas_y_la_web_la_lista
-  por_telefono = @gateway.call_started(id: "CA_tel", from: "+34600123456", channel: "phone")
-  por_telefono.tool("free_slots", day: "martes")
+def test_a_phone_call_offers_two_slots
+  by_phone = @gateway.call_started(id: "CA_tel", from: "+34600123456", channel: "phone")
+  by_phone.tool("free_slots", day: "Tuesday")
 
-  assert_includes por_telefono.prompt, "Ofrece como máximo dos"
+  assert_includes by_phone.prompt, "Offer at most two"
 end
 
-def test_una_hora_que_nadie_ofrecio_se_rechaza_en_vez_de_reservarse
+def test_a_slot_nobody_offered_is_refused_instead_of_booked
   call = @gateway.call_started(from: "+34600123456")
-  call.tool("free_slots", day: "martes")
+  call.tool("free_slots", day: "Tuesday")
 
-  assert_includes call.tool("propose", chosen: "el domingo")[:error], "no es una de las horas"
+  assert_includes call.tool("propose", chosen: "Sunday")[:error], "is not one of the slots"
 end
 
-def test_reservar_es_irreversible_y_por_eso_lleva_una_lectura_en_voz_alta
+def test_booking_is_irreversible_so_it_is_read_back
   spec = @mounted.options[:tools].find { |one| one[:name] == "book" }
 
   assert_equal "irreversible", spec[:side_effect]
@@ -87,9 +87,9 @@ The prompt is a pure function of the state, so most assertions need no gateway a
 
 ```ruby
 agent = ClinicaNorte.new.seal
-agent.start_in(stage: :book, slots: [hueco])
+agent.start_in(stage: :book, slots: [slot])
 
-assert_includes Pinecall.render(agent)[:view], "el martes a las diez"
+assert_includes Pinecall.render(agent)[:view], "Tuesday at ten"
 ```
 
 `start_in` writes the fields a case names over the ones the class gave itself. `restore` is the
@@ -120,10 +120,10 @@ and the chunk that should answer it:
 
 ```json
 [
-  { "asks": "¿cuánto tengo que pagar de copago?",
-    "expects": "seguros-y-autorizaciones.md › Seguros, autorizaciones y facturación › Copagos" },
-  { "asks": "¿tengo que ir en ayunas para el análisis?",
-    "expects": "preparacion-de-pruebas.md › Preparación de las pruebas › Analíticas" }
+  { "asks": "how much is my co-payment?",
+    "expects": "insurance.md › Insurance and billing › Co-payments" },
+  { "asks": "do I have to fast before the blood test?",
+    "expects": "test-preparation.md › Preparing for a test › Blood tests" }
 ]
 ```
 
@@ -168,8 +168,8 @@ in four ways that all cost a business:
 |---|---|
 | misses what mattered | the next call asks the same question again |
 | invents a fact | the agent asserts something the caller never said, forever |
-| does not supersede | «prefiere la mañana» and «prefiere la tarde» both live, and the model picks |
-| writes a `forget` category | you listed `pagos` as never-keep, and there it is |
+| does not supersede | "prefers mornings" and "prefers afternoons" both live, and the model picks |
+| writes a `forget` category | you listed `payments` as never-keep, and there it is |
 
 An extraction golden is one call **already held** — both speakers, because nothing is re-run — the
 facts memory already holds about that caller, and what must come of it. One file per case, in
@@ -177,12 +177,12 @@ facts memory already holds about that caller, and what must come of it. One file
 
 ```json
 {
-  "name": "anota la alergia y nunca la tarjeta",
-  "said": [["caller", "Soy Marta, alérgica a la penicilina"],
-           ["agent",  "Anotado. ¿Le va bien el martes?"],
-           ["caller", "Sí. Y le paso la Visa, 4242 4242 4242 4242"]],
+  "name": "keeps the allergy and never the card",
+  "said": [["caller", "I'm Marta, I'm allergic to penicillin"],
+           ["agent",  "Noted. Does Tuesday work for you?"],
+           ["caller", "Yes. And here's my Visa, 4242 4242 4242 4242"]],
   "holds": [],
-  "expect": { "writes": ["alergias"], "never": ["pagos"], "never_says": ["4242 4242 4242 4242"] }
+  "expect": { "writes": ["allergies"], "never": ["payments"], "never_says": ["4242 4242 4242 4242"] }
 }
 ```
 
@@ -199,19 +199,19 @@ facts memory already holds about that caller, and what must come of it. One file
 
 ```bash
 pinecall remember                                            # every case in test/<slug>/memory/
-pinecall remember test/clinica-norte/memory/alergia.json     # one of them
-pinecall remember --grep tarjeta                             # while writing one
+pinecall remember test/clinica-norte/memory/allergy.json     # one of them
+pinecall remember --grep card                                # while writing one
 ```
 
 ```
 clinica-norte · anthropic/claude-haiku-5-5 · 3 cases · 3 held · 3672 ms
-  ✓ anota la alergia y nunca la tarjeta
-  ✓ la mañana sustituye a la tarde, no convive con ella
-  ✓ ni guarda un permiso ni borra lo que nadie desmintió
+  ✓ keeps the allergy and never the card
+  ✓ mornings replace afternoons, they do not live side by side
+  ✓ neither keeps a permission nor erases what nobody denied
 ```
 
 **Nothing here asks a model whether two sentences mean the same thing.** A fact is natural
-language — «alérgica a la penicilina» and «tiene alergia a la penicilina» are one fact written
+language — "allergic to penicillin" and "has a penicillin allergy" are one fact written
 twice — so an exact-match assertion would make every golden brittle and useless. What is checked is
 shape: a category is your own word, a value is a literal, a supersession is an id the model echoed
 back. Every judgment is code, so two runs of one case answer the same thing and a change is a
@@ -228,9 +228,9 @@ A case that did not hold prints what broke, then what memory would have kept and
 refused — the two together are the whole of why:
 
 ```
-  ✗ anota la alergia y nunca la tarjeta
-      writes  nothing was written under 'cómo prefiere que le llamen'; what was: ['alergias']
-      kept      add · alergias · Es alérgica a la penicilina.
+  ✗ keeps the allergy and never the card
+      writes  nothing was written under 'how they like to be addressed'; what was: ['allergies']
+      kept      add · allergies · Allergic to penicillin.
 ```
 
 `client.memory.extraction(slug, cases)` is the same thing from Ruby, when a rake task suits you
@@ -251,9 +251,9 @@ whatever their earlier calls taught. So a memory question **brings its own facts
 
 ```json
 [
-  { "holds": ["Prefiere mañanas", "Paciente de la doctora Vidal desde 2024", "Alérgica a la penicilina"],
-    "asks": "¿le va bien el martes?",
-    "expects": ["Prefiere mañanas"] }
+  { "holds": ["Prefers mornings", "Dr. Vidal's patient since 2024", "Allergic to penicillin"],
+    "asks": "does Tuesday work for you?",
+    "expects": ["Prefers mornings"] }
 ]
 ```
 
@@ -270,8 +270,8 @@ uses, rather than an arithmetic in a test.
 
 **A fact answers when what came back CONTAINS what you expected**, folded for case, accents and
 whitespace. A fact is a sentence a model wrote and you know the substance, not the wording: so
-`"Prefiere mañanas"` is answered by *"Prefiere mañanas, nunca después de comer"*, and an expected
-`"Alérgica a la penicilina"` is not answered by *"Alérgica"*, which says less than you asked for.
+`"Prefers mornings"` is answered by *"Prefers mornings, never after lunch"*, and an expected
+`"Allergic to penicillin"` is not answered by *"Allergic"*, which says less than you asked for.
 
 ```bash
 pinecall memory eval                  # test/<slug>/goldens/memory.json
@@ -294,9 +294,9 @@ way to make recall bite is a smaller `k`:
 ```
 $ pinecall memory eval --k 1
 memory · pplx-embed-context-v1-0.6b · 7 questions · recall@1 0.57 · nDCG@10 0.57 · 11568 ms
-  missed: me han mandado una resonancia, ¿me la puedo hacer? → wanted Le pusieron un marcapasos en 2023, got Prefiere que le llamen don Julián
-  missed: me han pedido una radiografía de la espalda → wanted Está embarazada de cinco meses, got Su médico habitual es el doctor Ferrán
-  missed: llamadme mañana a las nueve para confirmar → wanted Trabaja de noche, Prefiere que le escriban por WhatsApp, got Prefiere que le llamen Aixa
+  missed: I've been sent for an MRI, can I have it? → wanted Had a pacemaker fitted in 2023, got Prefers to be called Mr. Julián
+  missed: they asked me for a back X-ray → wanted Is five months pregnant, got Their usual doctor is Dr. Ferrán
+  missed: call me tomorrow at nine to confirm → wanted Works nights, Prefers WhatsApp messages, got Prefers to be called Aixa
 ```
 
 Every question memory did not answer whole is printed with what came back instead, and the verb

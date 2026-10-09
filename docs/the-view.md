@@ -33,19 +33,19 @@ examples/clinica_norte/
 
 ```erb
 <% if stage == :identify -%>
-Saluda y pide nombre y teléfono. Nada más hasta identificar al paciente.
+Greet the caller and ask for their name and phone. Nothing else until the patient is identified.
 <% end -%>
 
 <% if identified -%>
-Hablas con <%= patient.nombre %>, ya en la ficha: no vuelvas a pedirle el nombre.
+You are talking to <%= patient.name %>, already on file: do not ask for their name again.
 <% end -%>
 
-<% if remembers?("médico habitual") -%>
-Ofrece primero las horas de su médico habitual.
+<% if remembers?("usual doctor") -%>
+Offer their usual doctor's slots first.
 <% end -%>
 
 <% if proposed && booking.nil? -%>
-Ha nombrado <%= proposed.cuando %>. Léesela tal cual y espera un sí antes de reservar.
+They named <%= proposed.when %>. Read it back as it is and wait for a yes before booking.
 <% end -%>
 ```
 
@@ -69,14 +69,14 @@ Somewhere else, or inline:
 view "views/reception.erb"      # relative to the file the class is in
 view template: <<~ERB           # small enough to live inside the class
   <% if stage == :identify -%>
-  Saluda y pide nombre y teléfono.
+  Greet the caller and ask for their name and phone.
   <% end -%>
 ERB
 ```
 
 ## What the agent already knows about this caller
 
-`remembers?("médico habitual")` answers whether memory holds something about this caller matching
+`remembers?("usual doctor")` answers whether memory holds something about this caller matching
 those words. The runtime supplies the facts; a render nobody gave any — `pinecall prompt`, a ring-0
 test that says nothing about it — answers no rather than guessing.
 
@@ -85,7 +85,7 @@ appears in the prompt: it reached the model as the result of the platform's `rec
 history. What the view adds is the sentence *you* want said when the answer is yes.
 
 ```ruby
-Pinecall.render(agent, remembered: ["su médico habitual es la doctora Vidal"])[:view]
+Pinecall.render(agent, remembered: ["their usual doctor is Dr. Vidal"])[:view]
 ```
 
 The same is true of the knowledge base. The base attached to the agent, and how to search it, are
@@ -99,9 +99,9 @@ written there by the gateway once per call. The view says nothing about it eithe
 ## Reading the prompt
 
 ```bash
-pinecall prompt agent.rb
-pinecall prompt agent.rb --stage book --resumed
-pinecall prompt agent.rb --state 'slots=[{"cuando":"el martes a las diez"}]'
+pinecall prompt                                            # the state a call opens in
+pinecall prompt --state test/<slug>/goldens/<a golden>.json   # the state a golden opens in
+pinecall prompt --channel web --medium text                # the prompt a written chat gets
 ```
 
 No gateway, no key, no network — the whole point of the design is that the prompt is a function
@@ -122,7 +122,7 @@ Pinecall.show_prompt(agent)   # the page, under its headers
 ## Collapsing a long call
 
 ```ruby
-collapse "La paciente ya está identificada y ha visto las horas del martes."
+collapse "The patient is identified and has heard Tuesday's slots."
 ```
 
 The state is untouched. What collapses is the memory of how it got here, which is what a long call

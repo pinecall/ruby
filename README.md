@@ -7,24 +7,24 @@ the part of the prompt that changes during the call.
 ```ruby
 require "pinecall"
 
-# Eres la recepción de Clínica Norte. Hablas de usted, con frases cortas.
+# You are the front desk of Clínica Norte. Formal, short sentences.
 class ClinicaNorte < Pinecall::Agent
   stage :identify, :book
   state :patient, visibility: :pii
   state :slots, []
 
-  # Busca al paciente por nombre y teléfono. Pide los dos antes de llamarla.
+  # Finds the patient by name and phone. Ask for both before calling it.
   tool stage: :identify, pii: %i[name phone]
   def find_patient(name:, phone:)
-    self.patient = Agenda.buscar(name, phone)
+    self.patient = Agenda.find(name, phone)
     self.stage = :book if patient
     patient
   end
 
-  # Horas libres de un día.
+  # Free slots on one day.
   tool stage: :book, preview: 2
   def free_slots(day:)
-    self.slots = Agenda.libres(day)
+    self.slots = Agenda.free(day)
   end
 end
 ```
@@ -33,18 +33,18 @@ end
 
 ```erb
 <% if stage == :identify -%>
-Saluda y pide nombre y teléfono. Nada más hasta identificar al paciente.
+Greet the caller and ask for their name and phone. Nothing else until the patient is identified.
 <% end -%>
 
-<% if remembers?("médico habitual") -%>
-Ofrece primero las horas de su médico habitual.
+<% if remembers?("usual doctor") -%>
+Offer their usual doctor's slots first.
 <% end -%>
 
 <% if slots.any? -%>
-## Horas libres, en orden
+## Free slots, in order
 
-<% slots.each do |hueco| -%>
-<%= hueco.cuando %> con <%= hueco.doctor %>
+<% slots.each do |slot| -%>
+<%= slot.when %> with <%= slot.doctor %>
 <% end -%>
 <% end -%>
 ```
@@ -55,7 +55,7 @@ its text changes.
 
 Memory and knowledge-base results never enter the prompt. The platform runs `recall` and `search`
 and returns their results to the model as tool results, so retrieved text is treated as data, not
-instructions. A view can ask `remembers?("médico habitual")` and write its own sentence about the
+instructions. A view can ask `remembers?("usual doctor")` and write its own sentence about the
 answer.
 
 ## Five minutes
@@ -95,7 +95,7 @@ held to the runtime's golden call log. Tools are the only code that may change s
 ```ruby
 pc = Pinecall::Client.new(url: "https://cloud.pinecall.io", api_key: ENV.fetch("PINECALL_KEY"))
 agent = pc.agent("clinica-norte", tools: [])
-agent.on("turn.user") { |data, call| call.say("Le he oído: #{data[:text]}") }
+agent.on("turn.user") { |data, call| call.say("I heard: #{data[:text]}") }
 pc.connect
 ```
 
@@ -110,9 +110,9 @@ gateway = Pinecall::Testing::Gateway.new
 Pinecall.mount(ClinicaNorte, client: gateway)
 
 call = gateway.call_started(from: "+34600123456")
-call.tool("free_slots", day: "martes")
+call.tool("free_slots", day: "Tuesday")
 
-assert_includes call.prompt, "el martes a las diez"
+assert_includes call.prompt, "Tuesday at ten"
 assert_equal %w[propose], call.tools
 ```
 

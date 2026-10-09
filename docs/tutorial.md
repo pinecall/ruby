@@ -30,15 +30,15 @@ files, then, `agents/clinica-norte/agent.rb` — the whole thing:
 ```ruby
 require "pinecall"
 
-# Eres la recepción de Clínica Norte. Hablas de usted, con frases cortas.
+# You are the front desk of Clínica Norte. Formal, short sentences.
 class ClinicaNorte < Pinecall::Agent
   stage :identify, :resolve
   state :patient, visibility: :pii
 
-  # Busca al paciente por nombre y teléfono. Pide los dos antes de llamarla.
+  # Finds the patient by name and phone. Ask for both before calling it.
   tool stage: :identify, pii: %i[name phone]
   def find_patient(name:, phone:)
-    self.patient = { nombre: name, telefono: phone }
+    self.patient = { name:, phone: }
     self.stage = :resolve
     patient
   end
@@ -49,11 +49,11 @@ and `agents/clinica-norte/views/clinica-norte.erb`, beside it, is the prompt as 
 
 ```erb
 <% if stage == :identify -%>
-Saluda y pide nombre y teléfono. Nada más hasta tenerlos.
+Greet the caller and ask for their name and phone. Nothing else until you have both.
 <% end -%>
 
 <% if patient -%>
-Hablas con <%= patient[:nombre] %>, ya en la ficha. No se los vuelvas a pedir.
+You are talking to <%= patient[:name] %>, already on file. Do not ask for them again.
 <% end -%>
 ```
 
@@ -83,7 +83,7 @@ Before running anything, look at what the model would read. No key, no gateway, 
 ```
 $ pinecall prompt
 ── identity (static) ──
-Eres la recepción de Clínica Norte. Hablas de usted, con frases cortas.
+You are the front desk of Clínica Norte. Formal, short sentences.
 
 <rules>
 - Invent nothing: if it did not come from a tool or from the knowledge, do not say it.
@@ -104,13 +104,13 @@ You are on a phone call. Everything you write is read aloud by a voice: short sp
 
 ── tools (static) ──
 <tools>
-- find_patient: Busca al paciente por nombre y teléfono. Pide los dos antes de llamarla.
+- find_patient: Finds the patient by name and phone. Ask for both before calling it.
 </tools>
 
 ── history ──
 
 ── view (dynamic) ──
-Saluda y pide nombre y teléfono. Nada más hasta tenerlos.
+Greet the caller and ask for their name and phone. Nothing else until you have both.
 ```
 
 Four named blocks in two regions, in the one order they are ever sent. Everything above `history` is
@@ -164,7 +164,7 @@ That is all: no vector-database client, no `search` call in your code, no `if` t
 look.
 
 **What the push did.** Each file was cut at its headings, each chunk prefixed with its heading path
-(`tarifas.md › Tarifas › Revisión`), and embedded — **contextually**, one document at a time, so a
+(`prices.md › Prices › Check-up`), and embedded — **contextually**, one document at a time, so a
 chunk was embedded seeing its neighbours. The vectors went into Postgres, an HNSW index beside a
 BM25 index in Spanish.
 
@@ -187,7 +187,7 @@ pinecall docs drop clinica-norte
 ## 6. Memory: what it keeps between calls
 
 ```bash
-pinecall memory policy --remember "cómo prefiere que le llamen" "alergias" "su médico habitual" --forget "pagos"
+pinecall memory policy --remember "how they like to be addressed" "allergies" "their usual doctor" --forget "payments"
 ```
 
 The policy is the world's, set with the CLI or the console, not declared on the class. `remember` is the vocabulary, **in your own words**, of what is worth keeping about a person.
@@ -222,12 +222,12 @@ This is what the three declarations above produce, and it is the part worth unde
 ```
 system:   identity · knowledge · tools           ← cached, unchanged while the call runs
 messages: …the turns…
-          assistant tool_use  recall  {"contact":"+34600123456","query":"¿Cuánto cuesta…"}
-          user      tool_result       {"facts":[{"text":"Prefiere que le llamen Marta.",
+          assistant tool_use  recall  {"contact":"+34600123456","query":"How much is…"}
+          user      tool_result       {"facts":[{"text":"Prefers to be called Marta.",
                                                  "source":"call_07adc7…","since":"2026-09-10"}]}
-          assistant tool_use  search  {"query":"¿Cuánto cuesta una revisión de medicina general?"}
-          user      tool_result       {"chunks":[{"path":"tarifas.md",
-                                                  "heading":"Tarifas › Revisión","text":"…"}]}
+          assistant tool_use  search  {"query":"How much is a general check-up?"}
+          user      tool_result       {"chunks":[{"path":"prices.md",
+                                                  "heading":"Prices › Check-up","text":"…"}]}
           user      <instructions> what the view rendered </instructions>
 ```
 
@@ -242,7 +242,7 @@ it has.
 
 That is also why **every block of the prompt is your own words and nothing else is ever put in
 one** — not a fact, not a chunk, not a line of anyone's framework. The one thing a view may do with
-memory is ask it a question, `remembers?("médico habitual")`, which the runtime answers, and then
+memory is ask it a question, `remembers?("usual doctor")`, which the runtime answers, and then
 say a sentence of *yours* about the answer. Splicing the fact itself into a block would hand an
 earlier caller's words operator authority, which is exactly what the rule forbids.
 
@@ -293,15 +293,15 @@ require "pinecall/testing"
 require_relative "../../agents/clinica-norte/agent"
 
 class ClinicaNorteTest < Minitest::Test
-  def test_una_vez_identificada_el_prompt_deja_de_pedirle_el_nombre
+  def test_once_identified_the_prompt_stops_asking_for_the_name
     gateway = Pinecall::Testing::Gateway.new
     Pinecall.mount(ClinicaNorte, client: gateway)
     call = gateway.call_started(from: "+34600123456")
 
     call.tool("find_patient", name: "Marta", phone: "600123456")
 
-    assert_includes call.prompt, "Hablas con Marta"
-    refute_includes call.prompt, "pide nombre y teléfono"
+    assert_includes call.prompt, "talking to Marta"
+    refute_includes call.prompt, "ask for their name"
   end
 end
 ```
@@ -309,7 +309,7 @@ end
 
 `call.prompt` is the view as the agent last sent it, `call.tools` what the model may call right now,
 `call.block("knowledge")` any of the four blocks by name. The prompt is a pure function of the state:
-`Pinecall.render(agent.start_in(patient: { nombre: "Marta" }))[:view]` needs no gateway at all.
+`Pinecall.render(agent.start_in(patient: { name: "Marta" }))[:view]` needs no gateway at all.
 
 **Rings 1, 2 and 3** — the goldens, a real line, and one call re-scored — are `pinecall test`,
 `pinecall simulate --voice` and `pinecall eval`: the goldens under `test/clinica-norte/goldens/`, each
