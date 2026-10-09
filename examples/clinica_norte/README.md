@@ -1,57 +1,62 @@
 # Clínica Norte
 
-Un agente entero, escrito como lo escribiría un cliente, con el layout del CLI único: el mismo
-agente que el ejemplo de TypeScript (`agents/examples/clinica-norte`), con la misma agenda, los
-mismos documentos y los mismos once goldens, en Ruby.
+A whole agent, written the way a customer writes one, on the one CLI's layout: the same agent as
+the TypeScript example (`agents/examples/clinica-norte`), with the same agenda, the same documents
+and the same eleven goldens, in Ruby.
+
+The clinic is Spanish and so is everything its callers hear: the class's comments, the view and
+the goldens are in Spanish on purpose. The framework's own rules are English, and tell the model to
+answer in the caller's language.
 
 ```
-agents/clinica-norte/agent.rb          la clase: estado, fases, herramientas
-agents/clinica-norte/agenda.rb         la agenda de la clínica, inventada y fija: lo que en producción sería su API
-agents/clinica-norte/views/clinica-norte.erb   la vista: el bloque `view`, como función del estado
-docs/clinica-norte/*.md                de lo que responde por turno: `pinecall docs push` los sube
-test/clinica-norte/clinica_test.rb     ring 0: sin red, sin clave, sin modelo, sin gateway
-test/clinica-norte/goldens/            ring 1: once conversaciones, más docs.json y memory.json
-test/clinica-norte/memory/             los casos de extracción que `pinecall remember` corre
+agents/clinica-norte/agent.rb                  the class: state, stages, tools
+agents/clinica-norte/agenda.rb                 the clinic's agenda, made up and fixed: what its API would be in production
+agents/clinica-norte/views/clinica-norte.erb   the view: the `view` block, as a function of the state
+docs/clinica-norte/*.md                        what it answers from, per turn: `pinecall docs push` uploads them
+test/clinica-norte/clinica_test.rb             ring 0: no network, no key, no model, no gateway
+test/clinica-norte/goldens/                    ring 1: eleven conversations, plus docs.json and memory.json
+test/clinica-norte/memory/                     the extraction cases `pinecall remember` runs
 ```
 
-La carpeta se llama como el slug del agente: `agents/clinica-norte/` es el agente `clinica-norte`.
+The folder is named after the agent's slug: `agents/clinica-norte/` is the agent `clinica-norte`.
 
 ```bash
-# la suite del cliente, como la corre él
+# the customer's own suite, run the way they run it
 ruby -Ilib examples/clinica_norte/test/clinica-norte/clinica_test.rb
 
-# el resto, con el CLI único (npm i -g pinecall), desde esta carpeta
+# the rest, with the one CLI (npm i -g pinecall), from this folder
 pinecall prompt --state test/clinica-norte/goldens/no-reserva-antes-del-si.json
 pinecall chat
-pinecall test                    # ring 1: rake ring1 desde la raíz de la gema
+pinecall test                    # ring 1: rake ring1 from the gem's root
 pinecall start
 ```
 
-El CLI no carga la clase: arranca la entrada `Pinecall::Serve` de esta gema
-([../../docs/production.md](../../docs/production.md)). En este checkout la gema es `lib/`:
-`RUBYLIB=../../lib` delante de cada verbo, que es lo que `rake ring1` hace.
+The CLI never loads the class: it starts this gem's `Pinecall::Serve` entry
+([../../docs/production.md](../../docs/production.md)). In this checkout the gem is `lib/`:
+`RUBYLIB=../../lib` in front of each verb, which is what `rake ring1` does.
 
-Lo que la recepción se sabe de memoria — horarios, precios, qué necesita autorización — no está en
-este repo: se escribe en la consola, Settings ▸ Knowledge (o `pinecall agent knowledge edit`), y el
-modelo lo lee entero en cada llamada. La voz, el modelo, el saludo, el idioma, lo que la memoria
-guarda (`pinecall memory policy`) y la base que busca por turno (`pinecall docs attach
-clinica-norte --k 4`) son del mundo, no de la clase, y una clase que todavía los declara se
-rechaza al cargar.
+What the front desk knows by heart — hours, prices, what needs an authorisation — is not in this
+repository: it is written in the console, Settings ▸ Knowledge (or `pinecall agent knowledge
+edit`), and the model reads it whole on every call. The voice, the model, the greeting, the
+language, what memory keeps (`pinecall memory policy`) and the base it searches per turn
+(`pinecall docs attach clinica-norte --k 4`) are the world's, not the class's, and a class that
+still declares one is refused at load.
 
-## Lo que este ejemplo enseña
+## What this example teaches
 
-- **Una fase mueve las herramientas.** `stage :identify, :choose, :book, :done` es un campo del
-  estado como cualquier otro, y `stage:` en una tool es azúcar sobre `when:`.
-- **Un hueco se reserva por su id, no por su hora.** Dos huecos a la misma hora con distinto
-  profesional son indistinguibles en palabras; un id no se parece a otro, y uno que la agenda no
-  ofreció se rechaza con la lista de los que sí.
-- **`propose` y `book` son dos momentos distintos.** Sin el campo `proposed`, la vista no sabe si
-  toca leerle la hora o reservarla, y un modelo obediente vuelve a leérsela en vez de reservar.
-- **El día se resuelve a una fecha en el código.** «El martes» dicho un jueves es una fecha y sólo
-  una; un día sin agenda vuelve vacío, y la vista lo nombra.
-- **`confirm:` es lo que hace `book` irreversible en el cable.** La plataforma lee la frase después
-  de la reserva, con lo que la tool devolvió.
-- **`preview: 2` corta lo que ve el modelo, no lo que guarda el estado.**
-- **La vista es solo lo que escribe la clínica.** Lo que la memoria recuerda y lo que la base
-  responde llegan al modelo como resultado de una herramienta, en el historial. La vista pregunta
-  `remembers?("médico habitual")` y decide una frase suya con la respuesta.
+- **A stage moves the tools.** `stage :identify, :choose, :book, :done` is a state field like any
+  other, and `stage:` on a tool is sugar over `when:`.
+- **A slot is booked by its id, never by its time.** Two slots at the same hour with different
+  professionals are indistinguishable in words; one id looks like no other, and one the agenda
+  never offered is refused with the list of those it did.
+- **`propose` and `book` are two moments.** Without the `proposed` field the view cannot tell
+  whether to read the time back or to book it, and an obedient model reads it back again instead
+  of booking.
+- **The day is resolved to a date in code.** "Tuesday" said on a Thursday is one date and one
+  only; a day with no agenda comes back empty, and the view names it.
+- **`confirm:` is what makes `book` irreversible on the wire.** The platform reads the sentence
+  after the booking, with what the tool returned.
+- **`preview: 2` cuts what the model sees, not what the state keeps.**
+- **The view is only what the clinic writes.** What memory recalled and what the base answered
+  reach the model as a tool result, in the history. The view asks `remembers?("médico habitual")`
+  and decides on a sentence of its own with the answer.
