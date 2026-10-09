@@ -6,11 +6,12 @@ version number is the human's call.
 
 ## [Unreleased]
 
+## [0.0.1] — The first release: an agent as a Ruby class (2026-10-09)
+
 ### Fixed
 - **The tutorial prints the prompt the gem sends**: the framework's rules and the channel's words
   are in English, and the `<channel>` block was missing. Its `Pinecall::Client` example no longer
-  needs `PINECALL_URL`, which `pinecall link` writes only for a gateway other than Pinecall's. The
-  README says how to install the gem from git until its first release.
+  needs `PINECALL_URL`, which `pinecall link` writes only for a gateway other than Pinecall's.
 - **`pinecall start` drains a Ruby agent whole on Ctrl-C or a SIGTERM.** The CLI passes the signal on
   and closes the child's stdin together, and the serve entry took the second as "leave now": it
   closed the socket mid-drain, with tools still running. Only a second signal cuts a drain short,

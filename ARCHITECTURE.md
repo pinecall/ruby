@@ -36,7 +36,7 @@ one the person typed.
 ```
 lib/pinecall.rb              the door: what a stranger who types `require "pinecall"` may reach
 lib/pinecall/
-  version.rb errors.rb       0.0.0 until the human names a number; one error root, five words
+  version.rb errors.rb       the version, written once; one error root, five words
   reading.rb                 the state as something you can ask questions of by name, this caller included
   agent.rb                   the base class: config, state, tools, the four hooks, this call
   agent/author.rb            who is writing right now — `Fiber[]`, per call, never a global

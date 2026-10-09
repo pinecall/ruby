@@ -60,9 +60,6 @@ answer.
 
 ## Five minutes
 
-**Not on RubyGems yet.** Until the first release, install it from this repository:
-`bundle add pinecall --git https://github.com/pinecall/ruby`. After it, `bundle add pinecall`.
-
 This gem is a library: the verbs are the one `pinecall` CLI's, the same for every language. In a
 project laid out as `agents/<name>/agent.rb`, with this gem in its `Gemfile`:
 
