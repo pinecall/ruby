@@ -97,13 +97,15 @@ module Pinecall
         line = data[:started]
         started(line)
         @state = data[:state].dup
-        @today = Time.at(line[:started_at]).strftime("%Y-%m-%d")
+        @today = line[:today] || Time.at(line[:started_at]).strftime("%Y-%m-%d")
         @claimed = data[:claimed]
       end
 
       def started(line)
         the_line(line, "active")
         @medium = line[:medium]
+        # A run's call says its day, which a golden may have pinned; a person's runs on the clock's.
+        @today = line[:today] if line[:today]
       end
 
       def the_line(line, status)

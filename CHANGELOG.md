@@ -6,6 +6,13 @@ version number is the human's call.
 
 ## [Unreleased]
 
+## [0.0.3] — A call runs on the day a golden pinned (2026-10-09)
+
+### Added
+- **`call.today` is the day `call.started` names when a golden pinned one** (`today`), so an agent
+  resolves "on Monday" against the golden's day, as the model does; the day the call opened
+  otherwise, as before. Needs runtime 0.1.10. `Pinecall::Testing`'s `call_started` takes `today:`.
+
 ## [0.0.2] — A refused registration is a sentence (2026-10-09)
 
 ### Fixed

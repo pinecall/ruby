@@ -98,7 +98,8 @@ module Pinecall
           env: { kind: :ref, ref: "Env" },
           worker: { kind: :str, null: true },
           medium: { kind: :ref, ref: "Medium", null: true },
-          state: { kind: :json }
+          state: { kind: :json },
+          today: { kind: :str, null: true }
         }.freeze,
         "CallSummary" => {
           reason: { kind: :ref, ref: "EndReason", required: true },
