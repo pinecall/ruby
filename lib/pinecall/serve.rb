@@ -31,7 +31,7 @@ module Pinecall
       when "prompt" then prompt(Loading.parse(rest), out:)
       else err.puts(USAGE) || 2
       end
-    rescue CannotServe, NotConnected => e
+    rescue CannotServe, NotConnected, Refused => e
       err.puts(e.message)
       2
     end

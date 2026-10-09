@@ -8,6 +8,8 @@ class FakeGateway
   attr_reader :frames, :authorization, :world
   # False: a drain is heard and never answered, as a gateway that went quiet.
   attr_accessor :answers_drains
+  # Slugs whose registration is refused, as a gateway refuses a slug that belongs to another org.
+  attr_accessor :taken
 
   def initialize
     @server = TCPServer.new("127.0.0.1", 0)
@@ -72,7 +74,12 @@ class FakeGateway
     @frames << frame
     case frame[:type]
     when "agent.register"
-      write(driver, frame[:agent], "agent.registered", { app: "app_1", routes: frame[:data][:routes] })
+      if (taken || []).include?(frame[:agent])
+        write(driver, frame[:agent], "error", { code: "bad_shape", message: "agent #{frame[:agent]} belongs to another org: a slug is one org's",
+                                                 command: "agent.register", id: frame[:id], recoverable: true })
+      else
+        write(driver, frame[:agent], "agent.registered", { app: "app_1", routes: frame[:data][:routes] })
+      end
     when "agent.configure"
       write(driver, frame[:agent], "agent.configured", { changed: %w[tools] })
     when "agent.drain"

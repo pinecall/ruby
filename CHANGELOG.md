@@ -6,6 +6,12 @@ version number is the human's call.
 
 ## [Unreleased]
 
+## [0.0.2] — A refused registration is a sentence (2026-10-09)
+
+### Fixed
+- **A registration the gateway refuses is one sentence and exit 2** from the serve entry — a slug that
+  belongs to another org, a key it does not take — instead of a stack trace and exit 1.
+
 ## [0.0.1] — The first release: an agent as a Ruby class (2026-10-09)
 
 ### Fixed

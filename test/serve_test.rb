@@ -165,6 +165,16 @@ class ServeTest < Minitest::Test
     assert_includes @err.string, "PINECALL_URL and PINECALL_KEY"
   end
 
+  def test_a_registration_the_gateway_refuses_is_a_sentence_and_exit_two
+    @gateway.taken = [SLUG]
+
+    code = Pinecall::Serve.main(["start", "--file", AGENT, "--slug", SLUG], out: @out, err: @err, env: env)
+
+    assert_equal 2, code
+    assert_includes @err.string, "agent #{SLUG} belongs to another org"
+    refute_includes @err.string, "block in"
+  end
+
   def test_a_gateway_that_is_not_there_is_a_sentence_and_exit_two
     code = Pinecall::Serve.main(["start", "--file", AGENT, "--slug", SLUG], out: @out, err: @err,
                                                                             env: env("PINECALL_URL" => "http://127.0.0.1:1"))
