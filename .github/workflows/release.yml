@@ -1,0 +1,73 @@
+# A `v*` tag is the publication: `git push origin vX.Y.Z` pushes the `pinecall` gem to RubyGems.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  # A rehearsal that burns no number: guard, gates and build run, publish is skipped (no tag).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # A RubyGems version is permanent: a gem whose number lies cannot be taken back.
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: the tag and lib/pinecall/version.rb say the same number
+        if: github.ref_type == 'tag'
+        run: |
+          declared=$(ruby -e 'require "./lib/pinecall/version"; print Pinecall::VERSION')
+          if [ "${GITHUB_REF_NAME#v}" != "$declared" ]; then
+            echo "the tag says ${GITHUB_REF_NAME#v} and version.rb says $declared" >&2
+            exit 1
+          fi
+
+  # A tag matches no `push: branches`, so without this line the release would run no gate at all.
+  gates:
+    uses: ./.github/workflows/check.yml
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        with:
+          ruby-version: "3.4"
+      - run: gem build pinecall.gemspec
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gem
+          path: pinecall-*.gem
+
+  # Trusted Publishing: RubyGems mints a short-lived key for this job, so no key is stored and the
+  # gemspec's MFA requirement asks for no code.
+  publish:
+    needs: [guard, gates, build]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment: rubygems
+    permissions:
+      id-token: write   # OIDC: no key stored anywhere
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: gem
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        with:
+          ruby-version: "3.4"
+      - uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
+      - name: push, unless this version is already on RubyGems
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if curl -sf "https://rubygems.org/api/v2/rubygems/pinecall/versions/$version.json" >/dev/null; then
+            echo "pinecall $version is already on RubyGems: nothing to push, the tag records it"
+            exit 0
+          fi
+          gem push "pinecall-$version.gem"

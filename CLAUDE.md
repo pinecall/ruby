@@ -91,7 +91,10 @@ When a doc and the code disagree, the code is what happened and the doc is the b
 
 ## Commits
 
-Versions and tags are the human's call — never pick a number, never tag.
+Versions and tags are the human's call — never pick a number, never tag. A `v*` tag is the
+release: `release.yml` checks the tag against `lib/pinecall/version.rb`, runs `check.yml` (`rake`
+on Ruby 3.2, 3.3 and 3.4) and pushes the gem by Trusted Publishing, environment `rubygems`.
+`gh workflow run release.yml` rehearses it without pushing.
 
 ## Comments and doc comments
 
