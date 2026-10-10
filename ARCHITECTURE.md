@@ -124,7 +124,7 @@ diffed, and no view renders it. The class is the contract; what it runs on is th
 |---|---|
 | `channel_rules false` | the `identity` block without its `<channel>` part: how to write for a voice, a website's chat, or WhatsApp |
 | `phone`, `whatsapp`, `web` | nothing: accepted, so an old class still loads, and read by nobody. A door is a row the org keeps (`pinecall numbers import`) |
-| `voice`, `llm`, `stt`, `language`, `greeting`, `hangup`, `turn`, `says`, `hears`, `memory`, `record`, `knowledge`, `docs` | the environment the class declares, sent on `agent.configure` in the wire's shape; each one declared wins over the agent's settings, which may not set it while the class does. `builds:` and `options:` on `voice`, `llm` and `stt` reach the vendor's plugin, on the org's own key alone |
+| `voice`, `llm`, `stt`, `language`, `greeting`, `hangup`, `turn`, `says`, `hears`, `memory`, `record`, `knowledge`, `docs` | the environment the class declares, sent on `agent.configure` in the wire's shape; each one declared wins over the agent's settings, which may not set it while the class does. `builds:` and `options:` on `voice`, `llm` and `stt` reach the vendor's plugin, on the org's own key alone; `greeting` takes words or `:improvise` / `improvise("…")` (`Config::Improvised`), `hangup` words or `true`, and `stt` an `end_of_turn:` |
 
 **State** is declared with `state`, and the rules are enforced in code:
 

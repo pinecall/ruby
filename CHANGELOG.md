@@ -6,6 +6,15 @@ version number is the human's call.
 
 ## [Unreleased]
 
+## [0.0.6] — A greeting is words or :improvise, a hangup is words or true, and the ears choose who ends the turn (2026-10-10)
+
+- `greeting "…"` (said as written), `greeting :improvise` (the model opens on its prompt) and
+  `greeting improvise("…")` (with an instruction); `interruptible: true` for an opening the caller
+  may cut short, which by default they cannot. The `say:` / `reply:` keywords are gone.
+- `hangup "…"` (when, in your words) or `hangup true` (whenever the model judges); `when:` is gone.
+- `stt "…", end_of_turn: :stt | :livekit | :smart_turn`: who says the caller's turn is over, as
+  @pinecall/agents 0.9.26 says it. Needs runtime 0.1.43.
+
 ## [0.0.5] — The class declares its voice, its models and the rest, and wins (2026-10-10)
 
 - **A class declares its environment again, and it wins over the settings.** Class macros `voice

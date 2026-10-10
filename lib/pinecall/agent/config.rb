@@ -16,11 +16,37 @@ module Pinecall
       ENVIRONMENT = %i[language voice llm stt greeting hangup turn says hears knowledge docs memory record].freeze
 
       # The ones written as the wire's own fields, keyword by keyword: `greeting say: "…"`.
-      AS_KEYWORDS = %i[greeting hangup turn knowledge docs memory].freeze
+      AS_KEYWORDS = %i[turn knowledge docs memory].freeze
 
       NO_VOICE = "a voice the class declares names its vendor and the voice: voice \"<vendor>\", \"<voice id>\""
 
+      NO_OPENING = "a greeting is the words, as a string, or :improvise for the model's own: improvise(\"…\") gives it an instruction"
+      NO_ENDING = "hangup is when the model may end the call, in your words, or true whenever it judges the call done"
+
+      # The model opens the call: on its prompt alone (an empty instruction), or with this one.
+      Improvised = Data.define(:instruction, :interruptible)
+
       NOTHING = Object.new.freeze
+
+      # An opening as the wire says it: words to `say`, or a `reply` the model opens on.
+      def self.greeting_of(opening, interruptible)
+        said = case opening
+               when :improvise then { reply: "" }
+               when Improvised then { reply: opening.instruction }
+               when String then { say: opening }
+               else raise DeclarationRefused, NO_OPENING
+               end
+        given = opening.is_a?(Improvised) ? opening.interruptible : interruptible
+        given.nil? ? said : { **said, allow_interruptions: given }
+      end
+
+      # When the model may end the call: an empty `when` is whenever it judges.
+      def self.hangup_of(ending)
+        return { when: "" } if ending == true
+        raise DeclarationRefused, NO_ENDING unless ending.is_a?(String) && !ending.strip.empty?
+
+        { when: ending }
+      end
 
       # `vendor/model`, or a vendor alone; the model id keeps every slash after the vendor's.
       def self.model_of(named)
@@ -55,11 +81,31 @@ module Pinecall
           environment[:llm] = { **Config.model_of(model), temperature:, builds:, options: }.compact
         end
 
-        # The ears, `vendor/model` or a vendor alone.
-        def stt(model = NOTHING, builds: nil, options: nil)
+        # The ears, `vendor/model` or a vendor alone, and who says the caller's turn is over:
+        # `end_of_turn: "stt"` the ears themselves (Deepgram Flux), `"livekit"` or `"smart-turn"`.
+        def stt(model = NOTHING, builds: nil, options: nil, end_of_turn: nil)
           return environment[:stt] if model.equal?(NOTHING)
 
-          environment[:stt] = { **Config.model_of(model), builds:, options: }.compact
+          ends = end_of_turn&.to_s&.tr("_", "-")
+          environment[:stt] = { **Config.model_of(model), builds:, options:, end_of_turn: ends }.compact
+        end
+
+        # How a call opens: the words, said as written, or :improvise for the model's own. The
+        # caller cannot cut it short unless `interruptible: true`.
+        def greeting(opening = NOTHING, interruptible: nil)
+          return environment[:greeting] if opening.equal?(NOTHING)
+
+          environment[:greeting] = Config.greeting_of(opening, interruptible)
+        end
+
+        # The model opens the call with this instruction: `greeting improvise("…")`.
+        def improvise(instruction = "", interruptible: nil) = Improvised.new(instruction, interruptible)
+
+        # When the model may end the call: in your words, or `true` whenever it judges it done.
+        def hangup(ending = NOTHING)
+          return environment[:hangup] if ending.equal?(NOTHING)
+
+          environment[:hangup] = Config.hangup_of(ending)
         end
 
         # `language "es"`, `says [{ word: "GSA", spoken: "ge ese a" }]`, `record false`.
@@ -78,8 +124,8 @@ module Pinecall
           environment[:hears] = words.flatten
         end
 
-        # `greeting say: "…"`, `hangup when: "…"`, `turn endpointing_ms: 300`, `docs base: "…", k: 4`,
-        # `memory remember: […], forget: […]`, `knowledge path: "…", text: "…"`.
+        # `turn endpointing_ms: 300`, `docs base: "…", k: 4`, `memory remember: […], forget: […]`,
+        # `knowledge path: "…", text: "…"`.
         AS_KEYWORDS.each do |field|
           define_method(field) do |**given|
             return environment[field] if given.empty?

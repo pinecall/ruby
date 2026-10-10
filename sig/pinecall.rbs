@@ -87,13 +87,14 @@ module Pinecall
     # the environment the class declares, each over the agent's settings
     def self.voice: (?String, ?String?, ?model: String?, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
     def self.llm: (?String, ?temperature: Float?, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
-    def self.stt: (?String, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
+    def self.stt: (?String, ?builds: String?, ?options: Hash[untyped, untyped]?, ?end_of_turn: (String | Symbol)?) -> untyped
     def self.language: (?String) -> untyped
     def self.says: (?Array[Hash[Symbol, String]]) -> untyped
     def self.record: (?bool) -> untyped
     def self.hears: (*String | Array[String]) -> untyped
-    def self.greeting: (**untyped) -> untyped
-    def self.hangup: (**untyped) -> untyped
+    def self.greeting: (?(String | Symbol | untyped), ?interruptible: bool?) -> untyped
+    def self.improvise: (?String, ?interruptible: bool?) -> untyped
+    def self.hangup: (?(String | true)) -> untyped
     def self.turn: (**untyped) -> untyped
     def self.knowledge: (**untyped) -> untyped
     def self.docs: (**untyped) -> untyped

@@ -23,7 +23,8 @@ module Pinecall
           model: { kind: :str, required: true },
           temperature: { kind: :float },
           builds: { kind: :str },
-          options: { kind: :json }
+          options: { kind: :json },
+          end_of_turn: { kind: :enum, values: %w[stt livekit smart-turn] }
         }.freeze,
         "TurnConfig" => {
           min_interruption_words: { kind: :int },

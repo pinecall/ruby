@@ -14,10 +14,10 @@ class ConfigTest < Minitest::Test
   class Fijada < Pinecall::Agent
     voice "cartesia", "a0e99841-438c-4a64-b679-ae501e7d6091", model: "sonic-2"
     llm "openai/gpt-5.4-mini", temperature: 0.3, builds: "responses.LLM", options: { use_websocket: true }
-    stt "deepgram"
+    stt "soniox/stt-rt-v3", end_of_turn: :smart_turn
     language "es"
-    greeting say: "Clínica Norte, buenas."
-    hangup when: "the caller says goodbye"
+    greeting "Clínica Norte, buenas."
+    hangup "the caller says goodbye"
     says [{ word: "GSA", spoken: "ge ese a" }]
     hears "Vidal", "Sanitas"
     memory remember: ["alergias"], forget: ["pagos"]
@@ -47,7 +47,7 @@ class ConfigTest < Minitest::Test
     assert_equal({ provider: "cartesia", voice_id: "a0e99841-438c-4a64-b679-ae501e7d6091", model: "sonic-2" }, sent[:voice])
     assert_equal({ provider: "openai", model: "gpt-5.4-mini", temperature: 0.3, builds: "responses.LLM",
                    options: { use_websocket: true } }, sent[:llm])
-    assert_equal({ provider: "deepgram", model: "" }, sent[:stt])
+    assert_equal({ provider: "soniox", model: "stt-rt-v3", end_of_turn: "smart-turn" }, sent[:stt])
     assert_equal "es", sent[:language]
     assert_equal({ say: "Clínica Norte, buenas." }, sent[:greeting])
     assert_equal({ when: "the caller says goodbye" }, sent[:hangup])
@@ -78,5 +78,22 @@ class ConfigTest < Minitest::Test
     end
 
     assert_equal 'a voice the class declares names its vendor and the voice: voice "<vendor>", "<voice id>"', refused.message
+  end
+
+  def test_an_opening_is_words_said_or_the_models_own_with_or_without_an_instruction
+    opening = ->(&body) { Class.new(Pinecall::Agent, &body).greeting }
+
+    assert_equal({ reply: "" }, opening.call { greeting :improvise })
+    assert_equal({ reply: "Saludá por el nombre" }, opening.call { greeting improvise("Saludá por el nombre") })
+    assert_equal({ reply: "Saludá", allow_interruptions: true },
+                 opening.call { greeting improvise("Saludá", interruptible: true) })
+    assert_equal({ say: "Aviso legal…", allow_interruptions: false },
+                 opening.call { greeting "Aviso legal…", interruptible: false })
+    assert_raises(Pinecall::DeclarationRefused) { opening.call { greeting 42 } }
+  end
+
+  def test_hangup_is_when_in_words_or_true_for_whenever_the_model_judges
+    assert_equal({ when: "" }, Class.new(Pinecall::Agent) { hangup true }.hangup)
+    assert_raises(Pinecall::DeclarationRefused) { Class.new(Pinecall::Agent) { hangup "" } }
   end
 end
