@@ -13,7 +13,7 @@ module Pinecall
       AS_WRITTEN = %i[phone whatsapp web channel_rules].freeze
 
       # The settings a class may declare. Must match the TypeScript package's `ENVIRONMENT`.
-      ENVIRONMENT = %i[language voice llm stt greeting hangup turn says hears knowledge docs memory record].freeze
+      ENVIRONMENT = %i[language voice llm stt judge greeting hangup turn says hears knowledge docs memory record].freeze
 
       # The ones written as the wire's own fields, keyword by keyword: `greeting say: "…"`.
       AS_KEYWORDS = %i[turn knowledge docs memory].freeze
@@ -88,6 +88,16 @@ module Pinecall
 
           ends = end_of_turn&.to_s&.tr("_", "-")
           environment[:stt] = { **Config.model_of(model), builds:, options:, end_of_turn: ends }.compact
+        end
+
+        # The model the agent's calls are judged on, over the org's choice and the platform's:
+        # `judge "openai/qwen3-32b", options: { base_url: "http://gpu:8000/v1" }`. On a key of the
+        # org's own, a local model's server among them, its evals are never billed; `builds` and
+        # `options` run on the org's own key alone.
+        def judge(model = NOTHING, builds: nil, options: nil)
+          return environment[:judge] if model.equal?(NOTHING)
+
+          environment[:judge] = { **Config.model_of(model), builds:, options: }.compact
         end
 
         # How a call opens: the words, said as written, or :improvise for the model's own. The

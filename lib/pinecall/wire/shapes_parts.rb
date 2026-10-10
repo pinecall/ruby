@@ -318,7 +318,9 @@ module Pinecall
           verdict: { kind: :ref, ref: "ScoreVerdict", required: true },
           criteria: { kind: :str, required: true },
           reason: { kind: :str, required: true },
-          evidence: { kind: :ref, ref: "JudgmentEvidence", required: true }
+          evidence: { kind: :ref, ref: "JudgmentEvidence", required: true },
+          choice: { kind: :str, null: true },
+          score: { kind: :int, null: true }
         }.freeze,
         "JudgmentEvidence" => {
           seqs: { kind: :list, items: { kind: :int }, required: true },

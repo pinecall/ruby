@@ -15,6 +15,7 @@ class ConfigTest < Minitest::Test
     voice "cartesia", "a0e99841-438c-4a64-b679-ae501e7d6091", model: "sonic-2"
     llm "openai/gpt-5.4-mini", temperature: 0.3, builds: "responses.LLM", options: { use_websocket: true }
     stt "soniox/stt-rt-v3", end_of_turn: :smart_turn
+    judge "openai/qwen3-32b", options: { base_url: "http://gpu:8000/v1" }
     language "es"
     greeting "Clínica Norte, buenas."
     hangup "the caller says goodbye"
@@ -48,6 +49,7 @@ class ConfigTest < Minitest::Test
     assert_equal({ provider: "openai", model: "gpt-5.4-mini", temperature: 0.3, builds: "responses.LLM",
                    options: { use_websocket: true } }, sent[:llm])
     assert_equal({ provider: "soniox", model: "stt-rt-v3", end_of_turn: "smart-turn" }, sent[:stt])
+    assert_equal({ provider: "openai", model: "qwen3-32b", options: { base_url: "http://gpu:8000/v1" } }, sent[:judge])
     assert_equal "es", sent[:language]
     assert_equal({ say: "Clínica Norte, buenas." }, sent[:greeting])
     assert_equal({ when: "the caller says goodbye" }, sent[:hangup])

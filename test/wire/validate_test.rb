@@ -38,6 +38,23 @@ class ValidateTest < Minitest::Test
     assert_equal score, Pinecall::Wire::Validate.call!("CallScore", score, where: "call.score")
   end
 
+  def test_a_score_reads_na_a_classification_its_evals_and_whose_key_judged
+    evidence = { seqs: [4] }
+    score = { judges: [
+                { name: "identified", verdict: "na", criteria: "q", reason: "it came in", evidence: },
+                { name: "sentiment", verdict: "classified", criteria: "q", reason: "calm", evidence:, score: 4 },
+                { name: "intent", verdict: "classified", criteria: "q", reason: "booking", evidence:, choice: "book" }
+              ],
+              judge_calls: 3, evals: 2, own_key: true }
+    assert_equal score, Pinecall::Wire::Validate.call!("CallScore", score, where: "call.score")
+  end
+
+  def test_a_summary_says_a_simulated_caller_played_the_call
+    summary = { reason: "caller_hung_up", outcome: "booked", duration_s: 40.0, turns: 6, usage: [],
+                cost: { usd: 0.01, rows: [], unpriced: [] }, simulated: true }
+    assert_equal summary, Pinecall::Wire::Validate.call!("CallSummary", summary, where: "call.summary")
+  end
+
   def test_a_required_field_still_has_to_be_there
     error = assert_raises(Pinecall::Wire::WireError) do
       Pinecall::Wire::Validate.call!("ToolResult", { name: "find_patient" }, where: "tool.result")

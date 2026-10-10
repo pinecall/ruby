@@ -34,9 +34,10 @@ module Pinecall
       # Whose action ended the call. platform covers timeouts, errors and a drained worker.
       ENDED_BY = %w[caller agent supervisor platform].freeze
       # What one judge answered about a finished call. Held: the rule held. Broken: it did not,
-      # and the reason names the evidence. Deferred: the judge was asked and could not settle it.
-      # Skipped: nobody asked it — no model was reachable inside the call's judging budget.
-      SCORE_VERDICT = %w[held broken deferred skipped].freeze
+      # and the reason names the evidence. Classified: a choice or a score was answered. N/A: the
+      # question did not apply. Deferred: the judge was asked and could not settle it. Skipped:
+      # nobody asked it — no model, the ceiling reached, or the org's evals used up.
+      SCORE_VERDICT = %w[held broken classified na deferred skipped].freeze
       # Cold: the caller is sent on with a REFER on their SIP leg and the call ends here. Warm:
       # the number is dialled into the call's own room, the agent stays on the line until the
       # other side answers and then falls silent; the call ends when either of them hangs up.

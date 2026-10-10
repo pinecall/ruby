@@ -88,6 +88,7 @@ module Pinecall
     def self.voice: (?String, ?String?, ?model: String?, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
     def self.llm: (?String, ?temperature: Float?, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
     def self.stt: (?String, ?builds: String?, ?options: Hash[untyped, untyped]?, ?end_of_turn: (String | Symbol)?) -> untyped
+    def self.judge: (?String, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
     def self.language: (?String) -> untyped
     def self.says: (?Array[Hash[Symbol, String]]) -> untyped
     def self.record: (?bool) -> untyped

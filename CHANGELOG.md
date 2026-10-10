@@ -6,6 +6,14 @@ version number is the human's call.
 
 ## [Unreleased]
 
+## [0.0.7] — Every judge is a model's answer, and the class names the judge's model (2026-10-10)
+
+- `judge "<vendor>/<model>", builds:, options:`: the model the agent's calls are judged on, over
+  the org's choice and Pinecall's. On a key of the org's own — a local model through
+  `options: { base_url: "…" }` among them — its evals are never billed.
+- The wire reads what the runtime now writes: a judge's `na` and `classified` answers with their
+  `choice` or `score`, `call.score`'s `evals` and `own_key`, and `call.summary`'s `simulated`.
+
 ## [0.0.6] — A greeting is words or :improvise, a hangup is words or true, and the ears choose who ends the turn (2026-10-10)
 
 - `greeting "…"` (said as written), `greeting :improvise` (the model opens on its prompt) and

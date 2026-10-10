@@ -54,6 +54,7 @@ class ClinicaNorte < Pinecall::Agent
   voice "cartesia", "a0e99841-438c-4a64-b679-ae501e7d6091", model: "sonic-2"
   llm "openai/gpt-5.4-mini", temperature: 0.3, builds: "responses.LLM", options: { use_websocket: true }
   stt "soniox/stt-rt-v3", end_of_turn: :smart_turn
+  judge "openai/qwen3-32b", options: { base_url: "http://gpu:8000/v1" }
   language "es"
   greeting "Clínica Norte, buenas, ¿en qué le ayudo?"
   hangup "the caller says goodbye or needs nothing else"
@@ -80,11 +81,18 @@ also takes `temperature:`, which runs on any key. A vendor that is not installed
 stage, is refused at registration. `llm` fixes the whole model: with it in the class,
 `--temperature`, `--llm-builds` and `--llm-option` are refused too.
 
+`judge` is the model the agent's calls are judged on at hang-up, over the org's choice and
+Pinecall's own: `vendor/model` or a vendor alone, with `builds:` and `options:` as `llm` takes them.
+On a key of your org's own for that vendor — a local model's server among them, through
+`options: { base_url: "…" }` — its evals are never billed; on a key Pinecall lends they are. The
+judge is asked for a forced tool call, so a local model must call tools.
+
 | field | what it is | on the class | or in the settings |
 |---|---|---|---|
 | `voice` | the voice: its vendor and the vendor's id | `voice "<vendor>", "<id>", model: "…"` | `pinecall agent set --voice` |
 | `llm` | the model that answers, and its temperature | `llm "<vendor>/<model>", temperature: 0.3` | `pinecall agent set --llm` |
 | `stt` | the ears, and who ends the caller's turn | `stt "<vendor>/<model>", end_of_turn: :smart_turn` | `pinecall agent set --stt` · `--end-of-turn` |
+| `judge` | the model the calls are judged on; on your own key its evals are not billed | `judge "<vendor>/<model>", options: { base_url: "…" }` | the settings' `judge`, `judge_builds`, `judge_options` |
 | `language` | the language the call is in | `language "es"` | `pinecall agent set --language` |
 | `greeting` | how the call opens: the words, or the model's own | `greeting "…"` · `greeting :improvise` · `greeting improvise("…")` | `pinecall agent set --greeting '…'` · `--greeting improvise` · `--greeting improvise:'…'` |
 | `hangup` | whether the model may end the call itself, and when, in your words | `hangup "…"` · `hangup true` | `pinecall agent set --hangup '…'` · `--hangup any` |

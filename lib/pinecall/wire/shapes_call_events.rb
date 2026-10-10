@@ -81,6 +81,8 @@ module Pinecall
           judges: { kind: :list, items: { kind: :ref, ref: "Judgment" }, required: true },
           panel: { kind: :list, items: { kind: :str } },
           judge_calls: { kind: :int, required: true },
+          evals: { kind: :int },
+          own_key: { kind: :bool },
           judge_cost_usd: { kind: :float },
           judged_by: { kind: :ref, ref: "JudgedBy" }
         }.freeze,
@@ -108,7 +110,8 @@ module Pinecall
           turns: { kind: :int, required: true },
           usage: { kind: :list, items: { kind: :ref, ref: "ModelUsage" }, required: true },
           cost: { kind: :ref, ref: "Cost", required: true },
-          recording: { kind: :str }
+          recording: { kind: :str },
+          simulated: { kind: :bool }
         }.freeze,
         "CallTransferred" => {
           to: { kind: :str, required: true },

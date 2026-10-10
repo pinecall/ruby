@@ -23,6 +23,7 @@ module Pinecall
           voice: { kind: :ref, ref: "VoiceConfig" },
           llm: { kind: :ref, ref: "ModelConfig" },
           stt: { kind: :ref, ref: "ModelConfig" },
+          judge: { kind: :ref, ref: "ModelConfig" },
           turn: { kind: :ref, ref: "TurnConfig" },
           says: { kind: :list, items: { kind: :ref, ref: "Pronunciation" } },
           hears: { kind: :list, items: { kind: :str } },
