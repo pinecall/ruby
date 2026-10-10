@@ -14,12 +14,16 @@ module Pinecall
           name: { kind: :str },
           provider: { kind: :str },
           model: { kind: :str },
-          voice_id: { kind: :str }
+          voice_id: { kind: :str },
+          builds: { kind: :str },
+          options: { kind: :json }
         }.freeze,
         "ModelConfig" => {
           provider: { kind: :str, required: true },
           model: { kind: :str, required: true },
-          temperature: { kind: :float }
+          temperature: { kind: :float },
+          builds: { kind: :str },
+          options: { kind: :json }
         }.freeze,
         "TurnConfig" => {
           min_interruption_words: { kind: :int },

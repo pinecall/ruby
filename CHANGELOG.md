@@ -6,6 +6,18 @@ version number is the human's call.
 
 ## [Unreleased]
 
+## [0.0.5] — The class declares its voice, its models and the rest, and wins (2026-10-10)
+
+- **A class declares its environment again, and it wins over the settings.** Class macros `voice
+  "<vendor>", "<id>", model:`, `llm "<vendor>/<model>", temperature:`, `stt "<vendor>/<model>"`,
+  `language`, `greeting`, `hangup`, `turn`, `says`, `hears`, `knowledge`, `docs`, `memory` and
+  `record`, sent on `agent.configure`. A field the class declares is not read from the settings,
+  the console shows it "set by the class", and `pinecall agent set` of it is refused. Needs runtime
+  0.1.42.
+- `builds:` and `options:` on `voice`, `llm` and `stt`: a class of the vendor's plugin and its
+  keyword arguments (`llm "openai/gpt-5.4-mini", builds: "responses.LLM", options: { use_websocket:
+  true }`), only on the org's own key for the vendor. The refusal that named a CLI verb is gone.
+
 ## [0.0.4] — A tool announces itself (2026-10-09)
 
 ### Added

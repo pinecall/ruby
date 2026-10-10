@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-# Class config, what `agent.configure` sends, and refusal of world settings at load.
+# Class config, and what `agent.configure` sends: the contract and the environment the class declares.
 class ConfigTest < Minitest::Test
   # Un agente que sólo dice su contrato.
   class Clinica < Pinecall::Agent
@@ -10,17 +10,24 @@ class ConfigTest < Minitest::Test
     web true
   end
 
-  def test_the_declaration_is_the_contract_and_nothing_of_the_environment
+  # Recepción que fija su voz, su modelo, sus oídos, su idioma y cómo abre.
+  class Fijada < Pinecall::Agent
+    voice "cartesia", "a0e99841-438c-4a64-b679-ae501e7d6091", model: "sonic-2"
+    llm "openai/gpt-5.4-mini", temperature: 0.3, builds: "responses.LLM", options: { use_websocket: true }
+    stt "deepgram"
+    language "es"
+    greeting say: "Clínica Norte, buenas."
+    hangup when: "the caller says goodbye"
+    says [{ word: "GSA", spoken: "ge ese a" }]
+    hears "Vidal", "Sanitas"
+    memory remember: ["alergias"], forget: ["pagos"]
+    record false
+  end
+
+  def test_a_class_that_declares_no_environment_sends_its_contract_alone
     sent = Clinica.wire_config(tools: [])
 
     assert_equal %i[prompt tools], sent.keys
-  end
-
-  def test_a_class_that_names_its_language_is_refused_with_the_verb_that_sets_it
-    error = assert_raises(Pinecall::DeclarationRefused) { Class.new(Pinecall::Agent) { language :es } }
-
-    assert_equal "`language` is the world's now, not the class's: pinecall agent set --language <tag> — remove it from the class",
-                 error.message
   end
 
   def test_the_doors_are_accepted_and_read_by_nobody
@@ -31,42 +38,45 @@ class ConfigTest < Minitest::Test
 
   def test_the_whole_configuration_is_what_the_wire_declares
     Pinecall::Wire::Validate.call!("AgentConfig", Clinica.wire_config(tools: []), where: "configure")
+    Pinecall::Wire::Validate.call!("AgentConfig", Fijada.wire_config(tools: []), where: "configure")
   end
 
-  def test_a_field_of_the_world_s_is_refused_at_load_with_the_verb_that_sets_it
+  def test_what_the_class_declares_of_its_environment_is_sent_in_the_wires_shape
+    sent = Fijada.wire_config(tools: [])
+
+    assert_equal({ provider: "cartesia", voice_id: "a0e99841-438c-4a64-b679-ae501e7d6091", model: "sonic-2" }, sent[:voice])
+    assert_equal({ provider: "openai", model: "gpt-5.4-mini", temperature: 0.3, builds: "responses.LLM",
+                   options: { use_websocket: true } }, sent[:llm])
+    assert_equal({ provider: "deepgram", model: "" }, sent[:stt])
+    assert_equal "es", sent[:language]
+    assert_equal({ say: "Clínica Norte, buenas." }, sent[:greeting])
+    assert_equal({ when: "the caller says goodbye" }, sent[:hangup])
+    assert_equal %w[Vidal Sanitas], sent[:hears]
+    assert_equal({ remember: ["alergias"], forget: ["pagos"] }, sent[:memory])
+    refute sent[:record]
+    assert sent.key?(:record)
+  end
+
+  def test_a_subclass_inherits_what_its_parent_declared_and_may_change_it
+    sub = Class.new(Fijada) { llm "anthropic/claude-haiku-5-5" }
+
+    assert_equal({ provider: "anthropic", model: "claude-haiku-5-5" }, sub.llm)
+    assert_equal "es", sub.language
+    assert_equal({ provider: "openai", model: "gpt-5.4-mini", temperature: 0.3, builds: "responses.LLM",
+                   options: { use_websocket: true } }, Fijada.llm)
+  end
+
+  def test_a_model_id_keeps_every_slash_after_the_vendors
+    declared = Class.new(Pinecall::Agent) { llm "livekit/openai/gpt-5-mini" }
+
+    assert_equal({ provider: "livekit", model: "openai/gpt-5-mini" }, declared.llm)
+  end
+
+  def test_a_voice_names_its_vendor_and_the_voice_or_is_refused_at_load
     refused = assert_raises(Pinecall::DeclarationRefused) do
       Class.new(Pinecall::Agent) { voice "carolina" }
     end
 
-    assert_equal "`voice` is the world's now, not the class's: pinecall agent set --voice <name> " \
-                 "— remove it from the class", refused.message
-  end
-
-  def test_every_field_of_the_world_s_is_refused_whatever_it_was_written_with
-    written = {
-      voice: ["carolina"], llm: ["haiku"], stt: ["deepgram"], language: [:es], greeting: ["Buenos días."],
-      hangup: [], says: [{ DKV: "de ka uve" }], hears: [["Clínica Norte"]], record: [true],
-      knowledge: ["./knowledge/clinica.md"], docs: ["clinica-norte"], memory: [{ remember: ["alergias"] }]
-    }
-
-    assert_equal Pinecall::Agent::Config::THE_WORLDS.keys.sort, written.keys.sort
-    written.each do |field, args|
-      refused = assert_raises(Pinecall::DeclarationRefused) do
-        Class.new(Pinecall::Agent) do
-          args.last.is_a?(Hash) ? public_send(field, **args.last) : public_send(field, *args)
-        end
-      end
-
-      assert_equal Pinecall::Agent::Config.moved_to_the_world(field), refused.message
-      assert_includes refused.message, Pinecall::Agent::Config::THE_WORLDS[field]
-    end
-  end
-
-  def test_the_refusal_names_the_verb_even_for_the_form_the_class_used_to_take
-    refused = assert_raises(Pinecall::DeclarationRefused) do
-      Class.new(Pinecall::Agent) { greeting reply: "saluda" }
-    end
-
-    assert_includes refused.message, "pinecall agent set --greeting '…' (or --reply '…')"
+    assert_equal 'a voice the class declares names its vendor and the voice: voice "<vendor>", "<voice id>"', refused.message
   end
 end

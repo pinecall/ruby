@@ -4,35 +4,28 @@ module Pinecall
   class Agent
     # Class-level configuration (state lives on the instance).
     #
-    # A class declares its contract: tools, state, view. Runtime settings (voice, models,
-    # language, greeting, memory, knowledge) belong to the world and are refused at load with the
-    # CLI command that sets them.
+    # A class declares its contract: tools, state, view. It may also declare its environment —
+    # voice, models, language, greeting, memory, knowledge — and whatever it declares wins over the
+    # agent's settings for that field.
     module Config
       # `phone`, `whatsapp` and `web` are accepted for compatibility but ignored. `channel_rules
       # false` leaves the `<channel>` block out of the prompt.
       AS_WRITTEN = %i[phone whatsapp web channel_rules].freeze
 
-      # Settings that moved to the world, and the command that sets each. Must match the
-      # TypeScript package's `THE_WORLDS`.
-      THE_WORLDS = {
-        voice: "pinecall agent set --voice <name>",
-        llm: "pinecall agent set --llm <vendor/model>",
-        stt: "pinecall agent set --stt <vendor>",
-        language: "pinecall agent set --language <tag>",
-        greeting: "pinecall agent set --greeting '…' (or --reply '…')",
-        hangup: "pinecall agent set --hangup '…'",
-        says: "pinecall lexicon add <word> --say '…'",
-        hears: "pinecall lexicon hear <word> …",
-        memory: "pinecall memory policy --remember '…' --forget '…'",
-        record: "pinecall agent set --record on|off",
-        knowledge: "pinecall agent knowledge edit — what the agent knows by heart is a setting, not a file",
-        docs: "pinecall docs push, then pinecall docs attach <base>"
-      }.freeze
+      # The settings a class may declare. Must match the TypeScript package's `ENVIRONMENT`.
+      ENVIRONMENT = %i[language voice llm stt greeting hangup turn says hears knowledge docs memory record].freeze
+
+      # The ones written as the wire's own fields, keyword by keyword: `greeting say: "…"`.
+      AS_KEYWORDS = %i[greeting hangup turn knowledge docs memory].freeze
+
+      NO_VOICE = "a voice the class declares names its vendor and the voice: voice \"<vendor>\", \"<voice id>\""
 
       NOTHING = Object.new.freeze
 
-      def self.moved_to_the_world(field)
-        "`#{field}` is the world's now, not the class's: #{THE_WORLDS.fetch(field)} — remove it from the class"
+      # `vendor/model`, or a vendor alone; the model id keeps every slash after the vendor's.
+      def self.model_of(named)
+        provider, _slash, model = named.to_s.partition("/")
+        { provider:, model: }
       end
 
       module Declaring
@@ -45,11 +38,59 @@ module Pinecall
           end
         end
 
-        # World settings raise at load, naming the command that sets them.
-        THE_WORLDS.each_key do |field|
-          define_method(field) do |*_said, **_options|
-            raise DeclarationRefused, Config.moved_to_the_world(field)
+        # The voice, by its vendor and the vendor's own id for it. Declared, it wins over the
+        # agent's settings; `builds` and `options` reach the vendor's plugin.
+        def voice(provider = NOTHING, voice_id = nil, model: nil, builds: nil, options: nil)
+          return environment[:voice] if provider.equal?(NOTHING)
+          raise DeclarationRefused, NO_VOICE if voice_id.nil?
+
+          environment[:voice] = { provider:, voice_id:, model:, builds:, options: }.compact
+        end
+
+        # The model that answers, `vendor/model` or a vendor alone:
+        # `llm "openai/gpt-5.4-mini", builds: "responses.LLM", options: { use_websocket: true }`.
+        def llm(model = NOTHING, temperature: nil, builds: nil, options: nil)
+          return environment[:llm] if model.equal?(NOTHING)
+
+          environment[:llm] = { **Config.model_of(model), temperature:, builds:, options: }.compact
+        end
+
+        # The ears, `vendor/model` or a vendor alone.
+        def stt(model = NOTHING, builds: nil, options: nil)
+          return environment[:stt] if model.equal?(NOTHING)
+
+          environment[:stt] = { **Config.model_of(model), builds:, options: }.compact
+        end
+
+        # `language "es"`, `says [{ word: "GSA", spoken: "ge ese a" }]`, `record false`.
+        %i[language says record].each do |field|
+          define_method(field) do |value = NOTHING|
+            return environment[field] if value.equal?(NOTHING)
+
+            environment[field] = value
           end
+        end
+
+        # The words the ears must know: `hears "Vidal", "Sanitas"`.
+        def hears(*words)
+          return environment[:hears] if words.empty?
+
+          environment[:hears] = words.flatten
+        end
+
+        # `greeting say: "…"`, `hangup when: "…"`, `turn endpointing_ms: 300`, `docs base: "…", k: 4`,
+        # `memory remember: […], forget: […]`, `knowledge path: "…", text: "…"`.
+        AS_KEYWORDS.each do |field|
+          define_method(field) do |**given|
+            return environment[field] if given.empty?
+
+            environment[field] = given
+          end
+        end
+
+        # What the class declares of its environment, including inherited values.
+        def environment
+          @environment ||= superclass.respond_to?(:environment) ? superclass.environment.dup : {}
         end
 
         # Set the class docstring explicitly, for classes with no source file.
@@ -84,9 +125,10 @@ module Pinecall
           @slug = name
         end
 
-        # The AgentConfig sent to the gateway.
+        # The AgentConfig sent to the gateway: the contract, and the environment the class declares.
         def wire_config(tools: nil)
           {
+            **environment,
             prompt: Prompt::FRAMEWORK,
             tools:,
             state_fields: state_field_specs,

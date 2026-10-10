@@ -38,35 +38,58 @@ the telephone, not by whoever deploys: it is a row the org keeps — `pinecall n
 agent can be talked to from a page. A class that still writes `phone "+34…"`, `whatsapp` or
 `web true` still loads, and is writing something nobody reads.
 
-### The world's, not the class's
+### The environment: the settings', or the class's
 
-Everything the agent **runs on** is the world's: set per world and per corner, versioned, with who
-set it and why, and changed without a deploy — by `pinecall agent set`, the console's Settings
-tab, or the verb the table names. Those verbs belong to the one Node CLI (`pinecall` on npm); this
-gem ships no executable. A class that still declares one of these fields is refused
-when it loads, before a prompt is printed or a gateway is knocked at, with the verb that sets it
-now:
+Everything the agent **runs on** is its settings': set per world and per corner, versioned, with who
+set it and why, and changed without a deploy — by `pinecall agent set`, the console's Configure
+screen, or the verb the table names. Those verbs belong to the one Node CLI (`pinecall` on npm);
+this gem ships no executable. The class may declare any of them instead, as a class macro, and
+**what the class declares wins**: the settings of that field are not read for the agent, the console
+shows it locked, "set by the class", and a `pinecall agent set` of it is refused naming the class.
+Take the macro out and deploy, and the settings apply again.
 
+```ruby
+# Recepción de Clínica Norte: da, cambia y cancela turnos.
+class ClinicaNorte < Pinecall::Agent
+  voice "cartesia", "a0e99841-438c-4a64-b679-ae501e7d6091", model: "sonic-2"
+  llm "openai/gpt-5.4-mini", temperature: 0.3, builds: "responses.LLM", options: { use_websocket: true }
+  stt "deepgram/flux-general-multi"
+  language "es"
+  greeting say: "Clínica Norte, buenas, ¿en qué le ayudo?"
+end
 ```
-`voice` is the world's now, not the class's: pinecall agent set --voice <name> — remove it from the class
-```
 
-| field | what it is | where it is set |
-|---|---|---|
-| `voice` | a voice **by name** — the platform resolves it to a vendor and an id | `pinecall agent set --voice` |
-| `llm` | `haiku`, `sonnet`, `opus`, or `vendor/model` | `pinecall agent set --llm` |
-| `stt` | the ears: `deepgram` (Flux), `soniox`, or `vendor/model` | `pinecall agent set --stt` |
-| `greeting` | how the call opens: the words, or what the model reads before finding its own | `pinecall agent set --greeting '…'` · `--reply '…'` |
-| `hangup` | whether the model may end the call itself, and when, in your words | `pinecall agent set --hangup '…'` |
-| `says` | how a word the voice would misread is said: `DKV` → `de ka uve` | `pinecall lexicon add <word> --say '…'` |
-| `hears` | the words the ears must know: names, brands, the doctor's surname | `pinecall lexicon hear <word> …` |
-| `memory` | what to remember about a caller across calls, and what never to | `pinecall memory policy --remember '…' --forget '…'` |
-| `record` | whether the call is recorded | `pinecall agent set --record on\|off` |
-| `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `pinecall agent knowledge edit`, or Settings ▸ Knowledge |
-| `docs` | the bases the agent searches per turn, and how many chunks a turn reads | `pinecall docs push`, then `pinecall docs attach <base>` |
+`llm` and `stt` take `vendor/model` or a vendor alone; `voice` the vendor and its own id for the
+voice, and refuses one without the id at load. Each takes `builds:`, a class of the vendor's LiveKit
+plugin other than its default (a dot reaches into a module of it: `responses.LLM` is OpenAI's
+Responses API, and `use_websocket` its WebSocket), and `options:`, that class's keyword arguments as
+the plugin names them, passed as given and over Pinecall's. **Both run only on your org's own key
+for that vendor**: on a key Pinecall lends they are refused when the agent registers, naming
+`pinecall providers add <vendor>`, since an option can point the plugin at another server. `llm`
+also takes `temperature:`, which runs on any key. A vendor that is not installed, or does not do the
+stage, is refused at registration. `llm` fixes the whole model: with it in the class,
+`--temperature`, `--llm-builds` and `--llm-option` are refused too.
+
+| field | what it is | on the class | or in the settings |
+|---|---|---|---|
+| `voice` | the voice: its vendor and the vendor's id | `voice "<vendor>", "<id>", model: "…"` | `pinecall agent set --voice` |
+| `llm` | the model that answers, and its temperature | `llm "<vendor>/<model>", temperature: 0.3` | `pinecall agent set --llm` |
+| `stt` | the ears | `stt "<vendor>/<model>"` | `pinecall agent set --stt` |
+| `language` | the language the call is in | `language "es"` | `pinecall agent set --language` |
+| `greeting` | how the call opens: the words, or what the model reads before finding its own | `greeting say: "…"` · `greeting reply: "…"` | `pinecall agent set --greeting '…'` · `--reply '…'` |
+| `hangup` | whether the model may end the call itself, and when, in your words | `hangup when: "…"` | `pinecall agent set --hangup '…'` |
+| `turn` | when the caller has finished, and may interrupt | `turn endpointing_ms: 300` | `pinecall agent set --endpointing-ms` |
+| `says` | how a word the voice would misread is said | `says [{ word: "DKV", spoken: "de ka uve" }]` | `pinecall lexicon add <word> --say '…'` |
+| `hears` | the words the ears must know: names, brands, the doctor's surname | `hears "Vidal", "Sanitas"` | `pinecall lexicon hear <word> …` |
+| `memory` | what to remember about a caller across calls, and what never to | `memory remember: […], forget: […]` | `pinecall memory policy --remember '…' --forget '…'` |
+| `record` | whether the call is recorded | `record false` | `pinecall agent set --record on\|off` |
+| `knowledge` | what the agent knows by heart: a page of Markdown, read whole on every call | `knowledge path: "knowledge.md", text: File.read(…)` | `pinecall agent knowledge edit` |
+| `docs` | the base the agent searches per turn, and how many chunks a turn reads | `docs base: "clinica-norte", k: 4` | `pinecall docs push`, then `pinecall docs attach <base>` |
+
+Called with no argument, each macro reads what the class (or its parent) declared.
 
 Mid-call, `say "..."` and `reply "..."` are still methods of the class, for when something happens
-that the caller should hear now; how the call *opens* is the world's.
+that the caller should hear now; how the call *opens* is `greeting`, the class's or the settings'.
 
 ### What it knows, what it reads, what it remembers
 
@@ -164,7 +187,7 @@ call, and never as a 1008 from a gateway:
 | `stage: :pay` where `stage` has no `:pay` | `pay is not one of this agent's stages (identify, book)` |
 | `stage:` on a class with no `stage` | `…declares none; add \`stage :identify, :book\`` |
 | `state :cart` twice | `declares cart twice` |
-| `voice`, `llm`, `stt`, `greeting`, `hangup`, `says`, `hears`, `memory`, `record`, `knowledge`, `docs` | `` `<field>` is the world's now, not the class's: <verb> — remove it from the class``, the verb from the table above |
+| `voice "carolina"` (no voice id) | `a voice the class declares names its vendor and the voice: voice "<vendor>", "<voice id>"` |
 
 A view is the one thing read later, at render: a field the class never declared raises there, by
 name, the same way an undefined instance variable does in a Rails view.

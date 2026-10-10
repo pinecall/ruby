@@ -84,18 +84,21 @@ module Pinecall
     def self.panel: (?String) { (Panel::Who) -> void } -> Panel::Declared
     def self.declared_panel: () -> Panel::Declared?
 
-    # the world's, refused at load with the verb that sets each
-    def self.voice: (*untyped, **untyped) -> bot
-    def self.llm: (*untyped, **untyped) -> bot
-    def self.stt: (*untyped, **untyped) -> bot
-    def self.greeting: (*untyped, **untyped) -> bot
-    def self.hangup: (*untyped, **untyped) -> bot
-    def self.says: (*untyped, **untyped) -> bot
-    def self.hears: (*untyped, **untyped) -> bot
-    def self.memory: (*untyped, **untyped) -> bot
-    def self.record: (*untyped, **untyped) -> bot
-    def self.knowledge: (*untyped, **untyped) -> bot
-    def self.docs: (*untyped, **untyped) -> bot
+    # the environment the class declares, each over the agent's settings
+    def self.voice: (?String, ?String?, ?model: String?, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
+    def self.llm: (?String, ?temperature: Float?, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
+    def self.stt: (?String, ?builds: String?, ?options: Hash[untyped, untyped]?) -> untyped
+    def self.language: (?String) -> untyped
+    def self.says: (?Array[Hash[Symbol, String]]) -> untyped
+    def self.record: (?bool) -> untyped
+    def self.hears: (*String | Array[String]) -> untyped
+    def self.greeting: (**untyped) -> untyped
+    def self.hangup: (**untyped) -> untyped
+    def self.turn: (**untyped) -> untyped
+    def self.knowledge: (**untyped) -> untyped
+    def self.docs: (**untyped) -> untyped
+    def self.memory: (**untyped) -> untyped
+    def self.environment: () -> Hash[Symbol, untyped]
 
     def self.doc: (?String) -> String?
     def self.slug: (?String) -> String
